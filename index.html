@@ -48,7 +48,7 @@ button{font-family:var(--sans)}
 .wordmark{font-weight:700;font-size:.95rem;letter-spacing:-.01em;white-space:nowrap}
 .edition{font-size:.64rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);opacity:.78;font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:4px}
 .hole-name{font-size:1.85rem}
-.hole-meta{font-size:.8rem;color:var(--ink);opacity:.82;font-variant-numeric:tabular-nums}
+.hole-meta{font-size:.8rem;white-space:nowrap;color:var(--ink);opacity:.82;font-variant-numeric:tabular-nums}
 .side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
 .glass{background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(14px) saturate(1.1);-webkit-backdrop-filter:blur(14px) saturate(1.1)}
 .wind{display:flex;align-items:center;gap:8px;border-radius:999px;padding:6px 12px 6px 9px}
@@ -202,6 +202,8 @@ button{font-family:var(--sans)}
 .chip.readout.tap{cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
 .chip[aria-pressed="true"] small{color:#4c5246}
+.flytag{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:10px;align-items:baseline;padding:10px 16px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.85rem;font-weight:600;white-space:nowrap;z-index:6}
+.flytag .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}.flytag .skip{color:var(--soft);font-weight:500}
 .sep{width:1px;height:22px;background:var(--edge);margin:0 4px}
 .meter{position:fixed;right:calc(max(16px, env(safe-area-inset-right, 0px)) + 4px);top:30%;height:30%;width:8px;border-radius:8px;background:rgba(244,238,226,.22);opacity:0;transition:opacity .2s;pointer-events:none}
 .meter.show{opacity:1}
@@ -376,6 +378,7 @@ button{font-family:var(--sans)}
       <div class="set-row"><div class="label">Practice swings</div><div class="seg" id="segPS"><button data-v="0" aria-pressed="true">Off</button><button data-v="1" aria-pressed="false">On</button></div><div class="body">Swing without using a stroke. You'll see power and curve.</div></div>
       <div class="set-row"><div class="label">Dominant hand</div><div class="seg" id="segHand"><button data-v="R" aria-pressed="true">Right</button><button data-v="L" aria-pressed="false">Left</button></div></div>
       <div class="set-row"><div class="label">Address position</div><div class="seg" id="segAddr"><button data-v="std" aria-pressed="true">Standard</button><button data-v="mine" aria-pressed="false">Record mine</button></div><div class="body">Standard: phone in your dominant hand like the grip, screen up, top pointing at the ball. Record mine saves how you hold it.</div></div>
+      <div class="set-row"><div class="label">Sound</div><div class="seg" id="segSound"><button data-v="all" aria-pressed="true">Nature + shots</button><button data-v="fx" aria-pressed="false">Shots only</button><button data-v="off" aria-pressed="false">Off</button></div><div class="body">Birds, wind and water play quietly in the background.</div></div>
       <div class="set-row"><div class="label">Phone curve direction</div><div class="seg" id="segFlip"><button data-v="0" aria-pressed="true">Normal</button><button data-v="1" aria-pressed="false">Flipped</button></div><div class="body">If your hooks go right, flip it.</div></div>
       <div class="body" id="diag"></div>
       <div class="btns"><button class="btn" id="setClose">Done</button></div>
@@ -388,6 +391,7 @@ button{font-family:var(--sans)}
     </div>
   </div>
 
+  <button id="flyTag" class="flytag glass" hidden><span class="k">Flyover</span><span id="flyName"></span><span class="skip">Tap to skip</span></button>
   <footer class="bottom" id="controls">
     <div class="lie" id="lieLine"><span class="num" id="lieDist">—</span><span class="label" id="lieTxt"></span></div>
     <div class="caddie" id="caddie" hidden></div>
@@ -399,7 +403,8 @@ button{font-family:var(--sans)}
         <span class="chip readout" id="aimLbl">At pin</span>
         <button class="chip step" id="aimR" aria-label="Aim right">▶</button>
         <span class="sep"></span>
-        <button class="chip" id="readBtn" aria-pressed="false">Read green</button>
+        <button class="chip" id="holeBtn" aria-pressed="false">Hole</button>
+        <button class="chip" id="readBtn" aria-pressed="false">Green</button>
       </div>
     </div>
   </footer>
@@ -627,6 +632,7 @@ function drawSky(hz){
   if (hz < -20){ ctx.fillStyle = PAL.gmid; ctx.fillRect(0,0,W,H); return; }
   const g = ctx.createLinearGradient(0, Math.min(0, hz-H), 0, hz);
   [0, 0.38, 0.7, 0.9, 1].forEach((s, i) => g.addColorStop(s, PAL.sky[i]));
+  ctx.fillStyle = PAL.gfar; ctx.fillRect(0, hz, W, H - hz);   // no seam when the camera climbs
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz+2);
   const [sx, sy] = sunScreen();
   const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(W,H)*0.6);
@@ -945,7 +951,7 @@ function launch(power, curve, info){
   } else {
     const L = shotParams(p);
     Object.assign(ball, {y:gh+0.05, vx:L.speed*Math.cos(L.launch)*Math.sin(yaw), vy:L.speed*Math.sin(L.launch), vz:L.speed*Math.cos(L.launch)*Math.cos(yaw), spin:L.spin, side:cu*(mode === 'full' ? 5.5 : 2.5), state:'air', landed:false, bounced:false});
-    sfx.hit(p);
+    sfx.hit(p, currentLie, mode === 'full' ? fullType : shortType);
   }
   flightFollow = mode === 'full' ? {sx:ball.x, sz:ball.z, yaw:addr.yaw, back:Math.hypot(addr.x-ball.x, addr.z-ball.z), y0:addr.y, d, pitch:addr.pitch} : null;
   phase = 'flight'; if (navigator.vibrate) try { navigator.vibrate(mode === 'putt' ? 8 : 18); } catch(e){}
@@ -990,7 +996,7 @@ function setupLie(){
   currentLie = first ? 'tee' : surfaceAt(ball.x, ball.z);
   ball.state = first ? 'tee' : 'rest';
   const d = dPin(ball.x, ball.z);
-  aimOff = 0; aimCups = 0; setReading(false);
+  aimOff = 0; aimCups = 0; setReading(false); setHoleView(false);
   if (currentLie === 'green') mode = 'putt';
   else if (!first && d <= 60) mode = 'short';
   else mode = 'full';
@@ -1026,6 +1032,7 @@ function computeRead(){
   const elev = ai < 2 ? 'Plays flat' : `Plays ${ai < 12 ? Math.round(ai) + ' in' : (ai/12).toFixed(1).replace(/\.0$/, '') + ' ft'} ${inch > 0 ? 'uphill' : 'downhill'}`;
   const brk = Math.abs(bestC) < 1 ? 'pretty straight' : `breaks about ${Math.abs(bestC)} cup${Math.abs(bestC) === 1 ? '' : 's'} ${bestC > 0 ? 'right to left' : 'left to right'}`;
   caddieText = `Caddie: ${elev}, ${brk}.`;
+window.__read = {v, c:bestC};
   puttArrows = [];
   const L = Math.max(1.5, d + 1);
   for (let t=0; t<=L; t+=Math.max(0.6, L/14)) for (let q=-2.4; q<=2.4; q+=0.8){
@@ -1062,7 +1069,7 @@ function renderHeader(){
   const md = new Date(Date.parse(todayKey + 'T12:00:00Z')).toLocaleDateString('en-US', {month:'short', day:'numeric', timeZone:'UTC'});
   $('edition').textContent = pastKey ? `Last week · ${dayLabel(pastKey)}` : preview ? `No. ${holeNum} · Preview` : `No. ${holeNum} · ${md}`;
   $('holeName').textContent = holeName;
-  $('holeMeta').textContent = `Par 3 · ${YARDS} yds · ${pinDesc()}`;
+  $('holeMeta').textContent = `Par 3 · ${YARDS} yds · ${pinDesc()}${WEATHER === 'drizzle' ? ' · Rain' : ''}`;
   $('windMph').textContent = WIND.mph ? `${WIND.mph} mph` : 'Calm';
   renderWind(true);
 }
@@ -1116,7 +1123,7 @@ $('shotBar').addEventListener('click', e => {
 function stepAim(dir){ if (phase !== 'ready') return; if (mode === 'putt') aimCups = clamp(aimCups + dir, -40, 40); else { const st = mode === 'full' ? 2 : 1, mx = mode === 'full' ? 24 : 12; aimOff = clamp(aimOff + dir*st, -mx, mx); } renderControls(); }
 $('aimL').addEventListener('click', () => stepAim(-1));
 $('aimR').addEventListener('click', () => stepAim(1));
-function setReading(on){ reading = on; $('lieLine').hidden = on && mode === 'putt'; $('readBtn').setAttribute('aria-pressed', String(on)); $('readBtn').textContent = on ? 'Back to ball' : 'Read green'; }
+function setReading(on){ reading = on; if (on && holeView) setHoleView(false); $('lieLine').hidden = on && mode === 'putt'; $('readBtn').setAttribute('aria-pressed', String(on)); $('readBtn').textContent = 'Green'; }
 $('readBtn').addEventListener('click', () => { if (phase !== 'ready') return; setReading(!reading); if (reading) setHint(mode === 'putt' ? 'Arrows point downhill. Your line is dashed.' : 'Lighter bands sit higher. Arrows point downhill.'); else readyHint(); });
 
 function readyHint(){
@@ -1401,6 +1408,7 @@ function openMore(){
   const top = $('moreTop'); top.innerHTML = '';
   if (pastKey){ const b = moreItem("Back to today's hole", 'The one that counts'); b.onclick = () => goHash(''); top.appendChild(b); }
   if (mainRound.done && !pastKey){ const b = moreItem("Replay today's hole", 'Practice it again. Your score stays.'); b.onclick = () => { $('moreCard').hidden = true; practice = true; round = freshRound(); setupLie(); }; top.appendChild(b); }
+  if (phase === 'ready' || phase === 'summary'){ const fb = moreItem('Watch the flyover', `A quick look at ${holeName}`); fb.onclick = () => { $('moreCard').hidden = true; if (phase === 'summary'){ $('summary').hidden = false; flyFromSummary(); } else { if (!$('controls').hidden || true) startFlyover(); } }; top.appendChild(fb); }
   const rb = moreItem('Driving range', pastKey ? "Unlimited balls at this hole's green" : "Unlimited balls at today's green"); rb.onclick = () => { $('moreCard').hidden = true; enterRange(); }; top.appendChild(rb);
   const list = $('pastList'); list.innerHTML = '';
   for (const key of lastWeekKeys(todayKey)){
@@ -1437,11 +1445,12 @@ $('badgeClose').addEventListener('click', () => { $('badgeCard').hidden = true; 
 function openCard(id){ $(id).hidden = false; $(id).scrollTop = 0; $('controls').hidden = true; }
 function closeCard(id){ $(id).hidden = true; if (phase === 'ready') $('controls').hidden = false; readyHint(); }
 $('helpBtn').addEventListener('click', () => { if (phase !== 'ready') return; openCard('helpCard'); LS.set('dailyhole:seenHelp', true); });
-$('helpClose').addEventListener('click', () => { LS.set('dailyhole:seenHelp', true); closeCard('helpCard'); });
+$('helpClose').addEventListener('click', () => { LS.set('dailyhole:seenHelp', true); closeCard('helpCard'); maybeFly(); });
+function maybeFly(){ if (phase === 'ready' && round.shots.length === 0 && !rangeMode && !practice && !LS.get('dailyhole:fly:' + holeNum, false)) setTimeout(startFlyover, 400); }
 $('setBtn').addEventListener('click', () => { if (phase !== 'ready') return; renderSettings(); openCard('setCard'); });
 $('setClose').addEventListener('click', () => closeCard('setCard'));
 function segSet(id, v){ [...$(id).querySelectorAll('button')].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v)))); }
-function renderSettings(){ if (document.activeElement !== $('setTag')) $('setTag').value = myTag || ''; $('setTagMsg').textContent = online() ? 'Shows on the leaderboard.' : 'Saved on this phone until the leaderboard connects.'; $('diag').textContent = lastDiag || 'Swing once and your last swing\'s numbers show here.'; segSet('segHand', hand); segSet('segAddr', addrCal ? 'mine' : 'std'); segSet('segInput', inputMode); segSet('segFeel', feelIdx); segSet('segPS', practiceSwing ? 1 : 0); segSet('segFlip', curveFlip ? 1 : 0); }
+function renderSettings(){ segSet('segSound', soundMode); if (document.activeElement !== $('setTag')) $('setTag').value = myTag || ''; $('setTagMsg').textContent = online() ? 'Shows on the leaderboard.' : 'Saved on this phone until the leaderboard connects.'; $('diag').textContent = lastDiag || 'Swing once and your last swing\'s numbers show here.'; segSet('segHand', hand); segSet('segAddr', addrCal ? 'mine' : 'std'); segSet('segInput', inputMode); segSet('segFeel', feelIdx); segSet('segPS', practiceSwing ? 1 : 0); segSet('segFlip', curveFlip ? 1 : 0); }
 $('segInput').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.v === 'motion') enableMotion(); else { inputMode = 'swipe'; $('inputNote').textContent = ''; } renderSettings(); });
 $('segFeel').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; feelIdx = +b.dataset.v; LS.set('dailyhole:feel', feelIdx); renderSettings(); });
 $('segPS').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; practiceSwing = b.dataset.v === '1'; $('psTag').hidden = !practiceSwing; renderSettings(); });
@@ -1485,6 +1494,7 @@ function drawSwipeTrail(){
 const backCap = () => mode === 'putt' ? 1.05 : 1.12;
 cv.addEventListener('pointerdown', e => {
   sfx.unlock();
+  if (fly){ endFlyover(); return; }
   if (phase === 'flight'){ fastForward(); return; }
   if (phase !== 'ready' || inputMode !== 'swipe' || reading) return;
   swipe = {y0:e.clientY, x0:e.clientX, maxY:e.clientY, maxX:e.clientX, back:0, samples:[], all:[[e.clientX, e.clientY]], fired:false}; liveTrail = null; cv.setPointerCapture(e.pointerId);
@@ -1630,39 +1640,135 @@ function calibrate(){
 }
 
 // ---------- sound ----------
+let soundMode = LS.get('dailyhole:sound', 'all');  // all | fx | off
 const sfx = (() => {
-  let ac = null;
-  const unlock = () => { if (!ac){ try { ac = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} } if (ac && ac.state === 'suspended') ac.resume(); };
-  function noise(dur, freq, q, gain){ if (!ac) return; const n = ac.createBuffer(1, Math.floor(ac.sampleRate*dur), ac.sampleRate); const d = n.getChannelData(0); for (let i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length, 2);
-    const s = ac.createBufferSource(); s.buffer = n; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; const g = ac.createGain(); g.gain.value = gain; s.connect(f); f.connect(g); g.connect(ac.destination); s.start(); }
-  function tone(freq, dur, gain){ if (!ac) return; const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = freq; g.gain.setValueAtTime(gain, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+dur); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+dur); }
+  let ac = null, master = null, amb = null;
+  const fxOn = () => soundMode !== 'off', ambOn = () => soundMode === 'all';
+  const unlock = () => {
+    if (!ac){ try { ac = new (window.AudioContext||window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 1; master.connect(ac.destination); } catch(e){ return; } }
+    if (ac.state === 'suspended') ac.resume();
+    if (ambOn() && !amb) ambientStart();
+  };
+  function noise(dur, freq, q, gain){ if (!ac || !fxOn()) return; const n = ac.createBuffer(1, Math.floor(ac.sampleRate*dur), ac.sampleRate); const d = n.getChannelData(0); for (let i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length, 2);
+    const s = ac.createBufferSource(); s.buffer = n; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; const g = ac.createGain(); g.gain.value = gain; s.connect(f); f.connect(g); g.connect(master); s.start(); }
+  function tone(freq, dur, gain){ if (!ac || !fxOn()) return; const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = freq; g.gain.setValueAtTime(gain, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+dur); o.connect(g); g.connect(master); o.start(); o.stop(ac.currentTime+dur); }
+  // ---- nature bed: wind, water, birdsong, and the day's weather ----
+  function loopNoise(sec, color){ const n = ac.createBuffer(1, Math.floor(ac.sampleRate*sec), ac.sampleRate), d = n.getChannelData(0); let last = 0; for (let i=0;i<d.length;i++){ const w = Math.random()*2-1; last = color ? (last + 0.02*w)/1.02 : w; d[i] = color ? last*3.5 : w; } const s = ac.createBufferSource(); s.buffer = n; s.loop = true; return s; }
+  function lfo(rate, depth, target){ const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = rate; g.gain.value = depth; o.connect(g); g.connect(target); o.start(); return o; }
+  function ambientStart(){
+    if (!ac) return; const out = ac.createGain(); out.gain.value = 0; out.connect(master); out.gain.linearRampToValueAtTime(1, ac.currentTime + 3);
+    const nodes = [];
+    // wind
+    const w = loopNoise(4, true), wf = ac.createBiquadFilter(), wg = ac.createGain(); wf.type = 'lowpass'; wf.frequency.value = 380 + WIND.mph*25; wg.gain.value = 0.05 + WIND.mph*0.006;
+    w.connect(wf); wf.connect(wg); wg.connect(out); w.start(); nodes.push(w, lfo(0.07, 160, wf.frequency), lfo(0.11, 0.025, wg.gain));
+    // water lapping
+    const l = loopNoise(3, false), lf = ac.createBiquadFilter(), lg = ac.createGain(); lf.type = 'bandpass'; lf.frequency.value = 420; lf.Q.value = 0.7; lg.gain.value = 0.012;
+    l.connect(lf); lf.connect(lg); lg.connect(out); l.start(); nodes.push(l, lfo(0.23, 0.01, lg.gain));
+    // rain
+    if (WEATHER === 'drizzle'){ const r = loopNoise(2, false), rf = ac.createBiquadFilter(), rg = ac.createGain(); rf.type = 'highpass'; rf.frequency.value = 1800; rg.gain.value = 0.035; r.connect(rf); rf.connect(rg); rg.connect(out); r.start(); nodes.push(r); }
+    amb = {out, nodes, timers:[]};
+    const birdLoop = () => { if (!amb) return; if (ambOn() && !document.hidden) bird(out); amb.timers.push(setTimeout(birdLoop, 2500 + Math.random()*(WEATHER === 'drizzle' ? 14000 : 7000))); };
+    amb.timers.push(setTimeout(birdLoop, 1500));
+    if (WEATHER === 'leaves'){ const rustle = () => { if (!amb) return; if (ambOn() && !document.hidden){ const n = loopNoise(1.2, false), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 0.6; g.gain.setValueAtTime(0, ac.currentTime); g.gain.linearRampToValueAtTime(0.02, ac.currentTime + 0.4); g.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2); n.connect(f); f.connect(g); g.connect(out); n.start(); n.stop(ac.currentTime + 1.3); } amb.timers.push(setTimeout(rustle, 4000 + Math.random()*7000)); }; amb.timers.push(setTimeout(rustle, 3000)); }
+  }
+  function bird(out){
+    const kind = Math.floor(Math.random()*3), n = 2 + Math.floor(Math.random()*4), base = 2600 + Math.random()*1800; let t = ac.currentTime + 0.05;
+    for (let i=0;i<n;i++){
+      const o = ac.createOscillator(), g = ac.createGain(), dur = kind === 0 ? 0.09 : kind === 1 ? 0.16 : 0.05;
+      o.type = 'sine'; const f0 = base*(kind === 1 ? 1.15 : 1) + (i%2 ? 300 : 0);
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(kind === 1 ? f0*0.7 : f0*1.25, t + dur);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.018, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+      const pan = ac.createStereoPanner ? ac.createStereoPanner() : null; if (pan){ pan.pan.value = Math.random()*1.6 - 0.8; o.connect(g); g.connect(pan); pan.connect(out); } else { o.connect(g); g.connect(out); }
+      o.start(t); o.stop(t + dur + 0.02); t += dur + (kind === 2 ? 0.04 : 0.09);
+    }
+  }
+  function ambientStop(){ if (!amb) return; amb.timers.forEach(clearTimeout); amb.nodes.forEach(n => { try { n.stop(); } catch(e){} }); try { amb.out.disconnect(); } catch(e){} amb = null; }
+  document.addEventListener('visibilitychange', () => { if (!ac) return; if (document.hidden) ac.suspend(); else ac.resume(); });
   return { unlock,
-    hit: p => { noise(0.09, 2600, 1.2, 0.9); tone(180+p*80, 0.08, 0.3); },
+    setMode: m => { soundMode = m; LS.set('dailyhole:sound', m); if (m === 'all'){ unlock(); if (!amb) ambientStart(); } else ambientStop(); },
+    // club swoosh through the air, the strike, then the club taking turf (or sand)
+    hit: (p, lie, kind) => {
+      if (!ac || !fxOn()) return;
+      const t0 = ac.currentTime, lead = 0.13, big = kind === 'full' || kind === 'punch';
+      const swDur = lead + 0.32, n = ac.createBuffer(1, Math.floor(ac.sampleRate*swDur), ac.sampleRate), d = n.getChannelData(0);
+      for (let i=0;i<d.length;i++) d[i] = Math.random()*2 - 1;
+      const src = ac.createBufferSource(); src.buffer = n; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.6;
+      f.frequency.setValueAtTime(350, t0); f.frequency.exponentialRampToValueAtTime(big ? 2400 : 1700, t0 + lead); f.frequency.exponentialRampToValueAtTime(600, t0 + swDur);
+      const g = ac.createGain(), pk = (big ? 0.55 : 0.32)*(0.6 + 0.4*p);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(pk, t0 + lead); g.gain.exponentialRampToValueAtTime(0.0001, t0 + swDur);
+      src.connect(f); f.connect(g); g.connect(master); src.start(t0);
+      setTimeout(() => {
+        if (lie === 'sand'){ noise(0.28, 1300, 0.5, 0.55); noise(0.12, 420, 0.8, 0.35); return; }
+        noise(0.06, 3000, 1.3, big ? 0.85 : 0.5); tone(160 + p*90, 0.07, big ? 0.3 : 0.18);   // the strike
+        noise(big ? 0.2 : 0.12, lie === 'rough' ? 700 : 520, 0.7, big ? 0.5 : 0.3);           // turf
+        noise(0.14, 4200, 0.9, big ? 0.12 : 0.07);                                               // grass shred
+      }, lead*1000);
+    },
     putt: p => { noise(0.04, 1800, 2, 0.35); tone(520, 0.05, 0.12); },
     thud: s => noise(0.07, s === 'sand' ? 500 : 300, 0.8, s === 'sand' ? 0.3 : 0.5),
     splash: () => { noise(0.6, 900, 0.5, 0.6); noise(0.4, 2400, 0.7, 0.25); },
     cup: () => { tone(880, 0.12, 0.2); setTimeout(() => tone(660, 0.18, 0.18), 90); setTimeout(() => noise(0.08, 400, 1, 0.3), 40); },
     lip: () => { tone(760, 0.06, 0.12); },
+    fish: () => noise(0.25, 1400, 0.8, 0.05),
     tick: () => tone(1200, 0.05, 0.08) };
 })();
+document.addEventListener('pointerdown', () => sfx.unlock(), {passive:true});
+$('segSound').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; sfx.setMode(b.dataset.v); renderSettings(); });
 
 // ---------- camera ----------
 function addressView(){
   const gh = Hh(ball.x, ball.z);
-  if (round.shots.length === 0) return {x:0, y:18, z:-55, pitch:8*D2R, yaw:0};
+  if (round.shots.length === 0) return {x:0, y:12, z:-55, pitch:5.1*D2R, yaw:0};
   const yaw = yawTo(ball.x, ball.z), s = Math.sin(yaw), c = Math.cos(yaw), d = dPin(ball.x, ball.z);
-  if (mode === 'full') return {x:ball.x - s*40, y:gh+13, z:ball.z - c*40, pitch:7*D2R, yaw};
+  // full shots and the short game: camera low and back, horizon high on the screen, ball just above the controls
+  if (mode === 'full'){ const b = 40; return {x:ball.x - s*b, y:gh + b*0.216, z:ball.z - c*b, pitch:5.1*D2R, yaw}; }
+  if (mode === 'short'){ const b = 18 + d*0.25; return {x:ball.x - s*b, y:gh + b*0.216, z:ball.z - c*b, pitch:5.1*D2R, yaw}; }
   let back, hgt, look;
-  if (mode === 'short'){ back = 9 + d*0.3; hgt = 3.5 + d*0.12; look = d*0.45; }
+  if (false){ back = 0; hgt = 0; look = 0; }
   else { back = Math.max(3.4, 2.6 + d*0.35); hgt = Math.max(1.5, 1.2 + d*0.1); look = d*0.35; }
   return {x:ball.x - s*back, y:gh+hgt, z:ball.z - c*back, pitch:Math.atan2(hgt, back+look), yaw};
+}
+let holeView = false, fly = null;
+function holeViewTarget(){
+  const yaw = addr.yaw, s = Math.sin(yaw), c = Math.cos(yaw), d = Math.max(20, dPin(ball.x, ball.z));
+  const back = 45, hgt = 30 + d*0.35; return {x:ball.x - s*back, y:Hh(ball.x, ball.z) + hgt, z:ball.z - c*back, pitch:Math.atan2(hgt, back + d*0.62), yaw};
+}
+function setHoleView(on){ holeView = on; $('holeBtn').setAttribute('aria-pressed', String(on)); if (on && reading) setReading(false); }
+$('holeBtn').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(!holeView); if (holeView) setHint('The whole hole. You can still swing from here.'); else readyHint(); });
+const lookAt = (px, pz) => Math.atan2(GR.x - px, GR.z - pz);
+function flyKeys(){
+  // glide off the tee, orbit the green once at a calm height, then settle behind the ball
+  const end = addressView(), k = [{x:0, y:12, z:-55, pitch:5.1*D2R, yaw:0, t:0}, {x:GR.x*0.3, y:40, z:GR.z*0.3, pitch:14*D2R, t:3.0}];
+  const R = 62, Y = 42, dir = GR.x > 0 ? -1 : 1, th0 = -Math.PI/2;
+  for (let i=0;i<=8;i++){ const th = th0 + dir*i*(Math.PI*1.25/8); k.push({x:GR.x + R*Math.cos(th), y:Y, z:GR.z + R*Math.sin(th), pitch:Math.atan2(Y - 2, R)*0.82, t:4.6 + i*0.8}); }
+  k.push({...end, t:k.at(-1).t + 3.2});
+  let prev = 0; k.forEach(q => { if (q.yaw === undefined) q.yaw = lookAt(q.x, q.z); while (q.yaw - prev > Math.PI) q.yaw -= 2*Math.PI; while (q.yaw - prev < -Math.PI) q.yaw += 2*Math.PI; prev = q.yaw; });
+  return k;
+}
+function startFlyover(){
+  if (phase !== 'ready' || fly) return;
+  fly = {keys:flyKeys(), t:0}; setReading(false); setHoleView(false);
+  $('controls').hidden = true; $('icons').hidden = true; setHint('');
+  $('flyTag').hidden = false; $('flyName').textContent = `${holeName} · ${YARDS} yds`;
+  LS.set('dailyhole:fly:' + holeNum, true);
+}
+function flyFromSummary(){ $('summary').hidden = true; fly = {keys:flyKeys().slice(0, -1), t:0, summary:true}; $('flyTag').hidden = false; $('flyName').textContent = `${holeName} · ${YARDS} yds`; }
+function endFlyover(){ if (!fly) return; const wasSum = fly.summary; fly = null; if (wasSum){ $('flyTag').hidden = true; $('summary').hidden = false; return; } $('flyTag').hidden = true; if (phase === 'ready'){ $('controls').hidden = false; $('icons').hidden = false; readyHint(); } Object.assign(cam, addressView()); }
+$('flyTag').addEventListener('click', endFlyover);
+function flyPose(t){
+  const K = fly.keys; let i = 0; while (i < K.length - 2 && t > K[i+1].t) i++;
+  const p0 = K[Math.max(0, i-1)], p1 = K[i], p2 = K[i+1], p3 = K[Math.min(K.length-1, i+2)], u = clamp((t - p1.t)/(p2.t - p1.t), 0, 1);
+  const cr = key => { const a = p0[key], b = p1[key], c = p2[key], d = p3[key]; return 0.5*((2*b) + (-a + c)*u + (2*a - 5*b + 4*c - d)*u*u + (-a + 3*b - 3*c + d)*u*u*u); };
+  return {x:cr('x'), y:Math.max(2, cr('y')), z:cr('z'), pitch:cr('pitch'), yaw:cr('yaw')};
 }
 function readView(){
   if (mode === 'putt'){ const d = Math.max(2, dPin(ball.x, ball.z)), s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); const mx = ball.x + s*d*0.42, mz = ball.z + c*d*0.42; const back = d*0.25, hgt = Math.max(6, d*2.3); return {x:mx - s*back, y:Hh(mx, mz) + hgt, z:mz - c*back, pitch:Math.atan2(hgt, back), yaw:addr.yaw}; }
   const s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); return {x:GR.x - s*82, y:92, z:GR.z - c*82, pitch:47*D2R, yaw:addr.yaw}; }
 function updateCamera(dt){
+  if (fly){ fly.t += dt; if (fly.t >= fly.keys.at(-1).t){ endFlyover(); } else { Object.assign(cam, flyPose(fly.t)); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; } }
   let t = addr;
   if (reading) t = readView();
+  else if (holeView && phase === 'ready') t = holeViewTarget();
   else if (flightFollow && (phase === 'flight' || phase === 'done' || phase === 'card')){
     const f = flightFollow, s = Math.sin(f.yaw), c = Math.cos(f.yaw);
     const along = (ball.x-f.sx)*s + (ball.z-f.sz)*c, lat = (ball.x-f.sx)*c - (ball.z-f.sz)*s;
@@ -1674,6 +1780,68 @@ function updateCamera(dt){
   cam.x += (t.x-cam.x)*k; cam.y += (t.y-cam.y)*k; cam.z += (t.z-cam.z)*k; cam.pitch += (t.pitch-cam.pitch)*k;
   let dy = t.yaw - cam.yaw; while (dy > Math.PI) dy -= 2*Math.PI; while (dy < -Math.PI) dy += 2*Math.PI; cam.yaw += dy*k;
   cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
+}
+
+// ---------- life on the course (cosmetic only; seeded so everyone sees the same weather) ----------
+const WX = rng(hash(holeNum*911));
+const WEATHER = PAL_NAME === 'autumn' ? 'leaves' : PAL_NAME === 'mist' ? (WX() < 0.5 ? 'drizzle' : 'calm') : (WX() < 0.3 ? 'leaves' : 'motes');
+const parts = [];
+function resetPart(p, top){
+  p.x = Math.random()*W; p.y = top ? -20 - Math.random()*H*0.3 : Math.random()*H;
+  if (WEATHER === 'leaves'){ p.s = 5 + Math.random()*6; p.vy = 18 + Math.random()*26; p.rot = Math.random()*6; p.spin = (Math.random()-0.5)*3; p.sw = Math.random()*6; p.c = (PAL.leaves || ['#c4562b','#d98c2b','#e0b03a'])[Math.floor(Math.random()*3)]; }
+  else if (WEATHER === 'drizzle'){ p.vy = 520 + Math.random()*220; p.l = 10 + Math.random()*12; }
+  else { p.s = 1 + Math.random()*1.8; p.vy = -4 - Math.random()*8; p.sw = Math.random()*6; p.tw = Math.random()*6; }
+}
+function initParts(){ const n = reduceMotion ? 0 : WEATHER === 'drizzle' ? 110 : WEATHER === 'leaves' ? 22 : WEATHER === 'motes' ? 34 : 0; for (let i=0;i<n;i++){ const p = {}; resetPart(p, false); parts.push(p); } }
+function drawParts(dt){
+  if (!parts.length) return;
+  const wsx = (WIND.x*cosY - WIND.z*sinY);  // wind across the screen
+  ctx.save();
+  for (const p of parts){
+    if (WEATHER === 'leaves'){
+      p.y += p.vy*dt; p.x += (wsx*5 + Math.sin(T*1.3 + p.sw)*18)*dt; p.rot += p.spin*dt;
+      if (p.y > H + 20 || p.x < -30 || p.x > W + 30){ resetPart(p, true); if (wsx > 2) p.x = -10 - Math.random()*W*0.3; else if (wsx < -2) p.x = W + 10 + Math.random()*W*0.3; }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(1, 0.55 + 0.45*Math.sin(T*2 + p.sw)); ctx.fillStyle = p.c; ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.moveTo(-p.s, 0); ctx.quadraticCurveTo(0, -p.s*0.8, p.s, 0); ctx.quadraticCurveTo(0, p.s*0.8, -p.s, 0); ctx.fill(); ctx.restore();
+    } else if (WEATHER === 'drizzle'){
+      p.y += p.vy*dt; p.x += wsx*14*dt; if (p.y > H){ resetPart(p, true); p.y = -Math.random()*60; }
+      ctx.strokeStyle = 'rgba(225,232,245,.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - wsx*0.35, p.y - p.l); ctx.stroke();
+    } else {
+      p.y += p.vy*dt; p.x += (wsx*1.5 + Math.sin(T*0.6 + p.sw)*6)*dt; if (p.y < -10){ resetPart(p, false); p.y = H*0.35 + Math.random()*H*0.6; }
+      const a = 0.25 + 0.35*Math.max(0, Math.sin(T*1.7 + p.tw)); ctx.fillStyle = `rgba(255,236,190,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+// ducks gliding on the lake, the odd fish, and geese overhead
+const lakeSpots = []; { const r = rng(hash(holeNum*577)); for (let i=0;i<400 && lakeSpots.length < 40;i++){ const x = -90 + r()*180, z = 34 + r()*(GR.z + 40); if (inPoly(lakePts, x, z) && !inPoly(lakePts, x + 3, z + 3) === false) lakeSpots.push({x, z}); } }
+const ducks = lakeSpots.slice(0, 3).map((p, i) => ({x:p.x, z:p.z, h:i*2.1, sp:0.6 + i*0.15, bob:i}));
+let fishT = 4 + Math.random()*6; const fishes = [];
+let geese = null, geeseT = 12 + Math.random()*20;
+function drawLakeLife(dt){
+  for (const d of ducks){
+    const nx = d.x + Math.sin(d.h)*d.sp*dt, nz = d.z + Math.cos(d.h)*d.sp*dt;
+    if (inPoly(lakePts, nx, nz) && inPoly(lakePts, nx + Math.sin(d.h)*3, nz + Math.cos(d.h)*3)){ d.x = nx; d.z = nz; d.h += Math.sin(T*0.2 + d.bob)*0.12*dt; } else d.h += 2.2;
+    const p = proj(d.x, 0.02, d.z); if (!p) continue; const s = Math.max(1.2, 0.35*F/p[2]); if (s < 1.3 && p[2] > 260) continue;
+    const dir = Math.sign(Math.sin(d.h)*cosY - Math.cos(d.h)*sinY) || 1;
+    ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p[0] - dir*s*1.2, p[1] + s*0.2); ctx.lineTo(p[0] - dir*s*4, p[1] - s*0.3); ctx.moveTo(p[0] - dir*s*1.2, p[1] + s*0.2); ctx.lineTo(p[0] - dir*s*4, p[1] + s*0.8); ctx.stroke();
+    ctx.fillStyle = '#3a3226'; ctx.beginPath(); ctx.ellipse(p[0], p[1], s*1.3, s*0.55, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#2f4a34'; ctx.beginPath(); ctx.arc(p[0] + dir*s*1.05, p[1] - s*0.55, s*0.42, 0, 7); ctx.fill();
+  }
+  fishT -= dt; if (fishT <= 0 && lakeSpots.length){ fishT = 7 + Math.random()*10; const sp = lakeSpots[Math.floor(Math.random()*lakeSpots.length)]; fishes.push({x:sp.x, z:sp.z, t:0}); if (soundMode === 'all') sfx.fish(); }
+  for (const f of fishes){ f.t += dt; const p = proj(f.x, 0, f.z); if (!p) continue; const sc = F/p[2];
+    if (f.t < 0.5){ const u = f.t/0.5, q = proj(f.x + (u-0.5)*0.8, Math.sin(u*Math.PI)*0.6, f.z); if (q){ ctx.fillStyle = 'rgba(200,210,215,.8)'; ctx.beginPath(); ctx.ellipse(q[0], q[1], Math.max(1, 0.18*sc), Math.max(0.6, 0.06*sc), (u-0.5)*1.5, 0, 7); ctx.fill(); } }
+    for (let k=0;k<2;k++){ const r = (f.t - k*0.3)*1.1; if (r <= 0) continue; ctx.strokeStyle = `rgba(235,242,250,${Math.max(0, 0.45 - f.t*0.15)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(p[0], p[1], r*sc, r*sc*0.25, 0, 0, 7); ctx.stroke(); } }
+  for (let i=fishes.length-1;i>=0;i--) if (fishes[i].t > 3.2) fishes.splice(i, 1);
+}
+function drawGeese(dt, hz){
+  if (reduceMotion) return;
+  geeseT -= dt; if (!geese && geeseT <= 0){ const dir = Math.random() < 0.5 ? 1 : -1; geese = {x: dir > 0 ? -80 : W + 80, y: Math.max(40, hz*(0.25 + Math.random()*0.35)), dir, n: 5 + Math.floor(Math.random()*4)}; }
+  if (!geese) return;
+  geese.x += geese.dir*42*dt; ctx.strokeStyle = 'rgba(38,32,48,.6)'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+  for (let i=0;i<geese.n;i++){ const row = Math.ceil(i/2), side = i % 2 ? 1 : -1, x = geese.x - geese.dir*row*14, y = geese.y + side*row*9 + Math.sin(T*3 + i)*1.5, f = Math.sin(T*6 + i)*3;
+    ctx.beginPath(); ctx.moveTo(x - 5, y - f); ctx.quadraticCurveTo(x - 2, y - 1.5, x, y); ctx.quadraticCurveTo(x + 2, y - 1.5, x + 5, y - f); ctx.stroke(); }
+  if (geese.x < -200 || geese.x > W + 200){ geese = null; geeseT = 25 + Math.random()*35; }
 }
 
 // ---------- frame ----------
@@ -1724,13 +1892,13 @@ function frame(now){
   const hz = horizonY();
   ctx.clearRect(0, 0, W, H);
   drawSky(hz); drawRidges(hz); drawGround(hz); drawLake(hz); drawCourseNear(); drawGreenComplex(); drawRangeDots(); drawAim();
-  const vis = []; for (const t of trees){ const z = camSpace(t.x, 0, t.z)[2]; if (z > 3) vis.push([z, t]); } vis.sort((a,b) => b[0]-a[0]);
+  const vis = []; for (const t of trees){ const z = camSpace(t.x, 0, t.z)[2]; if (z > (fly ? 38 : 3)) vis.push([z, t]); } vis.sort((a,b) => b[0]-a[0]);
   const dP = camSpace(PIN.x, 0, PIN.z)[2], closeCut = mode === 'full' ? 3 : 8;
   if (!reading) for (const [z, t] of vis) if (z < 400) drawTreeShadow(t);
   for (const [z, t] of vis) if (z >= dP && (!reading || z > dP + 20)) drawTree(t, false);
   drawFlag(); drawBall();
   if (!reading) for (const [z, t] of vis) if (z < dP && z > closeCut) drawTree(t, false);
-  drawSplashes(dt);
+  drawSplashes(dt); drawLakeLife(dt); drawGeese(dt, hz); drawParts(dt);
   const v = ctx.createRadialGradient(W/2, H*0.45, Math.min(W,H)*0.35, W/2, H*0.5, Math.max(W,H)*0.85); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(12,16,12,.42)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   drawSwipeTrail();
@@ -1902,10 +2070,11 @@ $('boardBtn').addEventListener('click', openBoard);
 $('boardClose').addEventListener('click', () => { $('boardCard').hidden = true; $('summary').hidden = false; });
 
 // ---------- boot ----------
-renderHeader(); syncYesterday();
+initParts(); renderHeader(); syncYesterday();
 if (mainRound.done) { const cam0 = addressView(); Object.assign(cam, cam0); showSummary(); }
 else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openCard('helpCard'); }
 cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
+window.__dh = {setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
 requestAnimationFrame(frame);
 })();
 </script>
