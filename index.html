@@ -119,6 +119,34 @@ button{font-family:var(--sans)}
 .tag-row input,.set-row input{flex:1;min-width:0;font:600 .95rem var(--sans);color:var(--ink);background:rgba(0,0,0,.25);border:1px solid var(--edge);border-radius:12px;padding:11px 12px;-webkit-user-select:text;user-select:text}
 .tag-row input:focus,.set-row input:focus{outline:2px solid var(--fair);outline-offset:1px}
 .tag-row .btn{flex:none}
+html.thumb *{visibility:hidden!important;animation:none!important}html.thumb #scene{visibility:visible!important}
+.card.wide{width:min(560px,100%)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{aspect-ratio:1/1;max-height:42vw;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;text-align:left;border:0;border-radius:18px;padding:14px;background:var(--well);color:var(--ink);cursor:pointer;font-family:var(--sans);min-width:0}
+.tile svg{width:34px;height:34px;color:var(--fair)}
+.tile b{display:block;font-size:.95rem;font-weight:600;line-height:1.2}
+.tile span{display:block;font-size:.74rem;color:var(--soft);margin-top:3px;line-height:1.3}
+.tile[disabled]{opacity:.35;cursor:default}
+.tile:focus-visible,.hole-card:focus-visible{outline:2px solid var(--fair);outline-offset:2px}
+.hole-cards{display:flex;flex-direction:column;gap:12px}
+.hole-card{display:block;width:100%;padding:0;border:0;border-radius:18px;overflow:hidden;background:var(--well);color:var(--ink);text-align:left;cursor:pointer;font-family:var(--sans)}
+.hole-card .pic{position:relative;aspect-ratio:16/9;background:linear-gradient(160deg,#6b4f7f,#d77f7c 45%,#3d5a3a 46%,#22361f);background-size:cover;background-position:center}
+.hole-card .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
+.hole-card .pic img.on{opacity:1}
+.hole-card .pic::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(10,14,10,.72),rgba(10,14,10,0) 55%)}
+.hole-card .cap{position:absolute;left:14px;right:14px;bottom:11px;z-index:1}
+.hole-card .cap .label{color:rgba(244,238,226,.8)}
+.hole-card .cap b{display:block;font-size:1.25rem;font-weight:700;letter-spacing:-.01em;margin-top:2px}
+.hole-card .info{display:flex;justify-content:space-between;gap:10px;padding:11px 14px 13px;font-size:.8rem;color:var(--soft)}
+.hole-card .info .res{color:var(--ink);font-weight:600;white-space:nowrap}
+.hole-card.done .info .res{color:var(--good)}
+.hole-card .now{position:absolute;top:10px;right:10px;z-index:1;font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--flag);color:#fff;border-radius:999px;padding:5px 9px}
+.share-img{width:100%;border-radius:16px;display:block;-webkit-touch-callout:default}
+a.btn{text-align:center;text-decoration:none}
+.badge .metal{display:inline-block;font-size:.56rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border-radius:999px;padding:3px 7px;margin:4px 0 0;color:#1b1b14}
+.badge .prog{display:block;height:3px;border-radius:2px;background:rgba(255,255,255,.12);margin-top:6px;overflow:hidden}
+.badge .prog i{display:block;height:100%;background:var(--fair)}
+.badge .cnt{font-size:.72rem;color:var(--ink);font-weight:600;margin-left:4px}
 .more-list{display:flex;flex-direction:column;gap:8px}
 .more-item{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;border:0;border-radius:14px;padding:12px 14px;background:var(--well);color:var(--ink);cursor:pointer;font-family:var(--sans)}
 .more-item b{font-size:.92rem;font-weight:600}
@@ -340,15 +368,15 @@ button{font-family:var(--sans)}
       </div>
       <div class="style"><div class="label">Today you played it like a</div><div class="title" id="styleName">—</div><div class="body" id="styleWhy"></div></div>
       <div class="share" id="shareText"></div>
-      <div class="btns"><button class="btn" id="copyBtn">Copy result</button><button class="btn quiet" id="moreSumBtn">More golf</button><button class="btn quiet" id="badgesBtn">Badges</button></div>
+      <div class="btns"><button class="btn" id="shareImgBtn">Share scorecard</button><button class="btn quiet" id="copyBtn">Copy result</button><button class="btn quiet" id="moreSumBtn">More golf</button><button class="btn quiet" id="badgesBtn">Badges</button></div>
       <div class="foot" id="countdown"></div>
     </div>
 
-    <div class="card" id="moreCard" hidden>
+    <div class="card wide" id="moreCard" hidden>
       <div class="card-head"><div class="label">More golf</div><div class="title">None of this counts</div></div>
-      <div class="more-list" id="moreTop"></div>
+      <div class="tiles" id="moreTop"></div>
       <div class="label">Last week's holes</div>
-      <div class="more-list" id="pastList"></div>
+      <div class="hole-cards" id="pastList"></div>
       <div class="btns"><button class="btn quiet" id="moreClose">Close</button></div>
     </div>
 
@@ -393,6 +421,12 @@ button{font-family:var(--sans)}
       <div class="set-row"><div class="label">Phone curve direction</div><div class="seg" id="segFlip"><button data-v="0" aria-pressed="true">Normal</button><button data-v="1" aria-pressed="false">Flipped</button></div><div class="body">If your hooks go right, flip it.</div></div>
       <div class="body" id="diag"></div>
       <div class="btns"><button class="btn" id="setClose">Done</button></div>
+    </div>
+
+    <div class="card" id="shareCard" hidden>
+      <div class="card-head"><div class="label">Scorecard</div><div class="title">Press and hold to save</div></div>
+      <img id="shareImg" class="share-img" alt="Your Daily Ace scorecard">
+      <div class="btns"><a class="btn" id="shareDl" download="daily-ace.png">Download</a><button class="btn quiet" id="shareClose">Back</button></div>
     </div>
 
     <div class="card" id="badgeCard" hidden>
@@ -450,6 +484,8 @@ let holeNum = Math.round((Date.parse(todayKey + 'T00:00:00Z') - EPOCH)/86400000)
 let preview = false;
 const hm = /^#h(\d{1,4})$/.exec(location.hash || '');
 if (hm){ holeNum = Math.max(1, +hm[1]); preview = true; }
+const tm = /^#t(-?\d{1,4})$/.exec(location.hash || ''), thumb = !!tm;
+if (thumb){ holeNum = +tm[1]; preview = true; document.documentElement.classList.add('thumb'); }
 function lastWeekKeys(key){ const t = Date.parse(key + 'T12:00:00Z'), wd = (new Date(t).getUTCDay() + 6) % 7, mon = t - (wd + 7)*86400000; return [0,1,2,3,4].map(i => new Date(mon + i*86400000).toISOString().slice(0, 10)); }
 const holeNumFor = key => Math.round((Date.parse(key + 'T00:00:00Z') - EPOCH)/86400000) + 1;
 let pastKey = null;
@@ -1329,6 +1365,12 @@ const BADGES = [
   {id:'h100', ic:'👑', name:'Club champion', desc:'Play 100 Daily Ace rounds', tier:'legendary', t:c => c.days >= 100},
 ];
 const TIER_RANK = {legendary:0, epic:1, rare:2, uncommon:3, common:4};
+// badges you can earn again level up: Bronze, Silver, Gold, Platinum. Rarer badges need fewer repeats.
+const ONCE = new Set(['first','golden','mist','autumn','s3','s7','s30','h10','h50','h100','seasons']);
+const METALS = ['Bronze','Silver','Gold','Platinum'], METAL_C = ['#c98b55','#d3d7dc','#e7c068','#b9e6e8'];
+const STEPS = {common:[1,10,25,50], uncommon:[1,5,15,30], rare:[1,3,8,15], epic:[1,2,4,8], legendary:[1,2,3,5]};
+function metalIdx(b, n){ if (ONCE.has(b.id) || !n) return -1; let i = -1; STEPS[b.tier].forEach((v, k) => { if (n >= v) i = k; }); return i; }
+function badgeCounts(){ const owned = LS.get('dailyhole:badges', {}), counts = LS.get('dailyhole:bcount', {}); for (const id in owned) if (!counts[id]) counts[id] = 1; return counts; }
 function prevDay(key){ return new Date(Date.parse(key + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10); }
 function streakFrom(days){ const set = new Set(days); let n = 0, k = todayKey; while (set.has(k)){ n++; k = prevDay(k); } return n; }
 function evaluateDay(c){
@@ -1336,13 +1378,18 @@ function evaluateDay(c){
   if (!preview && !days.includes(todayKey)){ days.push(todayKey); pals.add(PAL_NAME); LS.set('dailyhole:days', days); LS.set('dailyhole:pals', [...pals]); }
   if (preview) pals.add(PAL_NAME);
   c.streak = preview ? 1 : streakFrom(days); c.days = Math.max(days.length, 1); c.pals = pals;
-  const owned = LS.get('dailyhole:badges', {}); const newKey = 'dailyhole:new:' + todayKey;
-  let fresh = preview ? null : LS.get(newKey, null);
+  const owned = LS.get('dailyhole:badges', {}), counts = badgeCounts(), newKey = 'dailyhole:new:' + todayKey, upKey = 'dailyhole:up:' + todayKey;
+  let fresh = preview ? null : LS.get(newKey, null), ups = preview ? null : LS.get(upKey, null);
   if (!fresh){
-    fresh = BADGES.filter(b => { if (owned[b.id]) return false; try { return !!b.t(c); } catch(e){ return false; } }).map(b => b.id);
-    if (!preview){ fresh.forEach(id => owned[id] = todayKey); LS.set('dailyhole:badges', owned); LS.set(newKey, fresh); }
+    const earned = BADGES.filter(b => { if (owned[b.id] && ONCE.has(b.id)) return false; try { return !!b.t(c); } catch(e){ return false; } });
+    fresh = earned.filter(b => !owned[b.id]).map(b => b.id); ups = [];
+    for (const b of earned){
+      if (!owned[b.id]){ counts[b.id] = 1; continue; }
+      const before = metalIdx(b, counts[b.id]); counts[b.id] = (counts[b.id] || 1) + 1; if (metalIdx(b, counts[b.id]) > before) ups.push(b.id);
+    }
+    if (!preview){ fresh.forEach(id => owned[id] = todayKey); LS.set('dailyhole:badges', owned); LS.set('dailyhole:bcount', counts); LS.set(newKey, fresh); LS.set(upKey, ups); }
   }
-  return fresh;
+  return {fresh, ups: ups || [], counts};
 }
 function playStyle(c){
   if (c.holed && c.strokes === 1) return ['Legend', 'A hole in one. Frame the card.'];
@@ -1360,7 +1407,7 @@ function showSummary(){
   phase = 'summary'; practice = false; round = mainRound; setReading(false); flightFollow = null;
   addr = {x:GR.x*0.4, y:24, z:GR.z - 120, pitch:6*D2R, yaw:Math.atan2(GR.x*0.6, 120)};
   $('controls').hidden = true; $('icons').hidden = true; $('psTag').hidden = true;
-  const c = roundCtx(round), sc = scoreOf(round), fresh = pastKey ? [] : evaluateDay(c);
+  const c = roundCtx(round), sc = scoreOf(round), ev = pastKey ? {fresh:[], ups:[], counts:{}} : evaluateDay(c), fresh = ev.fresh; lastEval = ev;
   if (pastKey) LS.set('dailyhole:past:' + pastKey, {word:sc.word, avg:sc.avg, strokes:sc.strokes});
   $('sumLabel').textContent = pastKey ? `${dayLabel(pastKey)} · ${holeName} · ${YARDS} yds` : `${preview ? 'Preview · ' : ''}No. ${holeNum} · ${holeName} · ${YARDS} yds`;
   $('sumScore').textContent = Math.round(sc.avg);
@@ -1389,8 +1436,15 @@ function showSummary(){
   $('vsLadder').textContent = c.teeFt === null ? '—' : c.teeFt === 0 ? 'Beyond Tour' : ladderLabel(c.teeFt);
   $('sumStreak').textContent = pastKey ? "Last week's hole. It doesn't count toward your streak." : preview ? 'Preview hole. Streaks count on the real daily.' : `Day ${c.streak} of your streak · come back tomorrow`;
   const nb = (fresh || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean).sort((a,b) => TIER_RANK[a.tier] - TIER_RANK[b.tier]);
-  $('sumNew').hidden = !nb.length || !!pastKey;
-  if (nb.length){ $('newCount').textContent = nb.length === 1 ? '1 new badge' : `${nb.length} new badges`; $('newIc').textContent = nb[0].ic; $('newName').textContent = nb[0].name; $('newDesc').textContent = nb[0].desc; $('newMore').textContent = nb.slice(1).map(b => `${b.ic} ${b.name}`).join('  ·  '); }
+  const ub = (ev.ups || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean);
+  const items = [...nb.map(b => ({b, tag:'New'})), ...ub.map(b => ({b, tag:METALS[metalIdx(b, ev.counts[b.id])]}))];
+  $('sumNew').hidden = !items.length || !!pastKey;
+  if (items.length){
+    $('newCount').textContent = nb.length && ub.length ? `${nb.length} new · ${ub.length} level${ub.length === 1 ? '' : 's'} up` : nb.length ? (nb.length === 1 ? '1 new badge' : `${nb.length} new badges`) : (ub.length === 1 ? 'Badge leveled up' : `${ub.length} badges leveled up`);
+    const lead = items[0]; $('newIc').textContent = lead.b.ic; $('newName').textContent = lead.tag === 'New' ? lead.b.name : `${lead.b.name} · ${lead.tag}`;
+    $('newDesc').textContent = lead.tag === 'New' ? lead.b.desc : `Earned ${ev.counts[lead.b.id]} times. ${lead.b.desc}.`;
+    $('newMore').textContent = items.slice(1).map(x => `${x.b.ic} ${x.b.name}${x.tag === 'New' ? '' : ' · ' + x.tag}`).join('  ·  ');
+  }
   const [style, why] = playStyle(c); $('styleName').textContent = style; $('styleWhy').textContent = why;
   const squares = round.shots.map(gradeEmoji).join('');
   const teeTxt = c.teeFt === null ? 'Tee shot wet' : c.teeFt === 0 ? 'Ace' : `Tee shot ${fmtDist(c.teeFt/3)}`;
@@ -1399,7 +1453,7 @@ function showSummary(){
   $('shareText').textContent = shareBase;
   $('copyBtn').textContent = 'Copy result';
   $('fieldLabel').textContent = pastKey ? "This hole's field" : "Today's field";
-  updateCountdown(); renderTagBox(); renderField(); runField(); syncRound();
+  shareFile = null; updateCountdown(); renderTagBox(); renderField(); runField(); syncRound(); scheduleShare();
   $('summary').hidden = false; $('summary').scrollTop = 0; setHint('');
 }
 function updateCountdown(){
@@ -1415,40 +1469,86 @@ $('copyBtn').addEventListener('click', () => {
   const sel = () => { const r = document.createRange(); r.selectNodeContents($('shareText')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('copyBtn').textContent = 'Selected, copy it'; };
   try { navigator.clipboard.writeText(text).then(() => { $('copyBtn').textContent = 'Copied'; }, sel); } catch(e){ sel(); }
 });
+// hole stills come from a hidden copy of the page rendering that hole (cached on the phone)
+const thumbQ = []; let thumbBusy = false;
+function getThumb(n){
+  const key = 'dailyhole:thumb:1:' + n, c = LS.get(key, null); if (c) return Promise.resolve(c);
+  return new Promise(res => { thumbQ.push({n, key, res}); pumpThumbs(); });
+}
+function pumpThumbs(){
+  if (thumbBusy || !thumbQ.length) return; thumbBusy = true; const job = thumbQ.shift();
+  const fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1;
+  fr.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;border:0;opacity:0;pointer-events:none;z-index:-1';
+  let done = false; const on = e => { if (e.data && e.data.dhThumb === job.n) end(e.data.url); };
+  const end = url => { if (done) return; done = true; window.removeEventListener('message', on); fr.remove(); if (url){ try { localStorage.setItem(job.key, JSON.stringify(url)); } catch(e){ /* storage full: just don't cache */ } } job.res(url); thumbBusy = false; pumpThumbs(); };
+  window.addEventListener('message', on); setTimeout(() => end(null), 10000);
+  try { fr.src = location.href.split('#')[0] + '#t' + job.n; document.body.appendChild(fr); } catch(e){ end(null); }
+}
 function moreItem(title, sub, cls){ const b = document.createElement('button'); b.className = 'more-item' + (cls ? ' ' + cls : ''); const t = document.createElement('b'); t.textContent = title; const u = document.createElement('span'); u.textContent = sub; b.append(t, u); return b; }
 function goHash(h){ try { if (h) location.hash = h; else history.replaceState(null, '', location.pathname + location.search); location.reload(); } catch(e){ setHint("Couldn't switch holes here."); } }
+const ICONS = {
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V3.5"/><path d="M6 4h10.5l-2.2 3.6L16.5 11H6"/><ellipse cx="9" cy="21" rx="5" ry="1.2"/></svg>',
+  replay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/><circle cx="12" cy="12" r="1.6"/></svg>',
+  fly:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c4-7 8-10 18-11"/><path d="M17.5 3.5 21 6l-2.6 3.3"/><path d="M3 21h18"/><path d="M14 21v-5h2v5"/></svg>',
+  range:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="8"/><circle cx="12" cy="11" r="4.5"/><circle cx="12" cy="11" r="1.2"/><path d="M8 21h8"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5"/><path d="M12 14v4M8.5 21h7l-.8-3H9.3z"/></svg>'};
+function tile(icon, title, sub, onclick, disabled){
+  const b = document.createElement('button'); b.className = 'tile'; b.innerHTML = ICONS[icon];
+  const t = document.createElement('div'), n = document.createElement('b'), u = document.createElement('span'); n.textContent = title; u.textContent = sub; t.append(n, u); b.appendChild(t);
+  if (disabled) b.disabled = true; else b.onclick = onclick; return b;
+}
 function openMore(){
   const top = $('moreTop'); top.innerHTML = '';
-  if (pastKey){ const b = moreItem("Back to today's hole", 'The one that counts'); b.onclick = () => goHash(''); top.appendChild(b); }
-  if (mainRound.done && !pastKey){ const b = moreItem("Replay today's hole", 'Practice it again. Your score stays.'); b.onclick = () => { $('moreCard').hidden = true; practice = true; round = freshRound(); setupLie(); }; top.appendChild(b); }
-  if (phase === 'ready' || phase === 'summary'){ const fb = moreItem('Watch the flyover', `A quick look at ${holeName}`); fb.onclick = () => { $('moreCard').hidden = true; if (phase === 'summary'){ $('summary').hidden = false; flyFromSummary(); } else { if (!$('controls').hidden || true) startFlyover(); } }; top.appendChild(fb); }
-  if (online() && !preview){ const yb = moreItem("Yesterday's results", 'Winner and awards'); yb.onclick = () => { $('moreCard').hidden = true; showYesterday(true); }; top.appendChild(yb); }
-  const rb = moreItem('Driving range', pastKey ? "Unlimited balls at this hole's green" : "Unlimited balls at today's green"); rb.onclick = () => { $('moreCard').hidden = true; enterRange(); }; top.appendChild(rb);
+  const close = () => { $('moreCard').hidden = true; };
+  if (pastKey) top.appendChild(tile('flag', "Today's hole", 'Back to the one that counts', () => goHash('')));
+  else if (mainRound.done) top.appendChild(tile('replay', "Replay today", 'Practice it again. Your score stays.', () => { close(); practice = true; round = freshRound(); setupLie(); }));
+  else top.appendChild(tile('flag', "Today's hole", 'Back to your round', () => { close(); if (phase === 'ready') $('controls').hidden = false; }));
+  top.appendChild(tile('fly', 'Flyover', `A quick look at ${holeName}`, () => { close(); if (phase === 'summary'){ $('summary').hidden = false; flyFromSummary(); } else startFlyover(); }, !(phase === 'ready' || phase === 'summary')));
+  top.appendChild(tile('range', 'Driving range', pastKey ? "Unlimited balls at this green" : "Unlimited balls at today's green", () => { close(); enterRange(); }));
+  top.appendChild(tile('trophy', 'Scores', "Yesterday's winner and awards", () => { close(); showYesterday(true); }, !(online() && !preview)));
   const list = $('pastList'); list.innerHTML = '';
+  // keep only this week's hole pictures on the phone
+  try { const keep = new Set([holeNum, holeNumFor(todayKey), ...lastWeekKeys(todayKey).map(holeNumFor)].map(n => 'dailyhole:thumb:1:' + n)); Object.keys(localStorage).filter(k => k.startsWith('dailyhole:thumb:') && !keep.has(k)).forEach(k => localStorage.removeItem(k)); } catch(e){}
   for (const key of lastWeekKeys(todayKey)){
     const n = holeNumFor(key), r = rng(hash(n*7919)); r(); const name = nameFor(n); const pal = ['Golden hour','Morning mist','Autumn color'][Math.floor(r()*3)];
     const res = LS.get('dailyhole:past:' + key, null);
-    const b = moreItem(`${dayLabel(key)} · ${name}`, `${pal} · ${key === pastKey ? 'Playing now' : res ? `Played: ${res.word} · ${Math.round(res.avg)}` : 'Not played yet'}`, res ? 'done' : '');
-    b.onclick = () => { if (key !== pastKey) goHash('d' + key); else $('moreCard').hidden = true; };
+    const b = document.createElement('button'); b.className = 'hole-card' + (res ? ' done' : '');
+    const pic = document.createElement('div'); pic.className = 'pic';
+    const img = document.createElement('img'); img.alt = ''; pic.appendChild(img);
+    const cap = document.createElement('div'); cap.className = 'cap'; const l = document.createElement('div'); l.className = 'label'; l.textContent = n >= 1 ? `${dayLabel(key)} · No. ${n}` : `${dayLabel(key)} · Preseason`; const t = document.createElement('b'); t.textContent = name; cap.append(l, t); pic.appendChild(cap);
+    if (key === pastKey){ const nw = document.createElement('span'); nw.className = 'now'; nw.textContent = 'Playing'; pic.appendChild(nw); }
+    const info = document.createElement('div'); info.className = 'info'; const a1 = document.createElement('span'); a1.textContent = pal; const a2 = document.createElement('span'); a2.className = 'res'; a2.textContent = res ? `Played: ${res.word} · ${Math.round(res.avg)}` : 'Not played yet'; info.append(a1, a2);
+    b.append(pic, info);
+    b.onclick = () => { if (key !== pastKey) goHash('d' + key); else close(); };
     list.appendChild(b);
+    getThumb(n).then(url => { if (url){ img.onload = () => img.classList.add('on'); img.src = url; } });
   }
-  ['summary','badgeCard','helpCard','setCard'].forEach(id => $(id).hidden = true); $('controls').hidden = true;
+  ['summary','badgeCard','helpCard','setCard','shareCard'].forEach(id => $(id).hidden = true); $('controls').hidden = true;
   $('moreCard').hidden = false; $('moreCard').scrollTop = 0;
 }
 $('moreSumBtn').addEventListener('click', openMore);
 $('moreClose').addEventListener('click', () => { $('moreCard').hidden = true; if (phase === 'summary') $('summary').hidden = false; else if (phase === 'ready') $('controls').hidden = false; });
 function showBadges(){
-  const owned = LS.get('dailyhole:badges', {});
-  const list = [...BADGES].sort((a,b) => (owned[b.id] ? 1 : 0) - (owned[a.id] ? 1 : 0) || TIER_RANK[a.tier] - TIER_RANK[b.tier]);
+  const owned = LS.get('dailyhole:badges', {}), counts = badgeCounts();
+  const list = [...BADGES].sort((a,b) => (owned[b.id] ? 1 : 0) - (owned[a.id] ? 1 : 0) || metalIdx(b, counts[b.id]) - metalIdx(a, counts[a.id]) || TIER_RANK[a.tier] - TIER_RANK[b.tier]);
   $('badgeCount').textContent = `Badges · ${BADGES.filter(b => owned[b.id]).length} of ${BADGES.length}`;
   const grid = $('badgeGrid'); grid.innerHTML = '';
   for (const b of list){
+    const n = counts[b.id] || 0, mi = metalIdx(b, n), rep = !ONCE.has(b.id);
     const el = document.createElement('div'); el.className = 'badge' + (owned[b.id] ? '' : ' locked');
     const ic = document.createElement('div'); ic.className = 'ic'; ic.textContent = b.ic;
     const tx = document.createElement('div'); tx.style.minWidth = '0';
     const t = document.createElement('div'); t.className = 'tier'; t.textContent = b.tier;
-    const n = document.createElement('b'); n.textContent = b.name; const d = document.createElement('span'); d.textContent = b.desc;
-    tx.append(t, n, d); el.append(ic, tx); grid.appendChild(el);
+    const nm = document.createElement('b'); nm.textContent = b.name; if (rep && n > 1){ const cn = document.createElement('span'); cn.className = 'cnt'; cn.style.display = 'inline'; cn.textContent = `×${n}`; nm.appendChild(cn); }
+    const d = document.createElement('span'); d.textContent = b.desc;
+    tx.append(t, nm, d);
+    if (rep && owned[b.id]){
+      const m = document.createElement('div'); m.className = 'metal'; m.textContent = METALS[mi]; m.style.background = METAL_C[mi]; tx.appendChild(m);
+      const st = STEPS[b.tier], next = st[mi + 1];
+      const pr = document.createElement('div'); pr.className = 'prog'; const fill = document.createElement('i'); fill.style.width = next ? `${Math.round((n - st[mi])/(next - st[mi])*100)}%` : '100%'; pr.appendChild(fill); tx.appendChild(pr);
+      const nx = document.createElement('span'); nx.textContent = next ? `${next - n} more for ${METALS[mi + 1]}` : 'Maxed out'; tx.appendChild(nx);
+    } else if (rep){ const nx = document.createElement('span'); nx.textContent = `Levels up at ${STEPS[b.tier].slice(1).join(', ')}`; tx.appendChild(nx); }
+    el.append(ic, tx); grid.appendChild(el);
   }
   $('summary').hidden = true; $('badgeCard').hidden = false; $('badgeCard').scrollTop = 0;
 }
@@ -1556,7 +1656,7 @@ function poseOK(){
 function faceNow(){ if (ori.gamma === null) return 0; return (ori.gamma - (addrCal ? addrCal.gamma : 0))*handSign()*(curveFlip ? -1 : 1); } // + = open
 function motionMeter(frac, label){ clearTimeout(meterTimer); meter.classList.add('show'); meterFill.style.height = `${clamp(frac/1.12*100, 0, 100)}%`; $('meterPct').textContent = label; }
 function hideMeterSoon(){ clearTimeout(meterTimer); meterTimer = setTimeout(() => meter.classList.remove('show'), 1400); }
-function cardOpen(){ return !$('shotCard').hidden || !$('summary').hidden || !$('helpCard').hidden || !$('setCard').hidden || !$('badgeCard').hidden; }
+function cardOpen(){ return !$('shareCard').hidden || !$('moreCard').hidden || !$('shotCard').hidden || !$('summary').hidden || !$('helpCard').hidden || !$('setCard').hidden || !$('badgeCard').hidden; }
 let faceShown = null, lastPuttHint = '';
 const faceMini = Object.assign({full:false, short:true}, LS.get('dailyhole:faceMini', {}));
 $('faceToggle').addEventListener('click', e => { e.stopPropagation(); faceMini[mode] = true; LS.set('dailyhole:faceMini', faceMini); });
@@ -1799,7 +1899,9 @@ function flyPose(t){
 function readView(){
   if (mode === 'putt'){ const d = Math.max(2, dPin(ball.x, ball.z)), s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); const mx = ball.x + s*d*0.42, mz = ball.z + c*d*0.42; const back = d*0.25, hgt = Math.max(6, d*2.3); return {x:mx - s*back, y:Hh(mx, mz) + hgt, z:mz - c*back, pitch:Math.atan2(hgt, back), yaw:addr.yaw}; }
   const s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); return {x:GR.x - s*82, y:92, z:GR.z - c*82, pitch:47*D2R, yaw:addr.yaw}; }
+let thumbPose = null;
 function updateCamera(dt){
+  if (thumbPose){ Object.assign(cam, thumbPose); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; }
   if (fly){ fly.t += dt; if (fly.t >= fly.keys.at(-1).t){ endFlyover(); } else { Object.assign(cam, flyPose(fly.t)); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; } }
   let t = addr;
   if (reading) t = readView();
@@ -1885,6 +1987,7 @@ function drawRangeDots(){
   rangeHist.forEach((h, i) => { const p = proj(h.x, Hh(h.x, h.z)+0.05, h.z); if (!p) return; const a = 0.35 + 0.65*(i+1)/rangeHist.length; ctx.fillStyle = i === rangeHist.length-1 ? `rgba(228,87,63,${a})` : `rgba(244,238,226,${a})`; ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(3, 0.6*F/p[2]), 0, 7); ctx.fill(); });
 }
 function drawAim(){
+  if (thumb) return;
   if (phase !== 'ready' || (reading && mode !== 'putt')) return;
   ctx.lineCap = 'round';
   if (mode === 'putt'){
@@ -1938,14 +2041,96 @@ function frame(now){
   ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   drawSwipeTrail();
   renderFace(); renderWind(false);
-  requestAnimationFrame(frame);
+  if (!thumb) requestAnimationFrame(frame);
 }
 
 // ---------- simulated field ----------
 // A seeded set of computer-played rounds on this exact hole: real ball physics off the tee, a statistical short game
 // and putting model after that. Same for every player today. Always labeled as simulated.
 const FIELD_N = 600, FIELD_VER = 2;
-let field = null, fieldBusy = false, shareBase = '';
+let field = null, fieldBusy = false, shareBase = '', lastEval = null;
+// ---------- share image: a 9:16 scorecard that fits one phone screen ----------
+let shareFile = null, shareURL = null, shareVer = 0, shareTimer = 0;
+function scheduleShare(){ clearTimeout(shareTimer); shareTimer = setTimeout(buildShareImage, 350); }
+function fieldLine(){
+  if (board && board.total > 0 && !preview){ if (board.me && board.me.flagged) return null; if (board.me && board.me.rank) return `#${board.me.rank} of ${board.total} today`; }
+  const pct = fieldPct(scoreOf(mainRound)); return pct === null ? null : `Top ${Math.max(1, 100 - pct)}% of the simulated field`;
+}
+async function buildShareImage(){
+  if (phase !== 'summary') return; const ver = ++shareVer;
+  const SW = 1080, SH = 1920, c = document.createElement('canvas'); c.width = SW; c.height = SH; const g = c.getContext('2d');
+  try { await Promise.all([document.fonts.load('700 90px "Instrument Sans"'), document.fonts.load('500 36px "Instrument Sans"'), document.fonts.load('600 36px "Instrument Sans"')]); } catch(e){}
+  const url = await getThumb(holeNum); let img = null;
+  if (url){ img = new Image(); await new Promise(r => { img.onload = r; img.onerror = () => { img = null; r(); }; img.src = url; }); }
+  if (ver !== shareVer) return;
+  const r0 = round, sc = scoreOf(r0), cx = roundCtx(r0), FONT = '"Instrument Sans", system-ui, sans-serif';
+  const INK = '#f4eee2', SOFT = '#b9bba9', BG = '#0e1611', gc = v => v === null ? SOFT : v >= 60 ? '#a9d68e' : v >= 35 ? '#e7c068' : '#e3825f';
+  const font = (w, px) => { g.font = `${w} ${px}px ${FONT}`; };
+  const fit = (txt, w, px, maxW) => { let p = px; font(w, p); while (g.measureText(txt).width > maxW && p > 20){ p -= 2; font(w, p); } };
+  g.fillStyle = BG; g.fillRect(0, 0, SW, SH);
+  // hero picture
+  const HH = 880;
+  if (img){ const k = Math.max(SW/img.width, HH/img.height), iw = img.width*k, ih = img.height*k; g.drawImage(img, (SW - iw)/2, (HH - ih)/2, iw, ih); }
+  else { const sky = g.createLinearGradient(0, 0, 0, HH); [['#272a57',0],['#d77f7c',.45],['#3d5a3a',.62],['#1f331d',1]].forEach(([col, st]) => sky.addColorStop(st, col)); g.fillStyle = sky; g.fillRect(0, 0, SW, HH); }
+  const fade = g.createLinearGradient(0, HH*0.35, 0, HH); fade.addColorStop(0, 'rgba(14,22,17,0)'); fade.addColorStop(1, BG); g.fillStyle = fade; g.fillRect(0, 0, SW, HH);
+  const topShade = g.createLinearGradient(0, 0, 0, 200); topShade.addColorStop(0, 'rgba(14,22,17,.55)'); topShade.addColorStop(1, 'rgba(14,22,17,0)'); g.fillStyle = topShade; g.fillRect(0, 0, SW, 200);
+  // brand row
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = '#e4573f'; g.beginPath(); g.arc(82, 92, 13, 0, 7); g.fill();
+  g.fillStyle = INK; font(700, 46); g.textAlign = 'left'; g.fillText('daily ace', 108, 108);
+  font(600, 32); g.textAlign = 'right'; g.fillStyle = INK;
+  g.fillText(pastKey ? `${dayLabel(pastKey)} · replay` : `No. ${holeNum} · ${dayLabel(todayKey)}`, SW - 64, 104);
+  // hole name
+  g.textAlign = 'left'; g.fillStyle = INK; fit(holeName, 700, 104, SW - 128); g.fillText(holeName, 64, 770);
+  font(500, 36); g.fillStyle = SOFT; g.fillText(`Par 3 · ${YARDS} yds · ${pinDesc()}`, 64, 828);
+  // score
+  g.fillStyle = INK; fit(sc.word, 700, 132, 640); g.fillText(sc.word, 64, 1010);
+  font(500, 38); g.fillStyle = SOFT; g.fillText(r0.pickedUp ? `Picked up after ${MAX_STROKES}` : `${r0.strokes} stroke${r0.strokes === 1 ? '' : 's'}`, 66, 1068);
+  const avg = Math.round(sc.avg), rx = SW - 170, ry = 982, rr = 96;
+  g.lineWidth = 16; g.strokeStyle = 'rgba(244,238,226,.12)'; g.beginPath(); g.arc(rx, ry, rr, 0, 7); g.stroke();
+  g.strokeStyle = gc(avg); g.lineCap = 'round'; g.beginPath(); g.arc(rx, ry, rr, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(avg/100, 0.01, 1)); g.stroke();
+  g.fillStyle = INK; g.textAlign = 'center'; font(700, 84); g.fillText(String(avg), rx, ry + 30);
+  font(600, 22); g.fillStyle = SOFT; g.fillText('AVG SHOT GRADE', rx, ry + rr + 52);
+  // shots
+  g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1150, SW - 128, 2);
+  const shots = r0.shots, room = 450, rowH = Math.min(112, room/Math.max(1, shots.length)), top = 1190 + (room - rowH*shots.length)/2;
+  shots.forEach((s2, i) => {
+    const y = top + i*rowH, gr = shotGrade(s2), col = s2.wet ? '#8ec4e8' : gc(gr);
+    g.fillStyle = col; g.beginPath(); g.arc(80, y + rowH*0.42, 10, 0, 7); g.fill();
+    g.textAlign = 'left'; g.fillStyle = INK; font(600, Math.min(38, rowH*0.38));
+    g.fillText(s2.mode === 'full' ? `${shotName(s2)} · ${clubName(s2)}` : shotName(s2), 112, y + rowH*0.42 + 12);
+    const to = s2.gimme ? 'conceded' : s2.holed ? 'in the cup' : s2.wet ? 'water, +1' : `${fmtShort(s2.endD, s2.endLie)}, ${LIE_NAME[s2.endLie].toLowerCase()}`;
+    g.fillStyle = SOFT; font(500, Math.min(30, rowH*0.3)); g.fillText(`${fmtShort(s2.fromD, s2.fromLie)} → ${to}`, 112, y + rowH*0.42 + 12 + Math.min(40, rowH*0.4));
+    g.textAlign = 'right'; g.fillStyle = col; font(700, Math.min(54, rowH*0.5)); g.fillText(gr === null ? '—' : String(gr), SW - 64, y + rowH*0.42 + 18);
+  });
+  // field, streak, badges
+  g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1660, SW - 128, 2);
+  g.textAlign = 'left'; const fl = pastKey ? "Last week's hole · doesn't count" : fieldLine();
+  g.fillStyle = INK; font(700, 44); if (fl) g.fillText(fl, 64, 1730);
+  const ev = lastEval || {fresh:[], ups:[]}, bits = [];
+  if (!preview && !pastKey){ const days = LS.get('dailyhole:days', []); bits.push(`🔥 ${Math.max(1, streakFrom(days))}-day streak`); }
+  const bd = [...(ev.fresh || []), ...(ev.ups || [])].map(id => BADGES.find(b => b.id === id)).filter(Boolean).slice(0, 4);
+  if (bd.length) bits.push(bd.map(b => `${b.ic} ${b.name}`).join('  '));
+  g.fillStyle = SOFT; fit(bits.join('   ·   '), 500, 34, SW - 128); g.fillText(bits.join('   ·   '), 64, 1790);
+  g.fillStyle = '#e7c068'; font(600, 34); g.fillText('Play today’s hole · dailyace.github.io', 64, 1868);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  if (!blob || ver !== shareVer) return;
+  if (shareURL) URL.revokeObjectURL(shareURL);
+  shareURL = URL.createObjectURL(blob);
+  try { shareFile = new File([blob], `daily-ace-${pastKey || todayKey}.png`, {type:'image/png'}); } catch(e){ shareFile = null; }
+  if (!$('shareCard').hidden){ $('shareImg').src = shareURL; $('shareDl').href = shareURL; }
+}
+function openShareCard(){
+  $('summary').hidden = true; $('shareCard').hidden = false; $('shareCard').scrollTop = 0;
+  if (shareURL){ $('shareImg').src = shareURL; $('shareDl').href = shareURL; } else { $('shareImg').removeAttribute('src'); buildShareImage(); }
+}
+$('shareImgBtn').addEventListener('click', () => {
+  // the share sheet has to open straight from the tap, so the image is made ahead of time
+  if (shareFile && navigator.canShare && navigator.share){ let ok = false; try { ok = navigator.canShare({files:[shareFile]}); } catch(e){}
+    if (ok){ navigator.share({files:[shareFile]}).catch(err => { if (!err || err.name !== 'AbortError') openShareCard(); }); return; } }
+  openShareCard();
+});
+$('shareClose').addEventListener('click', () => { $('shareCard').hidden = true; $('summary').hidden = false; });
 function gauss(r){ let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
 function pureShot(x, z, yaw, speed, launch, spin, side){
   const b = {x, y:Hh(x, z)+0.05, z, vx:speed*Math.cos(launch)*Math.sin(yaw), vy:speed*Math.sin(launch), vz:speed*Math.cos(launch)*Math.cos(yaw), spin, side, state:'air', landed:false, bounced:false};
@@ -2101,6 +2286,7 @@ async function showYesterday(force){
 $('ydayClose').addEventListener('click', () => { closeCard('ydayCard'); if (phase === 'summary') $('summary').hidden = false; else maybeFly(); });
 function renderField(){
   if (phase !== 'summary') return;
+  scheduleShare();
   const me = scoreOf(mainRound);
   const real = board && board.total > 0 && !preview;
   $('fieldReal').hidden = !real;
@@ -2147,12 +2333,23 @@ $('boardBtn').addEventListener('click', openBoard);
 $('boardClose').addEventListener('click', () => { $('boardCard').hidden = true; $('summary').hidden = false; });
 
 // ---------- boot ----------
+function postThumb(){
+  const c = document.createElement('canvas'); c.width = 720; c.height = Math.round(720*H/W); c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height);
+  try { parent.postMessage({dhThumb:holeNum, url:c.toDataURL('image/jpeg', 0.76)}, '*'); } catch(e){}
+}
+if (thumb){
+  // a still of the hole for the More golf cards and the share image: high behind the tee, lake and green in frame, hills behind
+  setupLie(); const bx = GR.x*0.2, bz = -58, by = 34, dist = Math.hypot(GR.x - bx, GR.z - bz);
+  thumbPose = {x:bx, y:by, z:bz, yaw:lookAt(bx, bz), pitch:Math.atan2(by - Hh(GR.x, GR.z), dist)*0.62};
+  T = 2; frame(performance.now()); frame(performance.now() + 16); postThumb();
+} else {
 initParts(); renderHeader();
 if (mainRound.done) { const cam0 = addressView(); Object.assign(cam, cam0); showSummary(); showYesterday(false); }
 else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openCard('helpCard'); else showYesterday(false).then(shown => { if (!shown) maybeFly(); }); }
 cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
-window.__dh = {payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
 requestAnimationFrame(frame);
+}
+window.__dh = {payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
 })();
 </script>
 
