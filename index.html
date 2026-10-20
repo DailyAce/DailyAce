@@ -81,6 +81,9 @@ button{font-family:var(--sans)}
 .grade{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:6px 11px 6px 9px;background:var(--well);font-size:.78rem;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
 .grade i{width:9px;height:9px;border-radius:50%;background:var(--soft)}
 .g-great i,.g-good i{background:var(--good)} .g-fine i{background:var(--fair)} .g-poor i,.g-costly i{background:var(--poor)} .g-wet i{background:var(--lake)}
+.grade-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.grade-cap{font-size:.62rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+#swipeSvg{width:100%;height:auto;font-family:var(--sans);margin-bottom:2px}
 .note{font-size:.84rem;line-height:1.45;color:var(--ink)}
 .note.soft{color:var(--soft)}
 .report{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border-radius:14px;background:var(--well)}
@@ -269,7 +272,7 @@ button{font-family:var(--sans)}
     <div class="card" id="shotCard" hidden>
       <div class="shot-top">
         <div class="card-head"><div class="label" id="scLabel">Tee shot</div><div class="num shot-res" id="scRes">—</div></div>
-        <div class="grade" id="scGrade"><i></i><span id="scGradeTxt"></span></div>
+        <div class="grade-wrap"><div class="grade" id="scGrade"><i></i><span id="scGradeTxt"></span></div><div class="grade-cap">Tour average = 50</div></div>
       </div>
       <div class="shot-sub" id="scSub"></div>
       <div class="note" id="scNote" hidden></div>
@@ -288,6 +291,7 @@ button{font-family:var(--sans)}
         <div class="rep-why">Square at impact means the line crosses the green band at the red mark.</div>
       </div>
       <div class="report" id="report" hidden>
+        <svg id="swipeSvg" viewBox="0 0 280 112" aria-label="Your swipe path" hidden></svg>
         <div class="rep-row"><span class="label">Power</span><div class="gauge"><i id="repPow"></i><em id="repNeed"></em></div><span class="rep-v" id="repPowTxt"></span></div>
         <div class="rep-row"><span class="label">Curve</span><div><div class="gauge curve"><b id="repDot"></b></div><div class="ends"><span id="endL">Hook</span><span id="endR">Slice</span></div></div><span class="rep-v" id="repCurveTxt"></span></div>
         <div class="rep-why" id="repWhy"></div>
@@ -298,6 +302,7 @@ button{font-family:var(--sans)}
     <div class="card" id="summary" hidden>
       <div class="label" id="sumLabel">Today</div>
       <div class="sum-score"><div><div class="num" id="sumScore">—</div><div class="label sum-sub">Avg shot grade</div></div><div class="sum-word title" id="sumWord">—<small id="sumStrokes"></small></div></div>
+      <div class="body" id="sumExplain"></div>
       <div class="sc" id="scorecard"></div>
       <div class="field" id="sumField">
         <div class="label" id="fieldLabel">Today's field</div>
@@ -353,7 +358,7 @@ button{font-family:var(--sans)}
 
     <div class="card" id="helpCard" hidden>
       <div class="card-head"><div class="label">How to play</div><div class="title">One hole. Every day.</div></div>
-      <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100, and your average grade breaks ties, so a par with great shots beats a scrappy par.</p></div>
+      <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100 against a Tour pro hitting from the same spot: 50 matches the Tour, above 50 beats it. Your average grade breaks ties, so a par with great shots beats a scrappy par.</p></div>
       <div class="help-sec"><h3>Power</h3><p class="body"><b>100%</b> is a full swing with the club or shot shown. A meter on the right fills as you swing. In your first few rounds and in practice, a <b>Pin</b> mark shows the power that reaches the flag with no wind.</p></div>
       <div class="help-sec"><h3>Swiping</h3><p class="body">Drag down on the course to take it back, then flick straight up. Farther back means more power, and a slow flick loses some. Drift <b>right</b> and the ball curves right (slice). Drift <b>left</b> and it curves left (hook). Putts only care how far you pull back.</p></div>
       <div class="help-sec"><h3>Swinging your phone</h3><p class="body">Take your stance with the phone in your dominant hand like the grip: <b>screen up, top pointing down at the ball</b>, the screen sitting on the swing plane. The game only arms when you're set up this way and still. Then swing through. <b>Speed</b> sets power, and the <b>club face</b> at impact sets curve: open goes right, closed goes left (for a right-hander). Look down at the face gauge to square it up before you swing. Waving the phone around doesn't count.</p></div>
@@ -1058,10 +1063,18 @@ function renderHeader(){
   $('edition').textContent = pastKey ? `Last week · ${dayLabel(pastKey)}` : preview ? `No. ${holeNum} · Preview` : `No. ${holeNum} · ${md}`;
   $('holeName').textContent = holeName;
   $('holeMeta').textContent = `Par 3 · ${YARDS} yds · ${pinDesc()}`;
-  $('windArrow').style.transform = `rotate(${Math.atan2(WIND.x, WIND.z)*180/Math.PI}deg)`;
   $('windMph').textContent = WIND.mph ? `${WIND.mph} mph` : 'Calm';
-  let dir = 'no wind'; if (WIND.mph){ if (WIND.z > Math.abs(WIND.x)) dir = 'helping'; else if (-WIND.z > Math.abs(WIND.x)) dir = 'into you'; else dir = WIND.x > 0 ? 'left to right' : 'right to left'; }
-  $('windDir').textContent = dir;
+  renderWind(true);
+}
+// wind is fixed on the course; the arrow turns with the camera and the words follow the direction you're hitting
+let windDeg = null, windWord = '';
+function renderWind(force){
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  const deg = Math.round(Math.atan2(WIND.x*cy - WIND.z*sy, WIND.x*sy + WIND.z*cy)*180/Math.PI);
+  if (force || deg !== windDeg){ windDeg = deg; $('windArrow').style.transform = `rotate(${deg}deg)`; }
+  const ay = addr.yaw, along = WIND.x*Math.sin(ay) + WIND.z*Math.cos(ay), cross = WIND.x*Math.cos(ay) - WIND.z*Math.sin(ay);
+  const word = !WIND.mph ? 'no wind' : along > Math.abs(cross) ? 'helping' : -along > Math.abs(cross) ? 'into you' : cross > 0 ? 'left to right' : 'right to left';
+  if (force || word !== windWord){ windWord = word; $('windDir').textContent = word; }
 }
 function renderLie(){
   const d = dPin(ball.x, ball.z);
@@ -1127,8 +1140,25 @@ function swingWhy(s){
   if (showTick()) need = s.need > 1.1 ? ' This club couldn\'t get there. Take more club.' : ` The pin needed about ${Math.round(s.need*100)}%.`;
   return `${pow}${need} ${cur}`;
 }
+function drawSwipeSvg(sw){
+  const svg = $('swipeSvg'); if (!sw || sw.input !== 'swipe' || !sw.trail || sw.trail.length < 3){ svg.setAttribute('hidden', ''); return; }
+  const pts = sw.trail, xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const minX = Math.min(...xs, -20), maxX = Math.max(...xs, 20), minY = Math.min(...ys, -40), maxY = Math.max(...ys, 10);
+  const k = Math.min(240/Math.max(1, maxX-minX), 92/Math.max(1, maxY-minY)), ox = 140 - (minX+maxX)/2*k, oy = 104 - maxY*k;
+  const X = x => (ox + x*k).toFixed(1), Y = y => (oy + y*k).toFixed(1);
+  const bi = pts.findIndex(p => p[0] === 0 && p[1] === 0), sp = bi < 0 ? 0 : bi;
+  const path = arr => arr.map((p, i) => `${i ? 'L' : 'M'}${X(p[0])} ${Y(p[1])}`).join('');
+  const col = curveColor(sw.cu), up = pts.slice(sp), e = up.at(-1);
+  svg.innerHTML = `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(0)}" y2="${Y(minY)}" stroke="rgba(244,238,226,.3)" stroke-width="1.2" stroke-dasharray="4 4"/>`
+    + `<path d="${path(pts.slice(0, sp+1))}" fill="none" stroke="rgba(244,238,226,.7)" stroke-width="2.4" stroke-dasharray="1.5 5" stroke-linecap="round"/>`
+    + `<path d="${path(up)}" fill="none" stroke="${col}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<circle cx="${X(0)}" cy="${Y(0)}" r="4.5" fill="#f4eee2"/><circle cx="${X(e[0])}" cy="${Y(e[1])}" r="4" fill="${col}"/>`
+    + `<text x="8" y="14" font-size="9.5" font-weight="600" letter-spacing="1" fill="rgba(244,238,226,.55)">YOUR SWIPE</text>`
+    + `<text x="272" y="14" font-size="9.5" text-anchor="end" fill="rgba(244,238,226,.55)">dashed line = straight</text>`;
+  svg.removeAttribute('hidden');
+}
 function fillReport(s){
-  const sw = s.sw; $('report').hidden = !sw; if (!sw) return;
+  const sw = s.sw; $('report').hidden = !sw; drawSwipeSvg(sw); if (!sw) return;
   $('repPow').style.width = `${clamp(sw.p/1.12*100, 0, 100)}%`;
   $('repNeed').style.left = `${clamp(s.need/1.12*100, 0, 100)}%`; $('repNeed').hidden = !showTick();
   $('repPowTxt').textContent = s.mode === 'putt' && sw.range ? `${Math.round(sw.p*sw.range)} ft pace` : `${Math.round(sw.p*100)}% ${powerLabel(sw.p)}`;
@@ -1144,7 +1174,7 @@ const LADDER = [[1, 'Tour pro'], [1.7, 'Scratch'], [2.05, '5 handicap'], [2.4, '
 function ladderLabel(ft){ for (const [k, n] of LADDER) if (ft <= TOUR_FT*k) return n; return 'Weekend'; }
 
 function showShotCard(s){
-  phase = 'card';
+  phase = 'card'; document.querySelector('.grade-cap').hidden = false;
   $('scLabel').textContent = s.n === 1 ? `Tee shot · ${clubName(s)}` : `Shot ${s.n} · ${shotName(s)}`;
   const res = $('scRes');
   res.textContent = s.holed ? (s.n === 1 ? 'Ace' : 'In the cup') : s.wet ? 'Wet' : fmtDist(s.endD);
@@ -1166,7 +1196,7 @@ function showShotCard(s){
   $('shotCard').hidden = false; $('shotCard').scrollTop = 0;
 }
 function showRangeCard(r){
-  phase = 'card';
+  phase = 'card'; document.querySelector('.grade-cap').hidden = true;
   $('scLabel').textContent = `Range · ${clubName(r)}`;
   $('scRes').textContent = `${r.carry} yds`; $('scRes').style.color = r.holed ? 'var(--flag)' : '';
   const off = Math.abs(r.off) < 1 ? 'on line' : `${Math.round(Math.abs(r.off))} yds ${r.off > 0 ? 'right' : 'left'}`;
@@ -1314,6 +1344,7 @@ function showSummary(){
   if (pastKey) LS.set('dailyhole:past:' + pastKey, {word:sc.word, avg:sc.avg, strokes:sc.strokes});
   $('sumLabel').textContent = pastKey ? `${dayLabel(pastKey)} · ${holeName} · ${YARDS} yds` : `${preview ? 'Preview · ' : ''}No. ${holeNum} · ${holeName} · ${YARDS} yds`;
   $('sumScore').textContent = Math.round(sc.avg);
+  $('sumExplain').textContent = `Each shot is graded 0 to 100 against a Tour pro hitting from the same spot. 50 matches the Tour; above 50 beats it. Fewer strokes always ranks first.`;
   $('sumWord').firstChild.textContent = sc.word;
   $('sumStrokes').textContent = round.pickedUp ? `Picked up after ${MAX_STROKES}` : `${round.strokes} stroke${round.strokes === 1 ? '' : 's'}`;
   const card = $('scorecard'); card.innerHTML = '';
@@ -1420,20 +1451,50 @@ $('segAddr').addEventListener('click', e => { const b = e.target.closest('button
 $('psTag').addEventListener('click', () => { practiceSwing = false; $('psTag').hidden = true; setHint('Practice swings off. The next swing counts.'); });
 
 // ---------- swipe input ----------
-let swipe = null; const meter = $('meter'), meterFill = $('meterFill');
+let swipe = null, liveTrail = null; const meter = $('meter'), meterFill = $('meterFill');
+const curveColor = cu => Math.abs(cu) < 0.12 ? '#a9d68e' : Math.abs(cu) < 0.35 ? '#e7c068' : '#e3825f';
+function drawSwipeTrail(){
+  let pts, bx, by, cu = 0, fade = 1, done = false, back = 0, tempo = 1, putt = mode === 'putt';
+  if (swipe && !swipe.fired && swipe.all.length > 1){ pts = swipe.all; bx = swipe.maxX; by = swipe.maxY; back = swipe.back; }
+  else if (liveTrail){ const age = (performance.now() - liveTrail.t)/1000; if (age > 2.6){ liveTrail = null; return; } fade = age < 1.8 ? 1 : 1 - (age-1.8)/0.8; ({pts, bx, by, back, tempo, putt} = liveTrail); cu = liveTrail.curve; done = true; }
+  else return;
+  ctx.save(); ctx.globalAlpha = fade; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const bi = pts.findIndex(p => p[0] === bx && p[1] === by), split = bi < 0 ? pts.length-1 : bi;
+  // pull-back
+  ctx.setLineDash([2, 7]); ctx.strokeStyle = 'rgba(244,238,226,.75)'; ctx.lineWidth = 3; ctx.beginPath();
+  pts.slice(0, split+1).forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); ctx.setLineDash([]);
+  if (done){
+    // where a straight flick would have gone
+    ctx.strokeStyle = 'rgba(244,238,226,.35)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, by - 150); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = curveColor(cu); ctx.lineWidth = 5; ctx.beginPath();
+    const up = pts.slice(split); up.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+    const e = up.at(-1), a = Math.atan2(e[1]-by, e[0]-bx); if (up.length > 1){ ctx.fillStyle = curveColor(cu); ctx.beginPath(); ctx.moveTo(e[0] + 10*Math.cos(a), e[1] + 10*Math.sin(a)); ctx.lineTo(e[0] + 10*Math.cos(a+2.4), e[1] + 10*Math.sin(a+2.4)); ctx.lineTo(e[0] + 10*Math.cos(a-2.4), e[1] + 10*Math.sin(a-2.4)); ctx.closePath(); ctx.fill(); }
+  }
+  ctx.fillStyle = '#f4eee2'; ctx.beginPath(); ctx.arc(bx, by, 6, 0, 7); ctx.fill();
+  ctx.font = '600 13px "Instrument Sans", system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 6;
+  const left = bx > W - 150, tx = left ? bx - 14 : bx + 14; ctx.textAlign = left ? 'right' : 'left';
+  ctx.fillStyle = '#f4eee2'; ctx.fillText(putt ? `${Math.round(back*PUTT_RANGES[puttRangeIdx])} ft pace` : `${Math.round(back*100)}% back`, tx, by + 2);
+  if (done){
+    const e = pts.at(-1); ctx.fillStyle = curveColor(cu); ctx.textAlign = e[0] > W - 150 ? 'right' : 'left'; const ex = e[0] > W - 150 ? e[0] - 16 : e[0] + 16;
+    const drift = Math.abs(cu) < 0.12 ? 'Straight' : putt ? (cu > 0 ? 'Drifted right: pushed' : 'Drifted left: pulled') : (cu > 0 ? 'Drifted right: ' : 'Drifted left: ') + curveLabel(cu).toLowerCase();
+    ctx.fillText(drift, ex, e[1] - 4);
+    if (!putt){ ctx.fillStyle = tempo < 0.95 ? '#e7c068' : 'rgba(244,238,226,.85)'; ctx.fillText(tempo < 0.95 ? `Slow flick: ${Math.round(tempo*100)}% speed` : 'Full-speed flick', ex, e[1] + 14); }
+  }
+  ctx.restore();
+}
 const backCap = () => mode === 'putt' ? 1.05 : 1.12;
 cv.addEventListener('pointerdown', e => {
   sfx.unlock();
   if (phase === 'flight'){ fastForward(); return; }
   if (phase !== 'ready' || inputMode !== 'swipe' || reading) return;
-  swipe = {y0:e.clientY, maxY:e.clientY, maxX:e.clientX, back:0, samples:[], fired:false}; cv.setPointerCapture(e.pointerId);
+  swipe = {y0:e.clientY, x0:e.clientX, maxY:e.clientY, maxX:e.clientX, back:0, samples:[], all:[[e.clientX, e.clientY]], fired:false}; liveTrail = null; cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointermove', e => {
   if (!swipe || swipe.fired) return; const now = performance.now();
   if (e.clientY >= swipe.maxY){ swipe.maxY = e.clientY; swipe.maxX = e.clientX; swipe.samples = []; }
   swipe.back = clamp((swipe.maxY - swipe.y0)/(H*0.28), 0, backCap());
   meter.classList.add('show'); meterFill.style.height = `${Math.min(100, swipe.back/1.12*100)}%`; $('meterPct').textContent = mode === 'putt' ? `${Math.round(swipe.back*PUTT_RANGES[puttRangeIdx])} ft` : `${Math.round(swipe.back*100)}%`;
-  swipe.samples.push([now, e.clientX, e.clientY]);
+  swipe.samples.push([now, e.clientX, e.clientY]); if (swipe.all.length < 400) swipe.all.push([e.clientX, e.clientY]);
   if (swipe.back > 0.03 && e.clientY < swipe.y0 - 30) fireSwipe();
 });
 function fireSwipe(){
@@ -1442,10 +1503,13 @@ function fireSwipe(){
   const last = s.at(-1); let first = s[0]; for (const p of s) if (last[0]-p[0] <= 90){ first = p; break; }
   const vy = (first[2]-last[2])/Math.max(8, last[0]-first[0]);
   const curve = clamp(((last[1]-swipe.maxX)/Math.max(30, swipe.maxY-last[2]))*1.8, -1, 1);
-  const back = swipe.back; swipe = null;
-  if (mode === 'putt'){ launch(back, curve, {input:'swipe', back:+back.toFixed(2), range:PUTT_RANGES[puttRangeIdx]}); return; }
-  const tempo = mode === 'short' ? clamp(vy/0.9, 0.6, 1) : clamp(vy/1.3, 0.35, 1);
-  launch(back*tempo, curve, {input:'swipe', back:+back.toFixed(2), tempo:+tempo.toFixed(2)});
+  const back = swipe.back, all = swipe.all, bx = swipe.maxX, by = swipe.maxY; swipe = null;
+  const tempo = mode === 'putt' ? 1 : mode === 'short' ? clamp(vy/0.9, 0.6, 1) : clamp(vy/1.3, 0.35, 1);
+  // keep the finger path: on screen for a moment, and in the shot report (relative to the bottom of the pull-back)
+  const step = Math.max(1, Math.ceil(all.length/48)), trail = all.filter((_, i) => i % step === 0 || i === all.length-1).map(p => [Math.round(p[0]-bx), Math.round(p[1]-by)]);
+  liveTrail = {pts:all, bx, by, back, tempo, curve, putt: mode === 'putt', t:performance.now()};
+  if (mode === 'putt'){ launch(back, curve, {input:'swipe', back:+back.toFixed(2), range:PUTT_RANGES[puttRangeIdx], trail}); return; }
+  launch(back*tempo, curve, {input:'swipe', back:+back.toFixed(2), tempo:+tempo.toFixed(2), trail});
 }
 cv.addEventListener('pointerup', () => { if (swipe && !swipe.fired){ const s = swipe.samples; if (swipe.back > 0.03 && s.length > 1 && s.at(-1)[2] < swipe.maxY - 20) fireSwipe(); else { swipe = null; meter.classList.remove('show'); } } });
 cv.addEventListener('pointercancel', () => { swipe = null; meter.classList.remove('show'); });
@@ -1669,7 +1733,8 @@ function frame(now){
   drawSplashes(dt);
   const v = ctx.createRadialGradient(W/2, H*0.45, Math.min(W,H)*0.35, W/2, H*0.5, Math.max(W,H)*0.85); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(12,16,12,.42)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
-  renderFace();
+  drawSwipeTrail();
+  renderFace(); renderWind(false);
   requestAnimationFrame(frame);
 }
 
