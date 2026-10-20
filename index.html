@@ -1644,10 +1644,23 @@ let soundMode = LS.get('dailyhole:sound', 'all');  // all | fx | off
 const sfx = (() => {
   let ac = null, master = null, amb = null;
   const fxOn = () => soundMode !== 'off', ambOn = () => soundMode === 'all';
+  // iPhone: Safari only starts audio from a real tap (touchend/click, not touchstart), and the
+  // ring/silent switch mutes web audio unless the page plays as media. A silent looping <audio>
+  // and audioSession 'playback' move us into the media channel so sound plays with the switch on silent.
+  let keep = null;
+  function silentWav(){ const n = 8000, b = new ArrayBuffer(44 + n*2), v = new DataView(b), w = (o, s) => { for (let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4, 36 + n*2, true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36,'data'); v.setUint32(40, n*2, true);
+    return URL.createObjectURL(new Blob([b], {type:'audio/wav'})); }
   const unlock = () => {
+    if (soundMode === 'off') return;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e){}
+    if (!keep){ try { keep = new Audio(silentWav()); keep.loop = true; keep.setAttribute('playsinline', ''); keep.volume = 0.01; } catch(e){} }
+    if (keep && keep.paused){ const pr = keep.play(); if (pr && pr.catch) pr.catch(() => {}); }
     if (!ac){ try { ac = new (window.AudioContext||window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 1; master.connect(ac.destination); } catch(e){ return; } }
-    if (ac.state === 'suspended') ac.resume();
-    if (ambOn() && !amb) ambientStart();
+    if (ac.state !== 'running'){ const pr = ac.resume(); if (pr && pr.then) pr.then(() => { if (ambOn() && !amb) ambientStart(); }).catch(() => {}); }
+    // a one-sample blip inside the tap is what actually wakes iOS audio
+    try { const o = ac.createBufferSource(); o.buffer = ac.createBuffer(1, 1, 22050); o.connect(ac.destination); o.start(0); } catch(e){}
+    if (ac.state === 'running' && ambOn() && !amb) ambientStart();
   };
   function noise(dur, freq, q, gain){ if (!ac || !fxOn()) return; const n = ac.createBuffer(1, Math.floor(ac.sampleRate*dur), ac.sampleRate); const d = n.getChannelData(0); for (let i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length, 2);
     const s = ac.createBufferSource(); s.buffer = n; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; const g = ac.createGain(); g.gain.value = gain; s.connect(f); f.connect(g); g.connect(master); s.start(); }
@@ -1683,9 +1696,9 @@ const sfx = (() => {
     }
   }
   function ambientStop(){ if (!amb) return; amb.timers.forEach(clearTimeout); amb.nodes.forEach(n => { try { n.stop(); } catch(e){} }); try { amb.out.disconnect(); } catch(e){} amb = null; }
-  document.addEventListener('visibilitychange', () => { if (!ac) return; if (document.hidden) ac.suspend(); else ac.resume(); });
+  document.addEventListener('visibilitychange', () => { if (!ac) return; if (document.hidden){ ac.suspend(); if (keep) keep.pause(); } });  // resumes on the next tap
   return { unlock,
-    setMode: m => { soundMode = m; LS.set('dailyhole:sound', m); if (m === 'all'){ unlock(); if (!amb) ambientStart(); } else ambientStop(); },
+    setMode: m => { soundMode = m; LS.set('dailyhole:sound', m); if (m === 'off' && keep) keep.pause(); if (m === 'all'){ unlock(); if (!amb) ambientStart(); } else { ambientStop(); if (m === 'fx') unlock(); } },
     // club swoosh through the air, the strike, then the club taking turf (or sand)
     hit: (p, lie, kind) => {
       if (!ac || !fxOn()) return;
@@ -1712,7 +1725,7 @@ const sfx = (() => {
     fish: () => noise(0.25, 1400, 0.8, 0.05),
     tick: () => tone(1200, 0.05, 0.08) };
 })();
-document.addEventListener('pointerdown', () => sfx.unlock(), {passive:true});
+['pointerdown','pointerup','touchend','click','keydown'].forEach(ev => document.addEventListener(ev, () => sfx.unlock(), {passive:true, capture:true}));
 $('segSound').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; sfx.setMode(b.dataset.v); renderSettings(); });
 
 // ---------- camera ----------
