@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}</style></head><body>
-<title>Daily Hole</title>
+<title>Daily Ace</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -125,6 +125,8 @@ button{font-family:var(--sans)}
 .more-item span{font-size:.78rem;color:var(--soft)}
 .more-item:focus-visible{outline:2px solid var(--fair);outline-offset:2px}
 .more-item.done span{color:var(--good)}
+.yday-win{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:16px;background:rgba(231,192,104,.14)}
+.yday-win b{font-size:1.35rem;font-weight:700;letter-spacing:-.01em}.yday-win span{font-size:.85rem;color:var(--soft)}
 .awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .award{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:14px;background:var(--well);min-width:0}
 .award b{font-size:.9rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -237,7 +239,7 @@ button{font-family:var(--sans)}
     <div class="idblock">
       <div class="brand">
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8.3 14.6V5.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8.9 5.4l5 2.1-5 2.1z" fill="#e4573f"/></svg>
-        <span class="wordmark">daily hole</span>
+        <span class="wordmark">daily ace</span>
       </div>
       <div class="edition" id="edition">No. 1</div>
       <div class="hole-name title" id="holeName">Loading</div>
@@ -356,6 +358,15 @@ button{font-family:var(--sans)}
       <div class="board" id="boardList"></div>
       <div class="body" id="boardNote"></div>
       <div class="btns"><button class="btn" id="boardClose">Back</button></div>
+    </div>
+
+    <div class="card" id="ydayCard" hidden>
+      <div class="card-head"><div class="label" id="ydayLabel">Yesterday</div><div class="title" id="ydayTitle">—</div></div>
+      <div class="yday-win" id="ydayWinner"><div class="label">Winner</div><b id="ydayWinTag"></b><span id="ydayWinScore"></span></div>
+      <div class="awards" id="ydayAwards"></div>
+      <div class="board" id="ydayList"></div>
+      <div class="body" id="ydayMe"></div>
+      <div class="btns"><button class="btn primary" id="ydayClose">Play today's hole</button></div>
     </div>
 
     <div class="card" id="helpCard" hidden>
@@ -929,9 +940,11 @@ function findDrop(x, z){
 
 function launch(power, curve, info){
   if (phase !== 'ready' || reading) return;
-  const p = clamp(power, 0, mode === 'putt' ? 1.05 : 1.12); let cu = clamp(curve, -1, 1);
+  const r3 = v => Math.round(v*1000)/1000;  // inputs are rounded so the server can replay the shot exactly
+  const p = r3(clamp(power, 0, mode === 'putt' ? 1.05 : 1.12)); let cu = clamp(curve, -1, 1);
   if (mode === 'full' && p > 1) cu = clamp(cu + (fxR()-0.5)*(p-1)*6, -1, 1);
-  lastSwing = {p:+p.toFixed(3), cu:+cu.toFixed(3), mode, range: mode === 'putt' ? PUTT_RANGES[puttRangeIdx] : undefined, type: mode === 'full' ? fullType : mode === 'short' ? shortType : 'putt', ...(info || {})};
+  cu = r3(cu);
+  lastSwing = {p, cu, mode, range: mode === 'putt' ? PUTT_RANGES[puttRangeIdx] : undefined, type: mode === 'full' ? fullType : mode === 'short' ? shortType : 'putt', ...(info || {})};
   if (practiceSwing){
     const need = showTick() ? ` Pin needs about ${Math.round(Math.min(NEED, 1.12)*100)}%.` : '';
     setHint(mode === 'putt' ? `Practice: ${Math.round(p*PUTT_RANGES[puttRangeIdx])} ft pace, ${curveLabel(cu).toLowerCase()}.` : `Practice: ${Math.round(p*100)}% ${powerLabel(p).toLowerCase()}, ${curveLabel(cu).toLowerCase()}.${need}`);
@@ -1271,7 +1284,7 @@ function roundCtx(r){
     sandOut: s.some(x => x.fromLie === 'sand' && x.holed), sand: s.some(x => x.endLie === 'sand')};
 }
 const BADGES = [
-  {id:'first', ic:'⛳', name:'First tee', desc:'Finish your first Daily Hole', tier:'common', t:c => true},
+  {id:'first', ic:'⛳', name:'First tee', desc:'Finish your first Daily Ace round', tier:'common', t:c => true},
   {id:'dry', ic:'🏜️', name:'Bone dry', desc:'Stay out of the water', tier:'common', t:c => c.wet === 0},
   {id:'gir', ic:'🟢', name:'Green in regulation', desc:'Hit the green off the tee', tier:'common', t:c => c.gir},
   {id:'par', ic:'🤝', name:'Par', desc:'Make par or better', tier:'common', t:c => c.holed && c.strokes <= 3},
@@ -1284,7 +1297,7 @@ const BADGES = [
   {id:'mist', ic:'🌫️', name:'Morning mist', desc:'Play a misty morning hole', tier:'common', t:c => PAL_NAME === 'mist'},
   {id:'autumn', ic:'🍂', name:'Fall colors', desc:'Play an autumn hole', tier:'common', t:c => PAL_NAME === 'autumn'},
   {id:'s3', ic:'🔥', name:'Warm streak', desc:'3-day streak', tier:'common', t:c => c.streak >= 3},
-  {id:'h10', ic:'🔟', name:'Regular', desc:'Play 10 Daily Holes', tier:'common', t:c => c.days >= 10},
+  {id:'h10', ic:'🔟', name:'Regular', desc:'Play 10 Daily Ace rounds', tier:'common', t:c => c.days >= 10},
   {id:'birdie', ic:'🐦', name:'Birdie', desc:'Make a 2', tier:'uncommon', t:c => c.holed && c.strokes === 2},
   {id:'tour', ic:'🏅', name:'Tour card', desc:'Tee shot inside the Tour average', tier:'uncommon', t:c => c.teeFt !== null && c.teeFt < TOUR_FT},
   {id:'dart', ic:'🎯', name:'Dart', desc:'Tee shot inside 10 feet', tier:'uncommon', t:c => c.teeFt !== null && c.teeFt <= 10},
@@ -1307,13 +1320,13 @@ const BADGES = [
   {id:'redeem', ic:'🔁', name:'Redemption', desc:'Find the water and still make par', tier:'rare', t:c => c.wet >= 1 && c.holed && c.strokes <= 3},
   {id:'fish', ic:'🐟', name:'Fish food', desc:'Find the water twice', tier:'rare', t:c => c.wet >= 2},
   {id:'links', ic:'🌬️', name:'Links golf', desc:'Punch onto the green, then par or better', tier:'rare', t:c => c.tee.type === 'punch' && c.gir && c.holed && c.strokes <= 3},
-  {id:'h50', ic:'🎖️', name:'Member', desc:'Play 50 Daily Holes', tier:'rare', t:c => c.days >= 50},
+  {id:'h50', ic:'🎖️', name:'Member', desc:'Play 50 Daily Ace rounds', tier:'rare', t:c => c.days >= 50},
   {id:'tap', ic:'🪶', name:'Tap-in', desc:'Tee shot inside 1 foot', tier:'epic', t:c => c.teeFt !== null && c.teeFt <= 1},
   {id:'snake', ic:'🐍', name:'Snake', desc:'Make a putt from 60+ ft', tier:'epic', t:c => c.longestMadeFt !== null && c.longestMadeFt >= 60},
   {id:'sandout', ic:'⛱️', name:'From the beach', desc:'Hole out from a bunker', tier:'epic', t:c => c.sandOut},
   {id:'s30', ic:'🗓️', name:'Every day in the month', desc:'30-day streak', tier:'epic', t:c => c.streak >= 30},
   {id:'ace', ic:'💎', name:'Ace', desc:'Make a hole in one', tier:'legendary', t:c => c.holed && c.strokes === 1},
-  {id:'h100', ic:'👑', name:'Club champion', desc:'Play 100 Daily Holes', tier:'legendary', t:c => c.days >= 100},
+  {id:'h100', ic:'👑', name:'Club champion', desc:'Play 100 Daily Ace rounds', tier:'legendary', t:c => c.days >= 100},
 ];
 const TIER_RANK = {legendary:0, epic:1, rare:2, uncommon:3, common:4};
 function prevDay(key){ return new Date(Date.parse(key + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10); }
@@ -1381,7 +1394,7 @@ function showSummary(){
   const [style, why] = playStyle(c); $('styleName').textContent = style; $('styleWhy').textContent = why;
   const squares = round.shots.map(gradeEmoji).join('');
   const teeTxt = c.teeFt === null ? 'Tee shot wet' : c.teeFt === 0 ? 'Ace' : `Tee shot ${fmtDist(c.teeFt/3)}`;
-  const head = pastKey ? `⛳ Daily Hole · ${dayLabel(pastKey)} (replay) · ${holeName}` : `⛳ Daily Hole No. ${holeNum} · ${holeName} · ${YARDS} yds`;
+  const head = pastKey ? `⛳ Daily Ace · ${dayLabel(pastKey)} (replay) · ${holeName}` : `⛳ Daily Ace No. ${holeNum} · ${holeName} · ${YARDS} yds`;
   shareBase = `${head}\n${squares}  ${sc.word} · ${Math.round(sc.avg)}\n${teeTxt} · ${c.puttCount} putt${c.puttCount === 1 ? '' : 's'}${beat ? ' · Beat the Tour' : ''}${preview ? '' : ` · 🔥${c.streak}`}`;
   $('shareText').textContent = shareBase;
   $('copyBtn').textContent = 'Copy result';
@@ -1409,6 +1422,7 @@ function openMore(){
   if (pastKey){ const b = moreItem("Back to today's hole", 'The one that counts'); b.onclick = () => goHash(''); top.appendChild(b); }
   if (mainRound.done && !pastKey){ const b = moreItem("Replay today's hole", 'Practice it again. Your score stays.'); b.onclick = () => { $('moreCard').hidden = true; practice = true; round = freshRound(); setupLie(); }; top.appendChild(b); }
   if (phase === 'ready' || phase === 'summary'){ const fb = moreItem('Watch the flyover', `A quick look at ${holeName}`); fb.onclick = () => { $('moreCard').hidden = true; if (phase === 'summary'){ $('summary').hidden = false; flyFromSummary(); } else { if (!$('controls').hidden || true) startFlyover(); } }; top.appendChild(fb); }
+  if (online() && !preview){ const yb = moreItem("Yesterday's results", 'Winner and awards'); yb.onclick = () => { $('moreCard').hidden = true; showYesterday(true); }; top.appendChild(yb); }
   const rb = moreItem('Driving range', pastKey ? "Unlimited balls at this hole's green" : "Unlimited balls at today's green"); rb.onclick = () => { $('moreCard').hidden = true; enterRange(); }; top.appendChild(rb);
   const list = $('pastList'); list.innerHTML = '';
   for (const key of lastWeekKeys(todayKey)){
@@ -1720,7 +1734,15 @@ const sfx = (() => {
     putt: p => { noise(0.04, 1800, 2, 0.35); tone(520, 0.05, 0.12); },
     thud: s => noise(0.07, s === 'sand' ? 500 : 300, 0.8, s === 'sand' ? 0.3 : 0.5),
     splash: () => { noise(0.6, 900, 0.5, 0.6); noise(0.4, 2400, 0.7, 0.25); },
-    cup: () => { tone(880, 0.12, 0.2); setTimeout(() => tone(660, 0.18, 0.18), 90); setTimeout(() => noise(0.08, 400, 1, 0.3), 40); },
+    // ball dropping in: a hollow plastic clunk off the cup liner, then a couple of settling rattles
+    cup: () => {
+      if (!ac || !fxOn()) return;
+      const hollow = (t, f, g, dur) => { const o = ac.createOscillator(), e = ac.createGain(), bp = ac.createBiquadFilter(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f*0.82, t + dur); bp.type = 'bandpass'; bp.frequency.value = f*1.6; bp.Q.value = 2; e.gain.setValueAtTime(g, t); e.gain.exponentialRampToValueAtTime(0.0005, t + dur); o.connect(bp); bp.connect(e); e.connect(master); o.start(t); o.stop(t + dur + 0.02); };
+      const t0 = ac.currentTime + 0.03;
+      noise(0.025, 1500, 2.5, 0.55); hollow(t0, 330, 0.5, 0.16); hollow(t0, 610, 0.18, 0.08);
+      setTimeout(() => { noise(0.02, 1900, 3, 0.28); }, 85); if (ac) hollow(t0 + 0.085, 360, 0.22, 0.09);
+      setTimeout(() => { noise(0.015, 2200, 3, 0.14); }, 140); if (ac) hollow(t0 + 0.14, 380, 0.1, 0.06);
+    },
     lip: () => { tone(760, 0.06, 0.12); },
     fish: () => noise(0.25, 1400, 0.8, 0.05),
     tick: () => tone(1200, 0.05, 0.08) };
@@ -2014,16 +2036,20 @@ async function rpc(fn, args){
   return res.json();
 }
 function payloadFor(r, day, hole){
-  const sc = scoreOf(r), c = roundCtx(r), ins = new Set(r.shots.filter(x => x.sw).map(x => x.sw.input));
-  return {p_player:pid, p_day:day, p_hole:hole, p_strokes:sc.strokes, p_avg:sc.avg, p_word:sc.word,
-    p_tee_ft: c.teeFt === null ? null : +c.teeFt.toFixed(2), p_putts:c.puttCount, p_long_putt: c.longestMadeFt === null ? null : +c.longestMadeFt.toFixed(2),
-    p_input: ins.size > 1 ? 'mixed' : ins.has('motion') ? 'motion' : 'swipe',
-    p_shots: r.shots.map(x => [x.mode, x.type, x.club, x.fromLie, +(+x.fromD).toFixed(2), x.endLie, +(+x.endD).toFixed(2), shotGrade(x), x.sw ? x.sw.p : null, x.sw ? x.sw.cu : null, x.aim])};
+  const sc = scoreOf(r), ins = new Set(r.shots.filter(x => x.sw).map(x => x.sw.input));
+  return {player:pid, day, hole, input: ins.size > 1 ? 'mixed' : ins.has('motion') ? 'motion' : 'swipe', claim:{strokes:sc.strokes, avg:sc.avg},
+    shots: r.shots.map(x => [x.mode, x.type, x.club, x.fromLie, +(+x.fromD).toFixed(2), x.endLie, +(+x.endD).toFixed(2), shotGrade(x), x.sw ? x.sw.p : null, x.sw ? x.sw.cu : null, x.aim, x.sw && x.sw.range !== undefined ? x.sw.range : null, x.gimme ? 1 : 0])};
+}
+// Rounds go to a server function that replays every shot with the same physics before it counts.
+async function submitRound(r, day, hole){
+  const res = await fetch(`${SB_URL}/functions/v1/submit-round`, {method:'POST', headers:{apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':'application/json'}, body:JSON.stringify(payloadFor(r, day, hole))});
+  const txt = await res.text(); if (!res.ok) throw new Error(`${res.status} ${txt}`);
+  return JSON.parse(txt);
 }
 async function syncRound(){
   if (!online() || preview || rangeMode || !mainRound.done) return;
   try {
-    if (!LS.get('dailyhole:sent:' + todayKey, false)){ board = await rpc('submit_round', payloadFor(mainRound, todayKey, holeNum)); LS.set('dailyhole:sent:' + todayKey, true); }
+    if (!LS.get('dailyhole:sent:' + todayKey, false)){ board = await submitRound(mainRound, todayKey, holeNum); LS.set('dailyhole:sent:' + todayKey, true); }
     else board = await rpc('day_board', {p_day:todayKey, p_player:pid});
     renderField();
   } catch(e){ $('fieldNote').textContent = "Couldn't reach the leaderboard. It'll send your round next time you open the game."; }
@@ -2031,8 +2057,48 @@ async function syncRound(){
 async function syncYesterday(){
   if (!online() || preview) return;
   const y = prevDay(todayKey), r = LS.get('dailyhole:r:' + y, null);
-  if (r && r.done && Array.isArray(r.shots) && !LS.get('dailyhole:sent:' + y, false)){ try { await rpc('submit_round', payloadFor(r, y, holeNumFor(y))); LS.set('dailyhole:sent:' + y, true); } catch(e){} }
+  if (r && r.done && Array.isArray(r.shots) && !LS.get('dailyhole:sent:' + y, false)){ try { await submitRound(r, y, holeNumFor(y)); LS.set('dailyhole:sent:' + y, true); } catch(e){} }
 }
+// ---------- yesterday's results ----------
+let ydayShown = false;
+async function loadYesterday(){
+  const y = prevDay(todayKey);
+  try { return await rpc('day_board', {p_day:y, p_player:pid}); } catch(e){ return null; }
+}
+function fillAwards(el, bd){
+  el.innerHTML = '';
+  const award = (label, who, val) => { const d = document.createElement('div'); d.className = 'award'; const l = document.createElement('div'); l.className = 'label'; l.textContent = label; const b = document.createElement('b'); b.textContent = who; const v = document.createElement('span'); v.textContent = val; d.append(l, b, v); el.appendChild(d); };
+  if (bd.closest) award('Closest to the pin', bd.closest.tag, bd.closest.ft === 0 ? 'Ace' : fmtDist(bd.closest.ft/3));
+  if (bd.longest) award('Longest putt made', bd.longest.tag, fmtDist(bd.longest.ft/3));
+  if (bd.updown) award('Best up and down', bd.updown.tag, `from ${fmtDist(bd.updown.ft/3)}`);
+  if (bd.striker) award('Best ball striker', bd.striker.tag, `${Number(bd.striker.avg).toFixed(1)} avg grade`);
+}
+async function showYesterday(force){
+  if (!online() || preview) return false;
+  const y = prevDay(todayKey);
+  if (!force && LS.get('dailyhole:yday:' + y, false)) return false;
+  await syncYesterday();
+  const bd = await loadYesterday();
+  if (!bd || !bd.total){ if (force){ $('ydayTitle').textContent = 'Nobody played'; } else return false; }
+  LS.set('dailyhole:yday:' + y, true);
+  const hn = holeNumFor(y);
+  $('ydayLabel').textContent = `Yesterday · No. ${hn}`;
+  $('ydayTitle').textContent = nameFor(hn);
+  if (bd && bd.total){
+    const w = (bd.top || [])[0];
+    $('ydayWinner').hidden = !w;
+    if (w){ $('ydayWinTag').textContent = w.tag; $('ydayWinScore').textContent = `${w.word} · ${Number(w.avg).toFixed(1)} avg grade`; }
+    fillAwards($('ydayAwards'), bd);
+    const me = bd.me;
+    $('ydayMe').textContent = me && me.flagged ? "Your round didn't pass the shot replay check, so it isn't ranked." : me && me.rank ? `You finished #${me.rank} of ${bd.total}.` : `${bd.total} player${bd.total === 1 ? '' : 's'}. You didn't play this one.`;
+    $('ydayList').innerHTML = '';
+    (bd.top || []).slice(0, 5).forEach(row => { const d = document.createElement('div'); d.className = 'b-row' + (row.me ? ' me' : '');
+      [['b-rank', `${row.rank}`], ['b-tag', row.tag], ['b-word', row.word], ['b-avg', Number(row.avg).toFixed(1)]].forEach(([cls, txt]) => { const e = document.createElement('span'); e.className = cls; e.textContent = txt; d.appendChild(e); }); $('ydayList').appendChild(d); });
+  } else { $('ydayWinner').hidden = true; $('ydayAwards').innerHTML = ''; $('ydayList').innerHTML = ''; $('ydayMe').textContent = 'No rounds were posted yesterday.'; }
+  ydayShown = true; $('summary').hidden = true; openCard('ydayCard');
+  return true;
+}
+$('ydayClose').addEventListener('click', () => { closeCard('ydayCard'); if (phase === 'summary') $('summary').hidden = false; else maybeFly(); });
 function renderField(){
   if (phase !== 'summary') return;
   const me = scoreOf(mainRound);
@@ -2041,6 +2107,7 @@ function renderField(){
   if (real){
     const rank = board.me ? board.me.rank : null;
     $('fieldRank').textContent = rank ? `#${rank}` : '—';
+    if (board.me && board.me.flagged){ $('fieldRealTxt').textContent = "Your round didn't pass the shot replay check, so it isn't ranked."; $('boardBtn').hidden = false; return; }
     $('fieldRealTxt').textContent = `of ${board.total} player${board.total === 1 ? '' : 's'} today` + (board.total >= 20 && board.me ? ` · top ${Math.max(1, 100 - Math.round(board.me.better_than/Math.max(1, board.total - 1)*100))}%` : '');
   }
   $('boardBtn').hidden = !real;
@@ -2069,10 +2136,7 @@ async function openBoard(){
   try { board = await rpc('day_board', {p_day:todayKey, p_player:pid}); } catch(e){}
   if (!board){ $('boardNote').textContent = "Couldn't load the leaderboard."; return; }
   $('boardTitle').textContent = `${board.total} player${board.total === 1 ? '' : 's'} · ${holeName}`;
-  const aw = $('boardAwards'); aw.innerHTML = '';
-  const award = (label, who, val) => { const d = document.createElement('div'); d.className = 'award'; const l = document.createElement('div'); l.className = 'label'; l.textContent = label; const b = document.createElement('b'); b.textContent = who; const v = document.createElement('span'); v.textContent = val; d.append(l, b, v); aw.appendChild(d); };
-  if (board.closest) award('Closest to the pin', board.closest.tag, board.closest.ft === 0 ? 'Ace' : fmtDist(board.closest.ft/3));
-  if (board.longest) award('Longest putt', board.longest.tag, fmtDist(board.longest.ft/3));
+  fillAwards($('boardAwards'), board);
   const list = $('boardList'); list.innerHTML = '';
   (board.top || []).forEach(row => { const d = document.createElement('div'); d.className = 'b-row' + (row.me ? ' me' : '');
     const cells = [['b-rank', `${row.rank}`], ['b-tag', row.tag], ['b-word', row.word], ['b-avg', Number(row.avg).toFixed(1)]];
@@ -2083,11 +2147,11 @@ $('boardBtn').addEventListener('click', openBoard);
 $('boardClose').addEventListener('click', () => { $('boardCard').hidden = true; $('summary').hidden = false; });
 
 // ---------- boot ----------
-initParts(); renderHeader(); syncYesterday();
-if (mainRound.done) { const cam0 = addressView(); Object.assign(cam, cam0); showSummary(); }
-else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openCard('helpCard'); }
+initParts(); renderHeader();
+if (mainRound.done) { const cam0 = addressView(); Object.assign(cam, cam0); showSummary(); showYesterday(false); }
+else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openCard('helpCard'); else showYesterday(false).then(shown => { if (!shown) maybeFly(); }); }
 cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
-window.__dh = {setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
+window.__dh = {payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
 requestAnimationFrame(frame);
 })();
 </script>
