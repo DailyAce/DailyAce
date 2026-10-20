@@ -1795,15 +1795,15 @@ function renderField(){
   if (real){
     const rank = board.me ? board.me.rank : null;
     $('fieldRank').textContent = rank ? `#${rank}` : '—';
-    $('fieldRealTxt').textContent = `of ${board.total} player${board.total === 1 ? '' : 's'} today` + (board.total >= 20 && board.me ? ` · better than ${Math.round(board.me.better_than/Math.max(1, board.total - 1)*100)}%` : '');
+    $('fieldRealTxt').textContent = `of ${board.total} player${board.total === 1 ? '' : 's'} today` + (board.total >= 20 && board.me ? ` · top ${Math.max(1, 100 - Math.round(board.me.better_than/Math.max(1, board.total - 1)*100))}%` : '');
   }
   $('boardBtn').hidden = !real;
   const showSim = !real || board.total < 200;
   $('fieldSim').hidden = !showSim;
-  if (showSim){ const pct = fieldPct(me); $('fieldSimPct').textContent = pct === null ? '…' : `${pct}%`; $('fieldSimTxt').textContent = pct === null ? 'Simulating the field…' : `better than ${pct}% of the simulated field`; }
+  if (showSim){ const pct = fieldPct(me); $('fieldSimPct').textContent = pct === null ? '…' : `Top ${Math.max(1, 100 - pct)}%`; $('fieldSimTxt').textContent = pct === null ? 'Simulating the field…' : 'of the simulated field'; }
   $('fieldNote').textContent = showSim ? `The simulated field is ${FIELD_N} computer-played rounds on this hole, not real people.` + (online() || preview ? '' : ' The live leaderboard isn\'t connected yet.') : '';
   const pct = fieldPct(me);
-  if (shareBase) $('shareText').textContent = shareBase + (real && board.me ? `\n#${board.me.rank} of ${board.total} today` : pct !== null && !pastKey ? `\nBeat ${pct}% of the simulated field` : '');
+  if (shareBase) $('shareText').textContent = shareBase + (real && board.me ? `\n#${board.me.rank} of ${board.total} today` : pct !== null && !pastKey ? `\nTop ${Math.max(1, 100 - pct)}% of the simulated field` : '');
 }
 function renderTagBox(){ $('tagBox').hidden = !(online() && !myTag && !preview); }
 const TAG_RE = /^[A-Za-z0-9_]{3,16}$/;
