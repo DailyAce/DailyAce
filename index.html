@@ -48,6 +48,7 @@ button{font-family:var(--sans)}
 .wordmark{font-weight:700;font-size:.95rem;letter-spacing:-.01em;white-space:nowrap}
 .edition{font-size:.64rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);opacity:.78;font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:4px}
 .hole-name{font-size:1.85rem}
+.hole-type{font-size:.72rem;color:var(--ink);opacity:.7;white-space:nowrap;margin-top:2px;letter-spacing:.01em}
 .hole-meta{font-size:.8rem;white-space:nowrap;color:var(--ink);opacity:.82;font-variant-numeric:tabular-nums}
 .side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
 .glass{background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(14px) saturate(1.1);-webkit-backdrop-filter:blur(14px) saturate(1.1)}
@@ -273,6 +274,7 @@ a.btn{text-align:center;text-decoration:none}
       <div class="edition" id="edition">No. 1</div>
       <div class="hole-name title" id="holeName">Loading</div>
       <div class="hole-meta" id="holeMeta"></div>
+      <div class="hole-type" id="holeType" hidden></div>
     </div>
     <div class="side">
       <div class="wind glass" title="Wind">
@@ -502,10 +504,23 @@ const fxR = rng(99);
 const NAMES = ['Osprey Point','Cedar Bluff','Heron Lake','Saltmarsh','Granite Ridge','Fox Hollow','Willow Bend','Kestrel Cove','Juniper Flats','Lantern Hill','Bramble Pond','Stillwater','Quarry Rise','Larkspur','Old Mill Run','Ironwood',
   'Sandpiper Bay','Hawthorn Gap','Bluestem','Pine Barrens','Lighthouse Reach','Copper Creek','Elm Hollow','Whistling Pines','Tern Island','Maple Rise','Kingfisher','Driftwood','Silver Lake','Thistle Down','Owl\'s Head','Cranberry Bog','Shepherd\'s Rest','Black Rock','Wren Meadow','Fiddler\'s Green','Marsh Hawk','Briar Patch','Summit Pond','Lost Pines'];
 const nameFor = n => NAMES[(((n*17) % NAMES.length) + NAMES.length) % NAMES.length];  // walks every name before any repeats
-// Halloween: the last 11 days of October every year (looks only, the hole plays the same)
-const isHalloween = n => { const d = new Date(Date.UTC(2026, 9, 17) + (n - 1)*86400000); return d.getUTCMonth() === 9 && d.getUTCDate() >= 21; };
-const SPOOKY_NAMES = ['Hollow Oak','Raven\'s Rest','Witch\'s Hollow','Gravestone Gully','Lantern Bog','Crooked Pines','Black Cat Bend','Moonlight Mire','Headless Hollow','Bramble Graves','Cauldron Cove','Owl\'s Lament','Bone Orchard','Pumpkin Patch'];
-const holeNameFor = n => isHalloween(n) ? SPOOKY_NAMES[(((n*5) % SPOOKY_NAMES.length) + SPOOKY_NAMES.length) % SPOOKY_NAMES.length] : nameFor(n);
+// Holiday themes (looks only, the hole plays the same): Halloween is the last 11 days of October, Thanksgiving
+// the week around the 4th Thursday of November, the winter holidays Dec 18-26, and New Year's Eve and Day.
+function themeFor(n){
+  const d = new Date(Date.UTC(2026, 9, 17) + (n - 1)*86400000), m = d.getUTCMonth(), day = d.getUTCDate();
+  if (m === 9 && day >= 21) return 'halloween';
+  if (m === 10){ const first = new Date(Date.UTC(d.getUTCFullYear(), 10, 1)).getUTCDay(), thu = 1 + ((4 - first + 7) % 7) + 21; if (day >= thu - 3 && day <= thu + 3) return 'thanksgiving'; }
+  if (m === 11 && day >= 18 && day <= 26) return 'christmas';
+  if ((m === 11 && day === 31) || (m === 0 && day === 1)) return 'newyear';
+  return null;
+}
+const isHalloween = n => themeFor(n) === 'halloween';
+const THEME_NAMES = {
+  halloween:['Hollow Oak','Raven\'s Rest','Witch\'s Hollow','Gravestone Gully','Lantern Bog','Crooked Pines','Black Cat Bend','Moonlight Mire','Headless Hollow','Bramble Graves','Cauldron Cove','Owl\'s Lament','Bone Orchard','Pumpkin Patch'],
+  thanksgiving:['Harvest Hollow','Cornucopia','Hayride Hill','Gobbler\'s Knob','Cider Mill','Pilgrim\'s Point','Maple Harvest'],
+  christmas:['Evergreen','Snowdrift','Mistletoe Bend','Silver Bells','Sleigh Ride','Frosted Pines','Hearthside','Northern Star','Candy Cane Lane'],
+  newyear:['Midnight Run','First Light','Auld Lang Syne'] };
+const holeNameFor = n => { const t = themeFor(n); if (!t) return nameFor(n); const L = THEME_NAMES[t]; return L[(((n*5) % L.length) + L.length) % L.length]; };
 R(); const holeName = holeNameFor(holeNum);
 
 // ---------- palettes ----------
@@ -528,10 +543,89 @@ PALETTES.dusk = {sky:['#140c26','#2f1840','#6b2546','#c4502e','#f08a3a'], sun:[0
 PALETTES.night = {sky:['#03040c','#070b1f','#0f1636','#1d2450','#2b2f5c'], sun:[-0.2,0.22], core:'#f3f0dc', glow:'170,185,255',
   ridges:[['#1c2140','#262b4e'],['#12162e','#1a1f3c'],['#0a0d1e','#10142a']], gfar:'#1d2620', gmid:'#1a2a1c', gnear:'#142016',
   water:['#c9d2f0','#4a5486','#1a2045','#0a0e22'], tree:['#0b0d10','#121418'], haze:'#2a2f4e', rim:'170,185,255', green:['#3f6a3a','#335a30'], fringe:'#2f5129', fair:'#2b4a27', mist:1, mistc:'110,120,165', kind:'dead', cloud:'90,100,140', moon:true};
-const HALLOWEEN = isHalloween(holeNum);
-const BASE_PAL = ['golden','mist','autumn'][Math.floor(R()*3)];   // drawn every day so the hole itself never changes
-const PAL_NAME = HALLOWEEN ? ((holeNum % 2 === 0 || new Date(Date.UTC(2026, 9, 17) + (holeNum - 1)*86400000).getUTCDate() === 31) ? 'night' : 'dusk') : BASE_PAL;
-const PAL = PALETTES[PAL_NAME];
+// ---------- shared geometry helpers ----------
+function catmull(pts, seg){ const out = []; for (let i=0;i<pts.length-1;i++){ const p0 = pts[Math.max(0,i-1)], p1 = pts[i], p2 = pts[i+1], p3 = pts[Math.min(pts.length-1,i+2)]; for (let k=0;k<seg;k++){ const t = k/seg, t2 = t*t, t3 = t2*t; out.push([0,1].map(j => 0.5*((2*p1[j]) + (-p0[j]+p2[j])*t + (2*p0[j]-5*p1[j]+4*p2[j]-p3[j])*t2 + (-p0[j]+3*p1[j]-3*p2[j]+p3[j])*t3))); } } out.push(pts[pts.length-1]); return out; }
+function inPoly(pts, x, z){ let c = false; for (let i=0, j=pts.length-1; i<pts.length; j=i++){ const a = pts[i], b = pts[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0]-a[0])*(z-a[1])/(b[1]-a[1]) + a[0]) c = !c; } return c; }
+function polyBox(pts){ let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; for (const [x, z] of pts){ if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; } pts.box = [x0, x1, z0, z1]; return pts; }
+function inPolyB(pts, x, z){ const b = pts.box; if (b && (x < b[0] || x > b[1] || z < b[2] || z > b[3])) return false; return inPoly(pts, x, z); }
+
+// ---------- the hole generator, version 3 ----------
+// From GEN3_FROM on, every hole is a random mix of a hole type, green shape, pin position, course conditions and
+// wind type (gated by the weekly difficulty curve), dressed in a scenery, time of day, weather and landmark.
+// A holiday theme, when one is on, re-dresses the look; the course underneath stays random.
+const GEN3_FROM = 7;                                    // Fri, Oct 23, 2026
+const GEN3 = holeNum >= GEN3_FROM;
+const DAYS = {any:[0,1,2,3,4], mon:[0], monTue:[0,1], monWed:[0,1,2], wedFri:[2,3,4], thuFri:[3,4], fri:[4]};
+const playDay = wd => wd === 5 ? 2 : wd === 6 ? 1 : wd;  // Saturday plays like Wednesday, Sunday like Tuesday
+const HOLE_TYPES = [['lake','any',3],['island','thuFri',2],['peninsula','any',2],['ravine','any',2],['fortress','wedFri',2],['creek','monWed',2],['chute','thuFri',2],['links','any',2],['cliff','thuFri',2]];
+const GREEN_SHAPES = [['oval','any',3],['round','monTue',2],['kidney','any',2],['long','wedFri',2],['wide','wedFri',2],['twolobe','thuFri',2],['tiers','thuFri',2],['bowl','monTue',2]];
+const PIN_SPOTS = [['middle','monTue',2],['front','any',2],['back','any',2],['tucked','wedFri',2],['tier','thuFri',2],['sucker','fri',2],['bowl','mon',2]];
+const CONDITIONS = [['soft','monTue',2],['normal','any',4],['firm','wedFri',3],['tournament','fri',2],['longrough','wedFri',2]];
+const WIND_KINDS = [['calm','monWed',2],['steady','any',4],['gusty','wedFri',2],['swirling','fri',2],['into','thuFri',2],['downwind','any',2]];
+const SCENERIES = ['pine','autumn','coastal','desert','highlands','tropical','alpine','parkland'];
+const TIMES = ['dawn','morning','midday','golden','dusk'];
+const LABELS = {
+  lake:'Lake carry', island:'Island green', peninsula:'Peninsula', ravine:'Ravine', fortress:'Bunker fortress', creek:'Creek', chute:'Forest chute', links:'Links', cliff:'Seaside cliff',
+  soft:'Soft and slow', normal:'', firm:'Firm and fast', tournament:'Tournament', longrough:'Long rough', wet:'Wet',
+  calm:'Calm', steady:'', gusty:'Gusty', swirling:'Swirling', into:'Into the wind', downwind:'Downwind',
+  pine:'Pine lakes', autumn:'Autumn', coastal:'Coastal', desert:'Desert canyon', highlands:'Highlands', tropical:'Tropical', alpine:'Alpine', parkland:'Parkland',
+  dawn:'Dawn', morning:'Morning', midday:'Midday', golden:'Golden hour', dusk:'Dusk', night:'Night'};
+const holeDate = n => new Date(Date.UTC(2026, 9, 17) + (n - 1)*86400000);
+function weighted(q, list){ let tot = 0; for (const o of list) tot += o[2] || 1; let u = q()*tot; for (const o of list){ u -= o[2] || 1; if (u <= 0) return o[0]; } return list[list.length - 1][0]; }
+const allowedOn = (list, wd) => list.filter(o => DAYS[o[1]].includes(playDay(wd)));
+const PICKS = [];
+function picksFor(n){
+  if (n < GEN3_FROM) return null;
+  for (let i = Math.max(GEN3_FROM, PICKS.length ? PICKS[PICKS.length - 1].n + 1 : GEN3_FROM); i <= n; i++){
+    const q = rng(hash(i*9173 + 7)), wd = (((i - 1 + 5) % 7) + 7) % 7, d = holeDate(i), month = d.getUTCMonth(), theme = themeFor(i);
+    const prev = PICKS.slice(-5).map(p => p.type), last = PICKS.length ? PICKS[PICKS.length - 1] : null;
+    let types = allowedOn(HOLE_TYPES, wd).filter(o => !prev.includes(o[0]));
+    if (!types.length) types = allowedOn(HOLE_TYPES, wd).filter(o => !last || o[0] !== last.type);
+    const type = weighted(q, types);
+    let green = weighted(q, allowedOn(GREEN_SHAPES, wd));
+    if (type === 'island' && (green === 'long' || green === 'wide')) green = 'oval';
+    let pin = weighted(q, allowedOn(PIN_SPOTS, wd));
+    if (pin === 'tier' && green !== 'tiers') pin = 'back';
+    if (pin === 'bowl' && green === 'tiers') pin = 'middle';
+    let wind = weighted(q, allowedOn(WIND_KINDS, wd));
+    let scenery = SCENERIES[Math.floor(q()*SCENERIES.length)];
+    if (type === 'cliff') scenery = q() < 0.7 ? 'coastal' : 'tropical';
+    else if (type === 'links') scenery = ['highlands','coastal','highlands','desert'][Math.floor(q()*4)];
+    else if (type === 'chute') scenery = ['pine','autumn','alpine','parkland'][Math.floor(q()*4)];
+    else q();
+    let tod = TIMES[Math.floor(q()*TIMES.length)];
+    const winter = month === 11 || month <= 1, fall = month >= 8 && month <= 10;
+    const wx = [['clear',4],['pollen',2],['rain',2],['fog',1],['overcast',2]];
+    if (scenery === 'autumn' || scenery === 'parkland' || fall) wx.push(['leaves', scenery === 'autumn' ? 4 : 2]);
+    if (winter && scenery !== 'tropical' && scenery !== 'desert') wx.push(['snow', 2]);
+    let weather = weighted(q, wx.filter(w => !(scenery === 'desert' && (w[0] === 'rain' || w[0] === 'fog')) && !(scenery === 'tropical' && w[0] === 'fog')).map(w => [w[0], 'any', w[1]]));
+    if (weather === 'clear' && last && last.weather === 'rain' && q() < 0.6) weather = 'rainbow'; else q();
+    let cond = weighted(q, allowedOn(CONDITIONS, wd));
+    if (weather === 'rain' && q() < 0.7) cond = 'wet'; else q();
+    if (type === 'links' && (cond === 'soft' || cond === 'normal' || cond === 'wet')) cond = 'firm';
+    const marks = ['none','clubhouse'];
+    if (scenery === 'coastal' || ['lake','island','peninsula','cliff'].includes(type)) marks.push('lighthouse');
+    if (type === 'creek') marks.push('bridge');
+    if (['pine','autumn','parkland','highlands'].includes(scenery)) marks.push('barn');
+    if (['highlands','parkland','coastal'].includes(scenery) || type === 'links') marks.push('windmill');
+    if (['alpine','tropical','pine'].includes(scenery)) marks.push('waterfall');
+    if (['pine','alpine','autumn'].includes(scenery)) marks.push('cabin');
+    if (scenery === 'highlands') marks.push('ruins');
+    let landmark = marks[Math.floor(q()*marks.length)];
+    // holiday dressing: the course stays random, the look follows the holiday
+    if (theme === 'halloween'){ scenery = 'pine'; tod = (i % 2 === 0 || d.getUTCDate() === 31) ? 'night' : 'dusk'; weather = tod === 'night' ? 'wisps' : 'leaves'; landmark = 'none'; if (cond === 'wet') cond = 'normal'; }
+    if (theme === 'thanksgiving'){ scenery = 'autumn'; tod = q() < 0.5 ? 'golden' : 'morning'; weather = 'leaves'; landmark = 'barn'; if (cond === 'wet') cond = 'normal'; } else q();
+    if (theme === 'christmas'){ scenery = 'alpine'; tod = ['dusk','night','morning'][i % 3]; weather = 'snow'; landmark = 'cabin'; if (cond === 'wet') cond = 'normal'; }
+    if (theme === 'newyear'){ scenery = 'pine'; tod = 'night'; weather = 'clear'; landmark = 'clubhouse'; if (cond === 'wet') cond = 'normal'; }
+    PICKS.push({n:i, type, green, pin, cond, wind, scenery, tod, weather, landmark, theme});
+  }
+  return PICKS.find(p => p.n === n);
+}
+// a short line for cards and the scorecard: "Island green · Firm and fast"
+function describeHole(n){
+  const p = picksFor(n); if (!p) return null;
+  return [LABELS[p.type], LABELS[p.cond], LABELS[p.wind]].filter(Boolean).join(' · ');
+}
 
 // ---------- weekly difficulty curve ----------
 // Easy Monday, building to the toughest hole on Friday, easing off for the weekend. Starts with hole 5 (Wed, Oct 21, 2026);
@@ -544,6 +638,56 @@ const CURVED = holeNum >= CURVE_FROM, DIFF = CURVED ? CURVE[WEEKDAY] : 0.5, DIFF
 const dl = (easy, hard) => easy + (hard - easy)*DIFF;               // value for today's difficulty
 const rg = (a, b, ea, eb, ha, hb) => CURVED ? rr(dl(ea, ha), dl(eb, hb)) : rr(a, b);   // one draw either way
 
+// ---------- palettes for generated holes: scenery x time of day (x weather) ----------
+const _hx = c => { const n = parseInt(c.slice(1), 16); return [n>>16&255, n>>8&255, n&255]; };
+const _mx = (a, b, t) => { const A = _hx(a), B = _hx(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v)*t).toString(16).padStart(2, '0')).join(''); };
+const SCENE_BASE = {
+  pine:      {ground:['#8d7d5e','#4c6c37','#3a5d2c'], ridges:[['#a7b3c6','#c3c8d2'],['#7f8ea6','#9aa4b6'],['#4e5c72','#606c80']], tree:['#23332c','#2b3a2a'], water:'#2f3c63', green:['#83bb58','#649d43'], fringe:'#5a8b3b', fair:'#4f7e37', kind:'pine', ridge:{amp:1}},
+  autumn:    {ground:['#a59b67','#5a7440','#41632f'], ridges:[['#8ea2b8','#b5bfc4'],['#6e8197','#909da8'],['#4d5a66','#65707a']], tree:['#2a3b2c','#33402b'], water:'#26395e', green:['#86bd5a','#669f45'], fringe:'#5c8c3d', fair:'#52803a', kind:'mixed', leaves:['#c4562b','#d98c2b','#a8361f','#e0b03a','#b8642a'], ridge:{amp:0.9}},
+  coastal:   {ground:['#b5a77a','#6b8a4c','#57773e'], ridges:[['#9fb0c2','#bcc6d0'],['#8798ad','#a2afbf'],['#6d7d8f','#8492a2']], tree:['#24362e','#2d3d2f'], water:'#1f4f7a', green:['#86c05e','#68a247'], fringe:'#5f9042', fair:'#55853c', kind:'pine', ridge:{amp:0.35, only:[0]}, sea:true, sparse:0.5},
+  desert:    {ground:['#d0aa72','#b08e57','#97784a'], ridges:[['#c98a64','#dba57c'],['#b06b4a','#c88462'],['#8e4f37','#a5624a']], tree:['#4f7a3e','#5d8a46'], water:'#2f6f86', green:['#7fb455','#64983f'], fringe:'#7c9a4c', fair:'#6f9446', kind:'cactus', rough:'#a88a52', ridge:{amp:0.8, mesa:true}, sparse:0.35},
+  highlands: {ground:['#9a9466','#6f7c45','#58693a'], ridges:[['#8b9a86','#a7b19c'],['#6e7f68','#879580'],['#55654f','#697862']], tree:['#2c3a2a','#334230'], water:'#2c4560', green:['#82b65a','#659a44'], fringe:'#5f8a3e', fair:'#55803a', kind:'round', leaf:['#3d5a2e','#4a6a34'], ridge:{amp:0.6, smooth:true}, sparse:0.25, sheep:true},
+  tropical:  {ground:['#9fae6a','#4f8a3a','#3e7a2e'], ridges:[['#7fb0a8','#a2c8bf'],['#5d9486','#7aa99c'],['#3d6f62','#4f8274']], tree:['#2d5a2a','#356a31'], water:'#127a8c', green:['#7cc45a','#5ea844'], fringe:'#56943c', fair:'#4c8a36', kind:'palm', ridge:{amp:1.1}},
+  alpine:    {ground:['#8a8a6e','#4f6a3c','#3c5a2f'], ridges:[['#b8c4d6','#d4dbe6'],['#8c9bb2','#a8b4c6'],['#5a6a80','#6e7c90']], tree:['#1d2e28','#24352c'], water:'#2e5f80', green:['#7eb65a','#609a44'], fringe:'#55863c', fair:'#4c7a37', kind:'spruce', ridge:{amp:1.9, snow:true}},
+  parkland:  {ground:['#9aa070','#5c7e40','#4a6e33'], ridges:[['#9fb2c0','#bcc8d0'],['#7f94a6','#9babb9'],['#5d7184','#718496']], tree:['#2e4429','#36502f'], water:'#2a4a6e', green:['#86c05c','#67a245'], fringe:'#5d9040', fair:'#548a3a', kind:'round', leaf:['#3f6a2e','#4e7a36','#5a8838'], ridge:{amp:0.6}},
+};
+const TOD_BASE = {
+  dawn:    {sky:['#2b2d55','#6e5a88','#d58a96','#f3b9a0','#fbe0c8'], sun:[0.18,0.04], core:'#fff1e4', glow:'255,200,175', tint:'#e8a6a6', tk:0.14, dark:0.12, haze:'#b08aa0', rim:'255,200,180', cloud:'255,210,200', mist:1, mistc:'245,225,228'},
+  morning: {sky:['#3a6ea8','#6c9fd0','#a9cbe6','#dfeaf1','#f2f4ee'], sun:[0.32,0.24], core:'#fffdf2', glow:'255,250,232', tint:'#fff6e0', tk:0.04, dark:0, haze:'#a8bccf', rim:'255,248,225', cloud:'255,255,255', mist:0},
+  midday:  {sky:['#1f5fa8','#3f86cf','#7fb3e3','#bfdcf0','#e2eef5'], sun:[0.08,0.5], core:'#ffffff', glow:'255,255,245', tint:'#ffffff', tk:0, dark:0, haze:'#a5bed6', rim:'255,255,240', cloud:'255,255,255', mist:0},
+  golden:  {sky:['#272a57','#6b4f7f','#d77f7c','#f6b67f','#fbd59a'], sun:[0.13,0.085], core:'#fff4da', glow:'255,214,150', tint:'#f3c08a', tk:0.12, dark:0.04, haze:'#9a7487', rim:'255,190,120', cloud:'255,200,160', mist:0},
+  dusk:    {sky:['#1c1838','#3d2b5c','#8a4a6c','#e07a5f','#f6b26b'], sun:[0.2,0.012], core:'#ffd7a8', glow:'255,150,100', tint:'#c77a7a', tk:0.16, dark:0.3, haze:'#6a4a68', rim:'255,150,110', cloud:'200,130,140', mist:0},
+  night:   {sky:['#03040c','#070b1f','#0f1636','#1d2450','#2b2f5c'], sun:[-0.2,0.22], core:'#f3f0dc', glow:'170,185,255', tint:'#3a4a7a', tk:0.25, dark:0.55, haze:'#2a2f4e', rim:'170,185,255', cloud:'90,100,140', mist:1, mistc:'110,120,165', moon:true},
+};
+function makePal(sc, tod, weather){
+  const S = SCENE_BASE[sc], L = TOD_BASE[tod], NIGHT = '#0b1020';
+  const lit = c => _mx(_mx(c, L.tint, L.tk), NIGHT, L.dark);
+  const P = {sky:L.sky.slice(), sun:L.sun, core:L.core, glow:L.glow, haze:L.haze, rim:L.rim, cloud:L.cloud, mist:L.mist, mistc:L.mistc, moon:!!L.moon,
+    ridges:S.ridges.map((c, i) => c.map(v => _mx(lit(v), L.haze, [0.45, 0.3, 0.15][i]))),
+    gfar:lit(S.ground[0]), gmid:lit(S.ground[1]), gnear:lit(S.ground[2]),
+    water:[L.sky[4], L.sky[2], lit(_mx(S.water, L.sky[1], 0.3)), lit(_mx(S.water, '#05080f', 0.35))],
+    tree:S.tree.map(lit), green:S.green.map(lit), fringe:lit(S.fringe), fair:lit(S.fair), kind:S.kind,
+    leaves:S.leaves ? S.leaves.map(lit) : null, leaf:S.leaf ? S.leaf.map(lit) : null, sea:!!S.sea, scenery:sc, tod};
+  if (weather === 'overcast' || weather === 'rain' || weather === 'snow'){
+    const g = weather === 'snow' ? ['#7c8698','#98a2b2','#b4bcc8','#ccd2da','#dde1e6'] : ['#5c6574','#7a8392','#98a0ac','#b3b9c2','#c6cbd2'];
+    P.sky = g.map(c => _mx(c, NIGHT, L.dark*0.8)); P.nosun = true; P.glow = '220,225,235'; P.cloud = '200,205,215'; P.haze = _mx(P.haze, '#9aa2ae', 0.5);
+    P.water[0] = P.sky[4]; P.water[1] = P.sky[2];
+  }
+  if (weather === 'fog'){ P.mist = 1; P.mistc = '230,232,236'; P.fog = true; P.haze = _mx(P.haze, '#c8ccd2', 0.6); }
+  return P;
+}
+
+// ---------- today's look ----------
+const THEME = themeFor(holeNum), HALLOWEEN = THEME === 'halloween';
+const BASE_PAL = ['golden','mist','autumn'][Math.floor(R()*3)];   // drawn every day: holes before GEN3 depend on it
+const LOOK = GEN3 ? picksFor(holeNum) : null;
+let PAL_NAME, PAL;
+if (!GEN3){ PAL_NAME = HALLOWEEN ? ((holeNum % 2 === 0 || holeDate(holeNum).getUTCDate() === 31) ? 'night' : 'dusk') : BASE_PAL; PAL = PALETTES[PAL_NAME]; }
+else if (HALLOWEEN){ PAL_NAME = LOOK.tod === 'night' ? 'night' : 'dusk'; PAL = PALETTES[PAL_NAME]; }
+else { PAL = makePal(LOOK.scenery, LOOK.tod, LOOK.weather); PAL_NAME = LOOK.tod === 'golden' ? 'golden' : LOOK.scenery === 'autumn' ? 'autumn' : (LOOK.tod === 'dawn' || LOOK.weather === 'fog') ? 'mist' : LOOK.scenery; }
+
+// ---------- hole generation ----------
+function course2(){
 // ---------- hole generation ----------
 const SIDE = R() < 0.5 ? -1 : 1;                      // the side the water wraps
 const GR = {x:rr(-7,7)*-SIDE, z:rg(148,184, 138,156, 176,194), rx:rg(20,24, 22.5,25.5, 17.5,20.5), rz:rg(16.5,20, 18.5,21.5, 14,17), rot:rr(-0.35,0.35), p1:rr(0,6.28), p2:rr(0,6.28)};
@@ -596,7 +740,6 @@ if (!PIN) PIN = {x:GR.x, z:GR.z};
 const YARDS = Math.round(Math.hypot(PIN.x, PIN.z));
 
 // lake: wraps the front and one side of the green
-function catmull(pts, seg){ const out = []; for (let i=0;i<pts.length-1;i++){ const p0 = pts[Math.max(0,i-1)], p1 = pts[i], p2 = pts[i+1], p3 = pts[Math.min(pts.length-1,i+2)]; for (let k=0;k<seg;k++){ const t = k/seg, t2 = t*t, t3 = t2*t; out.push([0,1].map(j => 0.5*((2*p1[j]) + (-p0[j]+p2[j])*t + (2*p0[j]-5*p1[j]+4*p2[j]-p3[j])*t2 + (-p0[j]+3*p1[j]-3*p2[j]+p3[j])*t3))); } } out.push(pts[pts.length-1]); return out; }
 const FZ = GR.z - GR.rz - 4;           // front of the green complex
 const sideEdge = GR.x*SIDE + GR.rx*FRINGE_SCALE + (CURVED ? dl(13, 5) : 9);   // harder days pull the water in tight
 let farS = [[1400, GR.z+260],[620, GR.z+200],[sideEdge+28, GR.z+80],[sideEdge+2, GR.z+22],[sideEdge, GR.z-8],[sideEdge-4, FZ-18],[19, FZ-48],[0, FZ-56],[-34, FZ-60],[-220, FZ-52],[-1400, FZ-30]];
@@ -604,7 +747,6 @@ farS = catmull(farS, 6).map(([x,z]) => [x*SIDE, z]);
 if (SIDE < 0) farS.reverse();
 const nearShore = []; for (let x=-1400; x<=1400; x+=25) nearShore.push([x, 32 + 3*Math.sin(x*0.05) + 2*Math.sin(x*0.13+1) - Math.max(0, Math.abs(x)-60)*0.1]);
 const lakePts = nearShore.concat(farS.map(([x,z]) => [x, z + 1.5*Math.sin(x*0.11)]));
-function inPoly(pts, x, z){ let c = false; for (let i=0, j=pts.length-1; i<pts.length; j=i++){ const a = pts[i], b = pts[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0]-a[0])*(z-a[1])/(b[1]-a[1]) + a[0]) c = !c; } return c; }
 
 // fairway: the running room into the green
 const FW = CURVED ? dl(1.3, 0.85) : 1;
@@ -633,33 +775,295 @@ function surfaceAt(x, z){
 // wind (same for everyone today)
 const WIND = (() => { const mph = Math.round(rg(0,14, 0,6, 5,16)); const ang = rr(0, Math.PI*2); return {x:Math.sin(ang)*mph, z:Math.cos(ang)*mph, mph}; })();
 
+
+  const WATER = [polyBox(lakePts)];
+  return {GR, FRINGE_SCALE, AVG_R, gDist, greenPts, fringePts, Hh, grad, BOX, PIN, YARDS, WATER, LAND:[], DEEP:[], FAIRS:[fairwayPts], BUNKERS, TEE, surfaceAt, inWater:(x, z) => inPoly(lakePts, x, z), BASE_WIND:WIND, SIDE, CREEK_Z:null, CREEK_AT:null, TYPE:'lake'};
+}
+
+function course3(P){
+  const TYPE = P.type, GS = P.green;
+  const SIDE = R() < 0.5 ? -1 : 1;
+  let rx = dl(23.5, 18.5)*(0.92 + 0.16*R()), rz = dl(19.5, 15.5)*(0.92 + 0.16*R());
+  if (GS === 'round' || GS === 'bowl'){ const m = (rx + rz)/2; rx = rz = m; }
+  else if (GS === 'long'){ rx *= 0.72; rz *= 1.35; }
+  else if (GS === 'wide'){ rx *= 1.32; rz *= 0.7; }
+  else if (GS === 'twolobe'){ rx *= 1.18; }
+  if (TYPE === 'island'){ rx *= 0.93; rz *= 0.93; }
+  const zc = dl(140, 176) + R()*18;
+  const GR = {x:(R()*14 - 7)*-SIDE, z:zc, rx, rz, rot:(GS === 'long' || GS === 'wide' ? (R() - 0.5)*0.3 : (R() - 0.5)*0.7), p1:R()*6.28, p2:R()*6.28,
+    a0: GS === 'kidney' ? -Math.PI/2 + (R() - 0.5)*2.2 : R()*Math.PI};
+  const FRINGE_W = 3.2, AVG_R = (GR.rx + GR.rz)/2;
+  function lobe(a){
+    if (GS === 'round' || GS === 'bowl') return 1 + 0.035*Math.sin(3*a + GR.p1);
+    let l = 1 + 0.07*Math.sin(3*a + GR.p1) + 0.05*Math.cos(2*a + GR.p2);
+    if (GS === 'kidney'){ const d = Math.abs((((a - GR.a0) % (Math.PI*2)) + Math.PI*3) % (Math.PI*2) - Math.PI); l -= 0.32*Math.exp(-d*d/0.2); }
+    if (GS === 'twolobe') l *= 0.66 + 0.42*Math.pow(Math.abs(Math.cos(a - GR.a0)), 0.7);
+    return l;
+  }
+  function gDist(x, z){
+    const c = Math.cos(-GR.rot), s = Math.sin(-GR.rot); const dx = x - GR.x, dz = z - GR.z;
+    const px = dx*c - dz*s, pz = dx*s + dz*c; const a = Math.atan2(pz/GR.rz, px/GR.rx);
+    return Math.hypot(px/GR.rx, pz/GR.rz) / lobe(a);
+  }
+  function shapePts(scale, n = 64){
+    const pts = []; const c = Math.cos(GR.rot), s = Math.sin(GR.rot);
+    for (let i=0;i<n;i++){ const a = i/n*Math.PI*2; const l = lobe(a)*scale; const px = Math.cos(a)*GR.rx*l, pz = Math.sin(a)*GR.rz*l; pts.push([GR.x + px*c - pz*s, GR.z + px*s + pz*c]); }
+    return polyBox(pts);
+  }
+  const FRINGE_SCALE = 1 + FRINGE_W/AVG_R;
+  const greenPts = shapePts(1), fringePts = shapePts(FRINGE_SCALE);
+
+  // contours
+  const SLOPE_K = dl(0.7, 1.4), BUMP_K = dl(0.65, 1.45);
+  const TILT = {z:(0.012 + R()*0.012)*SLOPE_K*(GS === 'tiers' ? 0.5 : 1), x:(R()*0.024 - 0.012)*SLOPE_K};
+  const TIERS = [];
+  if (GS === 'tiers'){ const ang = Math.PI/2 + (R() - 0.5)*0.5; for (const off of [-GR.rz*0.32, GR.rz*0.3]) TIERS.push({ang, off, h:(0.34 + R()*0.14)*SLOPE_K, w:1.3}); }
+  else if (R() < 0.6) TIERS.push({ang:R()*6.28, off:R()*12 - 6, h:(0.3 + R()*0.25)*SLOPE_K, w:2.2});
+  const nb = GS === 'round' || GS === 'bowl' ? 3 : 4 + Math.floor(R()*3);
+  const BUMPS = Array.from({length:nb}, () => { const a = R()*6.28, d = R()*0.85; return {x:GR.x + Math.cos(a)*GR.rx*d, z:GR.z + Math.sin(a)*GR.rz*d, r:4 + R()*5, a:(0.12 + R()*0.24)*BUMP_K*(R() < 0.6 ? 1 : -1)}; });
+  const BOWL = GS === 'bowl' ? 0.6*SLOPE_K : 0;
+  function rawH(x, z){
+    let h = TILT.z*(z - GR.z) + TILT.x*(x - GR.x);
+    for (const t of TIERS){ const u = ((x - GR.x)*Math.cos(t.ang) + (z - GR.z)*Math.sin(t.ang) - t.off)/t.w; h += t.h/(1 + Math.exp(-u)); }
+    for (const b of BUMPS){ const d2 = ((x - b.x)**2 + (z - b.z)**2)/(b.r*b.r); if (d2 < 9) h += b.a*Math.exp(-d2); }
+    if (BOWL){ const d = Math.min(1.3, gDist(x, z)); h += BOWL*d*d; }
+    return h;
+  }
+  let RAW_MIN = Infinity; for (let i=0;i<400;i++){ const a = R()*6.28, d = Math.sqrt(R())*FRINGE_SCALE; RAW_MIN = Math.min(RAW_MIN, rawH(GR.x + Math.cos(a)*GR.rx*d, GR.z + Math.sin(a)*GR.rz*d)); }
+  const BANK = 8;
+  const ext = Math.max(GR.rx, GR.rz)*1.15*1.12;
+  const BOX = {x0:GR.x - ext - BANK - 2, x1:GR.x + ext + BANK + 2, z0:GR.z - ext - BANK - 2, z1:GR.z + ext + BANK + 2};
+  function Hh(x, z){
+    if (x < BOX.x0 || x > BOX.x1 || z < BOX.z0 || z > BOX.z1) return 0;
+    const d = gDist(x, z); let m = 1;
+    if (d > 1){ const t = Math.min(1, (d - 1)*AVG_R/BANK); m = 1 - t*t*(3 - 2*t); }
+    if (m <= 0) return 0;
+    return m*(rawH(x, z) - RAW_MIN + 0.08);
+  }
+  function grad(x, z){ const e = 0.25; return [(Hh(x+e,z)-Hh(x-e,z))/(2*e), (Hh(x,z+e)-Hh(x,z-e))/(2*e)]; }
+
+  // water, dry land carved out of it, the deep-rough gully, and fairways
+  const FZ = GR.z - GR.rz - 4, WATER = [], LAND = [], DEEP = [], FAIRS = [];
+  const wav = (x, k) => 3*Math.sin(x*0.05 + k) + 2*Math.sin(x*0.13 + k*2);
+  const cxAt = z => GR.x*clamp((z - 30)/Math.max(1, FZ - 30), 0, 1);
+  function funnel(z0, w0, w1){
+    const zm = (z0 + FZ)/2;
+    return polyBox(catmull([[cxAt(z0) - w0, z0],[cxAt(zm) - w1, zm],[GR.x - GR.rx*0.9, GR.z - GR.rz*0.55],[GR.x - GR.rx*0.6, GR.z],[GR.x + GR.rx*0.6, GR.z],[GR.x + GR.rx*0.9, GR.z - GR.rz*0.55],[cxAt(zm) + w1, zm],[cxAt(z0) + w0, z0],[cxAt(z0) - w0, z0]], 5));
+  }
+  function patch(z0, z1, w){ const k = R()*6; const pts = []; for (let i=0;i<=8;i++){ const z = z0 + (z1 - z0)*i/8; pts.push([cxAt(z) - w - 2*Math.sin(i + k), z]); } for (let i=8;i>=0;i--){ const z = z0 + (z1 - z0)*i/8; pts.push([cxAt(z) + w + 2*Math.cos(i + k), z]); } return polyBox(catmull(pts, 3)); }
+  function blob(rxl, front, back){ const k = R()*6, pts = []; for (let i=0;i<80;i++){ const a = i/80*Math.PI*2, r = Math.sin(a) < 0 ? front : back; pts.push([GR.x + Math.cos(a)*rxl*(1 + 0.05*Math.sin(3*a + k)), GR.z + Math.sin(a)*r*(1 + 0.04*Math.cos(2*a + k))]); } return polyBox(pts); }
+  const FW = dl(1.3, 0.85);
+  let CREEK_Z = null, CREEK_AT = null, COLLAR = 0;
+  if (TYPE === 'lake'){
+    const sideEdge = GR.x*SIDE + GR.rx*FRINGE_SCALE + dl(13, 5);
+    let farS = [[1400, GR.z+260],[620, GR.z+200],[sideEdge+28, GR.z+80],[sideEdge+2, GR.z+22],[sideEdge, GR.z-8],[sideEdge-4, FZ-18],[19, FZ-48],[0, FZ-56],[-34, FZ-60],[-220, FZ-52],[-1400, FZ-30]];
+    farS = catmull(farS, 6).map(([x,z]) => [x*SIDE, z]); if (SIDE < 0) farS.reverse();
+    const nearShore = []; for (let x=-1400; x<=1400; x+=25) nearShore.push([x, 32 + wav(x, 0) - Math.max(0, Math.abs(x)-60)*0.1]);
+    WATER.push(polyBox(nearShore.concat(farS.map(([x,z]) => [x, z + 1.5*Math.sin(x*0.11)]))));
+    FAIRS.push(funnel(FZ - 50, 14*FW, 16*FW));
+  } else if (TYPE === 'island' || TYPE === 'peninsula'){
+    COLLAR = dl(9, 5);
+    WATER.push(blob(GR.rx*FRINGE_SCALE + dl(42, 30), GR.z - 38, GR.rz + 32));
+    LAND.push(shapePts(FRINGE_SCALE + COLLAR/AVG_R, 72));
+    if (TYPE === 'peninsula'){ const w = GR.rx*0.8; LAND.push(polyBox([[GR.x - w, GR.z], [GR.x + w, GR.z], [GR.x + w*1.25, GR.z + 400], [GR.x - w*1.25, GR.z + 400]])); }
+    FAIRS.push(patch(14, 30, 16));                                          // a short strip in front of the tee
+  } else if (TYPE === 'ravine'){
+    const near = FZ - 8 - R()*4, far = near - dl(16, 28), k = R()*6, top = [], bot = [];
+    for (let x=-320; x<=320; x+=16){ top.push([x, near + wav(x, k)*0.6]); bot.push([x, far + wav(x, k + 2)*0.6]); }
+    DEEP.push(polyBox(top.concat(bot.reverse())));
+    FAIRS.push(patch(42, far - 6, 18*FW), funnel(near + 3, 12*FW, 14*FW));
+  } else if (TYPE === 'creek'){
+    CREEK_Z = FZ - dl(20, 30); const hw = dl(2.6, 3.6), k = R()*6, top = [], bot = [];
+    CREEK_AT = x => CREEK_Z + 7*Math.sin(x*0.025 + k) + 2*Math.sin(x*0.09 + k);
+    for (let x=-420; x<=420; x+=12){ const zc2 = CREEK_AT(x); top.push([x, zc2 + hw]); bot.push([x, zc2 - hw]); }
+    WATER.push(polyBox(top.concat(bot.reverse())));
+    FAIRS.push(patch(42, CREEK_Z - 16, 20*FW), funnel(CREEK_Z + 16, 22*FW, 20*FW));
+  } else if (TYPE === 'cliff'){
+    const edge = GR.z + GR.rz*1.0 + dl(10, 5), k = R()*6, pts = [];
+    for (let x=-3000; x<=3000; x+=40) pts.push([x, edge + (Math.abs(x - GR.x) < 120 ? wav(x, k) : wav(x, k) + (Math.abs(x - GR.x) - 120)*0.35)]);
+    pts.push([3000, 6000], [-3000, 6000]); WATER.push(polyBox(pts));
+    FAIRS.push(funnel(45, 15*FW, 16*FW));
+  } else if (TYPE === 'chute'){
+    FAIRS.push(funnel(30, 11*FW, 12*FW));
+  } else if (TYPE === 'links'){
+    FAIRS.push(funnel(28, 26*FW, 24*FW));
+  } else {                                                                   // fortress
+    FAIRS.push(funnel(45, 15*FW, 16*FW));
+  }
+  function inWater(x, z){ for (const l of LAND) if (inPolyB(l, x, z)) return false; for (const w of WATER) if (inPolyB(w, x, z)) return true; return false; }
+
+  // bunkers
+  const bk = dl(0.85, 1.25);
+  function bunker(x, z, brx, brz, rot, pot){ brx *= bk; brz *= bk; const pts = []; for (let i=0;i<28;i++){ const a = i/28*Math.PI*2; const px = Math.cos(a)*brx*(1+0.08*Math.sin(a*3+x)), pz = Math.sin(a)*brz*(1+0.06*Math.cos(a*2+z)); pts.push([x + px*Math.cos(rot) - pz*Math.sin(rot), z + px*Math.sin(rot) + pz*Math.cos(rot)]); } return {x, z, rx:brx, rz:brz, rot, pts, pot:!!pot}; }
+  const BUNKERS = [];
+  const at = (a, d) => { const c = Math.cos(GR.rot), s = Math.sin(GR.rot), px = Math.cos(a)*GR.rx*d*lobe(a), pz = Math.sin(a)*GR.rz*d*lobe(a); return [GR.x + px*c - pz*s, GR.z + px*s + pz*c]; };
+  const ok = (x, z) => !inWater(x, z);
+  const add = (x, z, a, b, rot, pot) => { if (ok(x, z)) BUNKERS.push(bunker(x, z, a, b, rot, pot)); };
+  if (TYPE === 'fortress'){
+    const n = 5 + Math.floor(R()*3), gap = R()*6.28;
+    for (let i=0;i<n;i++){ const a = gap + (i + 0.5)/n*Math.PI*2 + (R() - 0.5)*0.3, pot = i < 2, [x, z] = at(a, FRINGE_SCALE + (pot ? 0.1 : 0.16));
+      if (pot) add(x, z, 2.4 + R()*0.5, 2.3 + R()*0.4, R()*3, true); else add(x, z, 5 + R()*2.5, 2.8 + R()*1, a + Math.PI/2 + (R() - 0.5)*0.4); }
+  } else if (TYPE === 'links'){
+    for (let i=0;i<3;i++){ const a = -Math.PI/2 + (i - 1)*1.1 + (R() - 0.5)*0.4, [x, z] = at(a, FRINGE_SCALE + 0.12); add(x, z, 2.4 + R()*0.6, 2.3 + R()*0.5, R()*3, true); }
+    for (let i=0;i<3;i++){ const z = 60 + R()*(FZ - 80), x = cxAt(z) + (R() - 0.5)*36; add(x, z, 2.5 + R()*0.6, 2.3 + R()*0.5, R()*3, true); }
+  } else if (TYPE === 'island' || TYPE === 'peninsula'){
+    for (const a of [-Math.PI/2 - SIDE*(0.8 + R()*0.4), Math.PI/2 + SIDE*(R()*0.6)]){ const [x, z] = at(a, FRINGE_SCALE + (COLLAR*0.5)/AVG_R); add(x, z, 3.2 + R()*0.8, 1.8 + R()*0.5, a + Math.PI/2); }
+  } else if (TYPE === 'ravine'){
+    const far = DEEP[0].box[3]; for (const s of [-1, 1]){ const x = cxAt(far) + s*(7 + R()*8); add(x, Math.min(far + 3, FZ - 3), 4 + R()*1.5, 2.2 + R()*0.6, (R() - 0.5)*0.4); }
+    const [x, z] = at(Math.PI/2 + (R() - 0.5)*1.2, FRINGE_SCALE + 0.16); add(x, z, 5.5 + R()*2, 2.8 + R()*0.8, (R() - 0.5)*0.6);
+  } else {
+    { const a = Math.PI*1.5 - SIDE*(0.5 + R()*0.35), [x, z] = at(a, FRINGE_SCALE + 0.18); add(x, z, 5.5 + R()*2, 3 + R(), (R() - 0.5)*1.2); }
+    { const a = Math.PI*0.5 + SIDE*R()*0.6, [x, z] = at(a, FRINGE_SCALE + 0.16); add(x, z, 6 + R()*2, 2.8 + R()*0.8, (R() - 0.5)*0.8); }
+    if (R() < dl(0.2, 0.95) && TYPE !== 'creek'){ const z = FZ - 10 - R()*10, x = GR.x + (R() - 0.5)*16; add(x, z, 2.6 + R(), 2 + R()*0.6, R()*3); }
+  }
+  if (GS === 'kidney'){ const [x, z] = at(GR.a0, FRINGE_SCALE + 0.12); add(x, z, 3.6 + R(), 2.4 + R()*0.6, GR.a0 + Math.PI/2); }
+  function inBunker(b, x, z){ const c = Math.cos(-b.rot), s = Math.sin(-b.rot); const dx = x-b.x, dz = z-b.z; const px = dx*c - dz*s, pz = dx*s + dz*c; return px*px/(b.rx*b.rx) + pz*pz/(b.rz*b.rz) <= 1; }
+
+  // pin: the best flat-enough spot for today's pin type
+  const hazards = [];
+  for (let i=0;i<72;i++){ const a = i/72*Math.PI*2; for (let r = FRINGE_SCALE; r < FRINGE_SCALE + 1.2; r += 0.15){ const [x, z] = at(a, r); if (inWater(x, z)){ hazards.push([x, z]); break; } } }
+  for (const b of BUNKERS) hazards.push([b.x, b.z]);
+  const tierU = (x, z) => { const t = TIERS[0]; return t ? ((x - GR.x)*Math.cos(t.ang) + (z - GR.z)*Math.sin(t.ang) - t.off)/t.w : 0; };
+  const tuckSide = (() => { let best = null; for (const b of BUNKERS){ const d = Math.hypot(b.x - GR.x, b.z - GR.z); if (!best || d < best.d) best = {d, s:Math.sign(b.x - GR.x) || SIDE}; } return best ? best.s : SIDE; })();
+  let PIN = null, bestS = -Infinity;
+  for (let i=0;i<260;i++){
+    const a = R()*6.28, d = Math.sqrt(R())*0.86, x = GR.x + Math.cos(a)*GR.rx*d*lobe(a), z = GR.z + Math.sin(a)*GR.rz*d*lobe(a), gd = gDist(x, z);
+    if (gd > 0.84 || gd < 0.05) continue; const g = grad(x, z); if (Math.hypot(g[0], g[1]) > 0.032) continue;
+    const lx = (x - GR.x)/GR.rx, lz = (z - GR.z)/GR.rz; let s;
+    switch (P.pin){
+      case 'middle': s = -gd; break;
+      case 'front': s = -lz - 0.4*Math.abs(lx); break;
+      case 'back': s = lz - 0.4*Math.abs(lx); break;
+      case 'tucked': s = tuckSide*lx - 0.2*Math.abs(lz); break;
+      case 'tier': s = -Math.abs(tierU(x, z) - 1.4); break;
+      case 'sucker': { let m = Infinity; for (const [hx, hz] of hazards) m = Math.min(m, Math.hypot(hx - x, hz - z)); s = -m; break; }
+      case 'bowl': s = -rawH(x, z); break;
+      default: s = 0;
+    }
+    if (s > bestS){ bestS = s; PIN = {x, z}; }
+  }
+  if (!PIN) PIN = {x:GR.x, z:GR.z};
+  const YARDS = Math.round(Math.hypot(PIN.x, PIN.z));
+
+  const TEE = {x0:-7, x1:7, z0:-6, z1:7};
+  function surfaceAt(x, z){
+    const d = gDist(x, z);
+    if (d <= 1) return 'green';
+    for (const b of BUNKERS) if (inBunker(b, x, z)) return 'sand';
+    if (d <= FRINGE_SCALE) return 'fringe';
+    if (x > TEE.x0 && x < TEE.x1 && z > TEE.z0 && z < TEE.z1) return 'tee';
+    for (const f of FAIRS) if (inPolyB(f, x, z)) return 'fairway';   // fairway is drawn over water, so it wins
+    if (inWater(x, z)) return 'water';
+    for (const p of DEEP) if (inPolyB(p, x, z)) return 'deep';
+    return 'rough';
+  }
+
+  // wind: the day's base wind; gusty and swirling days change it a little from shot to shot
+  const kind = P.wind;
+  let mph = kind === 'calm' ? R()*3 : dl(2, 6) + R()*dl(6, 10), ang = R()*Math.PI*2;
+  if (kind === 'into') ang = Math.PI + (R() - 0.5)*0.5; else if (kind === 'downwind') ang = (R() - 0.5)*0.5; else R();
+  mph = Math.round(mph);
+  const BASE_WIND = {x:Math.sin(ang)*mph, z:Math.cos(ang)*mph, mph, ang, kind};
+  return {GR, FRINGE_SCALE, AVG_R, gDist, greenPts, fringePts, Hh, grad, BOX, PIN, YARDS, WATER, LAND, DEEP, FAIRS, BUNKERS, TEE, surfaceAt, inWater, BASE_WIND, SIDE, CREEK_Z, CREEK_AT, TYPE};
+}
+
+const C = GEN3 ? course3(LOOK) : course2();
+const {GR, FRINGE_SCALE, gDist, greenPts, fringePts, Hh, grad, BOX, PIN, YARDS, WATER, LAND, DEEP, FAIRS, BUNKERS, TEE, surfaceAt, inWater, BASE_WIND, SIDE} = C;
+const lakePts = WATER[0] || [], fairwayPts = FAIRS[0] || [];
+// course conditions change how the ball bounces and rolls (multipliers on the base surfaces)
+const COND = ({soft:{gk:0.7, gd:1.25, fk:0.7, fd:1.3, rd:1, rv:1}, firm:{gk:1.35, gd:0.85, fk:1.3, fd:0.75, rd:1, rv:1}, tournament:{gk:1.55, gd:0.72, fk:1.4, fd:0.7, rd:1.1, rv:0.97},
+  longrough:{gk:1, gd:1, fk:1, fd:1, rd:1.6, rv:0.9}, wet:{gk:0.6, gd:1.3, fk:0.55, fd:1.6, rd:1.2, rv:0.97}})[LOOK ? LOOK.cond : ''] || {gk:1, gd:1, fk:1, fd:1, rd:1, rv:1};
+// wind for a shot started at (sx, sz): steady on most days; gusty and swirling days vary it shot to shot
+function windFor(sx, sz){
+  const B = BASE_WIND; if (B.kind !== 'gusty' && B.kind !== 'swirling') return B;
+  const q = rng(hash((Math.round(sx*100)*73856093) ^ (Math.round(sz*100)*19349663))), u1 = q(), u2 = q();
+  const m = B.mph*(B.kind === 'gusty' ? 0.6 + 0.8*u1 : 0.7 + 0.6*u1), a = B.ang + (B.kind === 'swirling' ? (u2 - 0.5)*2.2 : 0);
+  return {x:Math.sin(a)*m, z:Math.cos(a)*m, mph:Math.round(m), ang:a, kind:B.kind};
+}
+const WIND = {...BASE_WIND};                                   // what the screen shows for the current shot
+
 // ---------- scenery ----------
+const RSTYLE = GEN3 && !HALLOWEEN ? SCENE_BASE[LOOK.scenery].ridge : {amp:1};
 const ridges = PAL.ridges.map((c, i) => {
   const r = [{z:2000,h:150,a:120},{z:1250,h:90,a:70},{z:760,h:42,a:30}][i]; const g = rng(hash(holeNum*31 + i)); const ph = [g()*9,g()*9,g()*9,g()*9];
-  const pts = []; for (let x=-5200; x<=5200; x+=45){ const n = 0.55*Math.sin(x/610+ph[0]) + 0.3*Math.sin(x/233+ph[1]) + 0.12*Math.sin(x/97+ph[2]) + 0.05*Math.sin(x/31+ph[3]); pts.push([x, Math.max(25, r.h + r.a*n)]); }
-  return {...r, c1:c[0], c2:c[1], pts};
-});
+  const A = RSTYLE.amp, hm = A > 1 ? 1 + (A - 1)*0.7 : 0.55 + 0.45*A;
+  const pts = []; for (let x=-5200; x<=5200; x+=45){
+    const n = 0.55*Math.sin(x/610+ph[0]) + 0.3*Math.sin(x/233+ph[1]) + (RSTYLE.smooth ? 0 : 0.12*Math.sin(x/97+ph[2]) + 0.05*Math.sin(x/31+ph[3]));
+    if (A === 1 && !RSTYLE.mesa) pts.push([x, Math.max(25, r.h + r.a*n)]);
+    else { let h = r.h*hm + r.a*A*n; if (RSTYLE.mesa) h = Math.min(h, r.h*hm + r.a*A*0.2); pts.push([x, Math.max(18, h)]); }
+  }
+  return {...r, c1:c[0], c2:c[1], pts, snow:!!RSTYLE.snow || THEME === 'christmas', snowH:r.h*hm + r.a*A*0.3};
+}).filter((r, i) => !RSTYLE.only || RSTYLE.only.includes(i));
+const GROUND_FAR = PAL.sea ? GR.z + 160 : 740;
 const trees = [];
-function okForTree(x, z, clear){ const s = surfaceAt(x, z); return s === 'rough' && gDist(x, z) > clear && !inPoly(lakePts, x, z); }
-function addTree(x, z, h){ const round = PAL.kind === 'mixed' && fxR() < 0.7; trees.push({x, z, h, w:h*(round ? 0.55 : 0.34)*(0.9+fxR()*0.25), seed:Math.floor(fxR()*1e6), tone:fxR(), round, leaf:PAL.leaves ? PAL.leaves[Math.floor(fxR()*PAL.leaves.length)] : null}); }
-for (let i=0;i<70;i++){ const x = -450 + fxR()*900, z = GR.z + 260 + fxR()*220; if (!inPoly(lakePts, x, z)) addTree(x, z, 16+fxR()*14); }
-for (let i=0;i<60;i++){ const x = -SIDE*(28 + fxR()*110) + GR.x, z = 50 + fxR()*(GR.z+90); if (okForTree(x, z, 1.9)) addTree(x, z, 15+fxR()*12); }
-for (let i=0;i<30;i++){ const x = GR.x + (fxR()-0.5)*120, z = GR.z + GR.rz + 22 + fxR()*60; if (okForTree(x, z, 2.1)) addTree(x, z, 16+fxR()*12); }
-for (let i=0;i<14;i++){ const s = i%2 ? 1 : -1; const z = -12 + fxR()*40; const x = s*(26 + z*0.12 + fxR()*40); if (okForTree(x, z, 2)) addTree(x, z, 14+fxR()*9); }
-const reeds = []; for (let i=0;i<120;i++){ const p = lakePts[Math.floor(fxR()*lakePts.length)]; if (Math.abs(p[0]) < 200) reeds.push({x:p[0] + (fxR()-0.5)*6, z:p[1] + (fxR()-0.5)*1.4, h:0.7 + fxR()*0.9}); }
-const clouds = Array.from({length:7}, () => ({u:-0.9+fxR()*1.8, v:0.15+fxR()*0.5, s:0.6+fxR()*0.9, puffs:Array.from({length:5+Math.floor(fxR()*4)}, () => [fxR()*2-1, fxR()*0.5-0.25, 0.35+fxR()*0.45])}));
-// Halloween props: jack-o'-lanterns, gravestones and black cats (sorted and drawn with the trees)
-if (HALLOWEEN){
-  const q = rng(hash(holeNum*1301)), dry = (x, z) => { const s = surfaceAt(x, z); return (s === 'rough' || s === 'tee') && !inPoly(lakePts, x, z); };
-  const add = (prop, x, z, h, w) => trees.push({prop, x, z, h, w, seed:Math.floor(q()*1e6), tone:q()});
-  for (let i=0;i<7;i++){ const s = i % 2 ? 1 : -1, x = s*(8.5 + q()*5), z = -5 + q()*13; if (dry(x, z)) add('pumpkin', x, z, 0.5 + q()*0.25, 0.7); }
-  for (let i=0, n=0; i<80 && n<12; i++){ const a = q()*Math.PI*2, d = FRINGE_SCALE + 0.2 + q()*0.6, x = GR.x + Math.cos(a)*GR.rx*d, z = GR.z + Math.sin(a)*GR.rz*d; if (dry(x, z)){ add('pumpkin', x, z, 0.45 + q()*0.3, 0.7); n++; } }
-  for (let i=0, n=0; i<120 && n<16; i++){ const x = (q() - 0.5)*160 + GR.x*0.5, z = 15 + q()*(GR.z + 60); if (dry(x, z) && gDist(x, z) > 1.6){ add('pumpkin', x, z, 0.5 + q()*0.4, 0.8); n++; } }
-  for (let i=0, n=0; i<120 && n<12; i++){ const x = GR.x + (q() - 0.5)*90, z = GR.z + GR.rz + 12 + q()*45; if (dry(x, z)){ add('grave', x, z, 1.0 + q()*0.5, 0.75); n++; } }
-  const cats = [[-11*SIDE, 3], [GR.x - SIDE*GR.rx*1.45, GR.z + GR.rz*0.6], [GR.x + SIDE*GR.rx*0.2, GR.z + GR.rz*1.55]];
-  for (const [x, z] of cats) if (dry(x, z)) add('cat', x, z, 0.85, 0.5);
+const SB = GEN3 && !HALLOWEEN ? SCENE_BASE[LOOK.scenery] : null;
+function okForTree(x, z, clear){ const s = surfaceAt(x, z); return (s === 'rough' || s === 'deep') && gDist(x, z) > clear && !inWater(x, z); }
+function addTree(x, z, h, solid){
+  let kind = PAL.kind, round = false, leaf = null;
+  if (kind === 'mixed'){ round = fxR() < 0.7; leaf = PAL.leaves ? PAL.leaves[Math.floor(fxR()*PAL.leaves.length)] : null; }
+  else if (kind === 'round'){ round = true; leaf = PAL.leaf ? PAL.leaf[Math.floor(fxR()*PAL.leaf.length)] : PAL.tree[0]; }
+  if (SB && LOOK.scenery === 'coastal' && fxR() < 0.35) kind = 'palm';
+  const wk = {pine:0.34, mixed:round ? 0.55 : 0.34, round:0.55, spruce:0.25, palm:0.32, cactus:0.24, dead:0.4}[kind] || 0.34;
+  const hk = {palm:0.7, cactus:0.28, round:0.8}[kind] || 1;
+  trees.push({x, z, h:h*hk, w:h*hk*wk*(0.9+fxR()*0.25), seed:Math.floor(fxR()*1e6), tone:fxR(), round, leaf, kind, solid:!!solid});
 }
-const stars = HALLOWEEN && PAL.moon ? Array.from({length:140}, () => ({u:fxR()*2.4 - 1.2, v:0.08 + fxR()*0.92, s:0.5 + fxR()*1.3, ph:fxR()*6.3})) : [];
+if (!GEN3){
+  for (let i=0;i<70;i++){ const x = -450 + fxR()*900, z = GR.z + 260 + fxR()*220; if (!inWater(x, z)) addTree(x, z, 16+fxR()*14); }
+  for (let i=0;i<60;i++){ const x = -SIDE*(28 + fxR()*110) + GR.x, z = 50 + fxR()*(GR.z+90); if (okForTree(x, z, 1.9)) addTree(x, z, 15+fxR()*12); }
+  for (let i=0;i<30;i++){ const x = GR.x + (fxR()-0.5)*120, z = GR.z + GR.rz + 22 + fxR()*60; if (okForTree(x, z, 2.1)) addTree(x, z, 16+fxR()*12); }
+  for (let i=0;i<14;i++){ const s = i%2 ? 1 : -1; const z = -12 + fxR()*40; const x = s*(26 + z*0.12 + fxR()*40); if (okForTree(x, z, 2)) addTree(x, z, 14+fxR()*9); }
+} else {
+  const dens = (SB && SB.sparse) || 1, TYPE = C.TYPE, FZ = GR.z - GR.rz - 4, cx = z => GR.x*clamp((z - 30)/Math.max(1, FZ - 30), 0, 1);
+  const n = k => Math.round(k*dens*(TYPE === 'links' ? 0.3 : 1));
+  if (!PAL.sea) for (let i=0;i<n(70);i++){ const x = -450 + fxR()*900, z = GR.z + 260 + fxR()*220; if (!inWater(x, z)) addTree(x, z, 16+fxR()*14); }
+  if (TYPE === 'chute'){
+    const hw = dl(27, 19);
+    for (let z = 12; z < GR.z + GR.rz*0.2; z += 5 + fxR()*4) for (const s of [-1, 1]){
+      const x = cx(z) + s*(hw + fxR()*4); if (okForTree(x, z, 1.6)) addTree(x, z, 19 + fxR()*9, true);
+      const x2 = cx(z) + s*(hw + 9 + fxR()*14); if (okForTree(x2, z, 1.6)) addTree(x2, z, 17 + fxR()*10, true);
+    }
+  } else {
+    const sides = TYPE === 'lake' ? [-SIDE] : [-1, 1];
+    for (const s of sides) for (let i=0;i<n(sides.length > 1 ? 34 : 60);i++){ const x = s*(30 + fxR()*110) + GR.x, z = 50 + fxR()*(GR.z+90); if (okForTree(x, z, 1.9)) addTree(x, z, 15+fxR()*12); }
+  }
+  if (TYPE !== 'cliff') for (let i=0;i<n(30);i++){ const x = GR.x + (fxR()-0.5)*120, z = GR.z + GR.rz + 22 + fxR()*60; if (okForTree(x, z, 2.1)) addTree(x, z, 16+fxR()*12); }
+  if (TYPE !== 'links') for (let i=0;i<14;i++){ const s = i%2 ? 1 : -1; const z = -12 + fxR()*40; const x = s*(26 + z*0.12 + fxR()*40); if (okForTree(x, z, 2)) addTree(x, z, 14+fxR()*9); }
+}
+const SOLID = trees.filter(t => t.solid);
+const reeds = []; { const W0 = WATER.filter(w => w.length < 400); for (let i=0;i<120 && W0.length;i++){ const w = W0[i % W0.length], p = w[Math.floor(fxR()*w.length)]; if (Math.abs(p[0]) < 200 && C.TYPE !== 'cliff' && !(SB && (LOOK.scenery === 'desert'))) reeds.push({x:p[0] + (fxR()-0.5)*6, z:p[1] + (fxR()-0.5)*1.4, h:0.7 + fxR()*0.9}); } }
+const clouds = Array.from({length:PAL.nosun ? 11 : 7}, () => ({u:-0.9+fxR()*1.8, v:0.15+fxR()*0.5, s:0.6+fxR()*0.9, puffs:Array.from({length:5+Math.floor(fxR()*4)}, () => [fxR()*2-1, fxR()*0.5-0.25, 0.35+fxR()*0.45])}));
+// props: holiday decorations, sheep, and the day's landmark (sorted and drawn with the trees, cosmetic only)
+{
+  const q = rng(hash(holeNum*1301)), dry = (x, z) => { const s = surfaceAt(x, z); return (s === 'rough' || s === 'tee' || s === 'deep') && !inWater(x, z); };
+  const add = (prop, x, z, h, w, extra) => trees.push({prop, x, z, h, w, seed:Math.floor(q()*1e6), tone:q(), ...(extra || {})});
+  const ring = (k, prop, h0, hv) => { for (let i=0, m=0; i<80 && m<k; i++){ const a = q()*Math.PI*2, d = FRINGE_SCALE + 0.2 + q()*0.6, x = GR.x + Math.cos(a)*GR.rx*d, z = GR.z + Math.sin(a)*GR.rz*d; if (dry(x, z)){ add(prop, x, z, h0 + q()*hv, 0.7); m++; } } };
+  const scatter = (k, prop, h0, hv) => { for (let i=0, m=0; i<120 && m<k; i++){ const x = (q() - 0.5)*160 + GR.x*0.5, z = 15 + q()*(GR.z + 60); if (dry(x, z) && gDist(x, z) > 1.6){ add(prop, x, z, h0 + q()*hv, 0.8); m++; } } };
+  const teeSide = (k, prop, h0, hv) => { for (let i=0;i<k;i++){ const s = i % 2 ? 1 : -1, x = s*(8.5 + q()*5), z = -5 + q()*13; if (dry(x, z)) add(prop, x, z, h0 + q()*hv, 0.7); } };
+  if (HALLOWEEN){
+    teeSide(7, 'pumpkin', 0.5, 0.25); ring(12, 'pumpkin', 0.45, 0.3); scatter(16, 'pumpkin', 0.5, 0.4);
+    for (let i=0, m=0; i<120 && m<12; i++){ const x = GR.x + (q() - 0.5)*90, z = GR.z + GR.rz + 12 + q()*45; if (dry(x, z)){ add('grave', x, z, 1.0 + q()*0.5, 0.75); m++; } }
+    for (const [x, z] of [[-11*SIDE, 3], [GR.x - SIDE*GR.rx*1.45, GR.z + GR.rz*0.6], [GR.x + SIDE*GR.rx*0.2, GR.z + GR.rz*1.55]]) if (dry(x, z)) add('cat', x, z, 0.85, 0.5);
+  }
+  if (THEME === 'thanksgiving'){
+    teeSide(4, 'hay', 0.9, 0.2); teeSide(4, 'gourd', 0.45, 0.2); ring(8, 'gourd', 0.45, 0.25); scatter(8, 'hay', 0.9, 0.2); scatter(8, 'shock', 2.2, 0.6);
+    for (let i=0;i<4;i++){ const x = (q() - 0.5)*60, z = 20 + q()*60; if (dry(x, z)) add('turkey', x, z, 0.9, 0.6, {walk:q()*6}); }
+  }
+  if (THEME === 'christmas'){
+    teeSide(2, 'snowman', 1.6, 0.3); ring(3, 'snowman', 1.6, 0.3); teeSide(3, 'gifts', 0.6, 0.2);
+  }
+  if (SB && SB.sheep) for (let i=0, m=0; i<120 && m<9; i++){ const x = (q() - 0.5)*260, z = 40 + q()*(GR.z + 120); if (dry(x, z) && gDist(x, z) > 2) { add('sheep', x, z, 0.8, 1, {walk:q()*6}); m++; } }
+  const mark = GEN3 ? LOOK.landmark : 'none';
+  if (mark && mark !== 'none'){
+    const S2 = SIDE, P0 = {lighthouse:[S2*150, GR.z + 170], barn:[-S2*170, GR.z + 300], windmill:[S2*190, GR.z + 330], clubhouse:[GR.x - S2*60, GR.z + GR.rz + 80],
+      waterfall:[-S2*120, GR.z + 250], cabin:[-S2*95, GR.z + 140], ruins:[S2*150, GR.z + 230], bridge:[-S2*45, C.CREEK_AT ? C.CREEK_AT(-S2*45) : GR.z - 30]}[mark];
+    let [x, z] = P0;
+    if (mark === 'clubhouse' && C.TYPE === 'cliff'){ x = GR.x - S2*90; z = GR.z - 30; }
+    if (mark !== 'bridge' && mark !== 'lighthouse') for (let k=0; k<12 && inWater(x, z); k++) x += (x < 0 ? -25 : 25);
+    const H0 = {lighthouse:26, barn:11, windmill:16, clubhouse:9, waterfall:20, cabin:6, ruins:14, bridge:4}[mark];
+    add('landmark', x, z, H0, 1, {mark});
+  }
+}
+const stars = PAL.moon ? Array.from({length:140}, () => ({u:fxR()*2.4 - 1.2, v:0.08 + fxR()*0.92, s:0.5 + fxR()*1.3, ph:fxR()*6.3})) : [];
 const glints = Array.from({length:150}, () => ({u:fxR(), v:fxR(), ph:fxR()*6.28, sp:1+fxR()*2.5, l:fxR()}));
 const birds = Array.from({length:4}, (_, i) => ({u:-1.3-i*0.12-fxR()*0.1, v:0.32+fxR()*0.08, ph:fxR()*6, sp:0.012+fxR()*0.004}));
 
@@ -695,12 +1099,12 @@ let cosP = 1, sinP = 0, cosY = 1, sinY = 0;
 function camSpace(x,y,z){ const dx=x-cam.x, dy=y-cam.y, dz=z-cam.z; const rx = dx*cosY - dz*sinY, rz = dx*sinY + dz*cosY; return [rx, dy*cosP+rz*sinP, -dy*sinP+rz*cosP]; }
 function toScreen(p){ return [W/2 + p[0]*F/p[2], CY - p[1]*F/p[2]]; }
 function proj(x,y,z){ const p = camSpace(x,y,z); return p[2] > 0.3 ? [W/2 + p[0]*F/p[2], CY - p[1]*F/p[2], p[2]] : null; }
-function polyPath(pts, yf=0){
+function polyPath(pts, yf=0, cont=false){
   const cs = pts.map(p => camSpace(p[0], typeof yf === 'function' ? yf(p[0], p[1]) : yf, p[1]));
   const out = []; const N = 0.4;
   for (let i=0;i<cs.length;i++){ const a=cs[i], b=cs[(i+1)%cs.length]; const ain=a[2]>N, bin=b[2]>N; if (ain) out.push(a); if (ain!==bin){ const t=(N-a[2])/(b[2]-a[2]); out.push([a[0]+t*(b[0]-a[0]), a[1]+t*(b[1]-a[1]), N]); } }
   if (out.length < 3) return false;
-  ctx.beginPath(); out.forEach((p,i) => { const s = toScreen(p); i ? ctx.lineTo(s[0],s[1]) : ctx.moveTo(s[0],s[1]); }); ctx.closePath(); return true;
+  if (!cont) ctx.beginPath(); out.forEach((p,i) => { const s = toScreen(p); i ? ctx.lineTo(s[0],s[1]) : ctx.moveTo(s[0],s[1]); }); ctx.closePath(); return true;
 }
 const horizonY = () => CY - F*Math.tan(cam.pitch);
 const fwd = d => [cam.x + sinY*d, cam.z + cosY*d];
@@ -726,8 +1130,10 @@ function drawSky(hz){
   const [sx, sy] = sunScreen();
   const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(W,H)*(PAL.moon ? 0.35 : 0.6));
   glow.addColorStop(0, `rgba(${PAL.glow},${PAL.moon ? .7 : .95})`); glow.addColorStop(0.05, `rgba(${PAL.glow},.6)`); glow.addColorStop(0.25, `rgba(${PAL.glow},.2)`); glow.addColorStop(1, `rgba(${PAL.glow},0)`);
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, hz+2);
-  const sr = Math.max(9, F*(PAL.moon ? 0.024 : 0.016)); ctx.fillStyle = PAL.core; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill();
+  if (!PAL.nosun){ ctx.fillStyle = glow; ctx.fillRect(0, 0, W, hz+2); }
+  const sr = Math.max(9, F*(PAL.moon ? 0.024 : 0.016)); if (!PAL.nosun){ ctx.fillStyle = PAL.core; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill(); }
+  if (WEATHER === 'rainbow') drawRainbow(hz, sx);
+  if (THEME === 'newyear') drawFireworks(hz);
   if (PAL.moon){ ctx.fillStyle = 'rgba(150,150,170,.28)'; [[-0.3,-0.2,0.28],[0.25,0.15,0.2],[-0.05,0.4,0.14],[0.35,-0.35,0.12]].forEach(([a,b,r]) => { ctx.beginPath(); ctx.arc(sx + a*sr, sy + b*sr, r*sr, 0, 7); ctx.fill(); }); }
   for (const c of clouds){
     const u = (((c.u + T*0.004 - cam.yaw*0.7 + 1.2) % 2.4) + 2.4) % 2.4 - 1.2; const cx = W/2 + u*W*0.9, cy = hz - c.v*Math.min(hz, H*0.4), sc = c.s*Math.min(W,H)*0.16;
@@ -742,6 +1148,21 @@ function drawSky(hz){
   for (const b of birds){ const u = ((b.u + T*b.sp + 1.5) % 3) - 1.5; const x = W/2 + u*W*0.7, y = hz - b.v*Math.min(hz, H*0.45) + Math.sin(T*0.6+b.ph)*6, f = Math.sin(T*7+b.ph)*3.5;
     if (HALLOWEEN){ drawBat(x, y + Math.sin(T*2.3 + b.ph)*5, 7, T*14 + b.ph); continue; }
     ctx.beginPath(); ctx.moveTo(x-6, y-f); ctx.quadraticCurveTo(x-3, y-2, x, y); ctx.quadraticCurveTo(x+3, y-2, x+6, y-f); ctx.stroke(); }
+}
+function drawRainbow(hz, sx){
+  const cx = W/2 + (W/2 - sx)*0.5, r = Math.min(W, H)*0.75, cols = ['255,80,80','255,170,60','255,235,90','110,220,110','90,160,255','150,110,230'];
+  ctx.save(); ctx.globalAlpha = 0.16; ctx.lineWidth = r*0.022;
+  cols.forEach((c, i) => { ctx.strokeStyle = `rgb(${c})`; ctx.beginPath(); ctx.arc(cx, hz + r*0.15, r - i*ctx.lineWidth, Math.PI*1.08, Math.PI*1.92); ctx.stroke(); });
+  ctx.restore();
+}
+const bursts = []; let burstT = 1;
+function drawFireworks(hz){
+  burstT -= 1/60; if (burstT <= 0 && !reduceMotion){ burstT = 0.9 + Math.random()*1.4; const cols = ['255,90,90','255,215,90','120,220,255','190,120,255','120,255,160'], c = cols[Math.floor(Math.random()*cols.length)];
+    bursts.push({x:W*(0.15 + Math.random()*0.7), y:hz*(0.2 + Math.random()*0.45), t:0, c, n:36}); if (soundMode === 'all') sfx.pop(); }
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const b of bursts){ b.t += 1/60; const r = Math.min(1, b.t/0.6)*Math.min(W, H)*0.12, a = Math.max(0, 1 - b.t/1.8);
+    for (let i=0;i<b.n;i++){ const ang = i/b.n*Math.PI*2, x = b.x + Math.cos(ang)*r, y = b.y + Math.sin(ang)*r + b.t*b.t*14; ctx.fillStyle = `rgba(${b.c},${a})`; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.fill(); } }
+  ctx.restore(); for (let i=bursts.length-1;i>=0;i--) if (bursts[i].t > 1.8) bursts.splice(i, 1);
 }
 function drawBat(x, y, s, ph){
   const f = Math.sin(ph); ctx.fillStyle = 'rgba(14,10,20,.9)'; ctx.beginPath();
@@ -766,6 +1187,11 @@ function drawRidges(hz){
     const g = ctx.createLinearGradient(0, y0, 0, Math.max(y0+1, y1)); g.addColorStop(0, r.c1); g.addColorStop(1, r.c2);
     if (!ridgePath(r, false)) continue;
     ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = `rgba(${PAL.rim},.16)`; ctx.lineWidth = 1; ctx.stroke();
+    if (r.snow){ const sl = proj(fx, r.snowH, r.z); if (sl){ ctx.save(); ctx.clip(); const sg = ctx.createLinearGradient(0, sl[1] - 30, 0, sl[1] + 6); sg.addColorStop(0, PAL.moon ? 'rgba(200,210,235,.9)' : 'rgba(250,252,255,.95)'); sg.addColorStop(1, 'rgba(250,252,255,0)'); ctx.fillStyle = sg; ctx.fillRect(0, 0, W, sl[1] + 6); ctx.restore(); } }
+  }
+  if (PAL.sea && polyPath([[-6000, GR.z + 120],[6000, GR.z + 120],[6000, 6000],[-6000, 6000]])){
+    const t0 = proj(fwd(5000)[0], 0, fwd(5000)[1]), t1 = proj(fwd(GR.z + 140)[0], 0, fwd(GR.z + 140)[1]);
+    const sg = ctx.createLinearGradient(0, t0 ? t0[1] : hz, 0, t1 ? t1[1] : H); sg.addColorStop(0, PAL.water[1]); sg.addColorStop(1, PAL.water[2]); ctx.fillStyle = sg; ctx.fill();
   }
   if (PAL.mist){ const mc = PAL.mistc || '240,236,236', g = ctx.createLinearGradient(0, hz-70, 0, hz+40); g.addColorStop(0, `rgba(${mc},0)`); g.addColorStop(0.6, `rgba(${mc},.5)`); g.addColorStop(1, `rgba(${mc},0)`); ctx.fillStyle = g; ctx.fillRect(0, hz-70, W, 110); }
 }
@@ -789,6 +1215,37 @@ function drawProp(t){
     if (t.tone < 0.3){ ctx.fillRect(-w*0.18, -h, w*0.36, h); ctx.fillRect(-w*0.6, -h*0.75, w*1.2, w*0.36); }
     else { ctx.moveTo(-w*0.5, 0); ctx.lineTo(-w*0.5, -h + w*0.5); ctx.arc(0, -h + w*0.5, w*0.5, Math.PI, 0); ctx.lineTo(w*0.5, 0); ctx.closePath(); ctx.fill(); if (s > 22){ ctx.fillStyle = 'rgba(20,20,28,.45)'; ctx.font = `600 ${Math.round(w*0.32)}px system-ui`; ctx.textAlign = 'center'; ctx.fillText('RIP', 0, -h*0.55); } }
     ctx.restore();
+  } else if (t.prop === 'gourd'){
+    ctx.fillStyle = '#d9731f'; ctx.beginPath(); ctx.ellipse(x, y - s*0.42, s*0.62, s*0.44, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,40,10,.5)'; ctx.lineWidth = Math.max(0.6, s*0.05); for (const k of [-0.3, 0, 0.3]){ ctx.beginPath(); ctx.ellipse(x + k*s, y - s*0.42, s*0.2, s*0.43, 0, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = '#4a5a22'; ctx.fillRect(x - s*0.05, y - s*0.98, s*0.1, s*0.16);
+  } else if (t.prop === 'hay'){
+    const w = s*1.3, h = s*0.75; ctx.fillStyle = '#d6b25c'; ctx.fillRect(x - w/2, y - h, w, h); ctx.fillStyle = '#e8c978'; ctx.fillRect(x - w/2, y - h, w, h*0.18);
+    ctx.strokeStyle = 'rgba(120,90,30,.55)'; ctx.lineWidth = Math.max(0.5, s*0.04); for (const k of [0.3, 0.7]){ ctx.beginPath(); ctx.moveTo(x - w/2 + w*k, y - h); ctx.lineTo(x - w/2 + w*k, y); ctx.stroke(); }
+  } else if (t.prop === 'shock'){
+    ctx.strokeStyle = '#c9a85a'; ctx.lineWidth = Math.max(0.6, s*0.05); for (let k=-4;k<=4;k++){ ctx.beginPath(); ctx.moveTo(x + k*s*0.08, y); ctx.lineTo(x + k*s*0.015, y - s); ctx.stroke(); }
+    ctx.strokeStyle = '#8a6a2a'; ctx.beginPath(); ctx.moveTo(x - s*0.2, y - s*0.45); ctx.lineTo(x + s*0.2, y - s*0.45); ctx.stroke();
+  } else if (t.prop === 'turkey'){
+    const wx = x + Math.sin(T*0.3 + t.walk)*s*1.5, k = s*0.9;
+    ctx.fillStyle = '#7a4a2a'; for (let i=0;i<7;i++){ const a = Math.PI + 0.25 + i*0.42; ctx.beginPath(); ctx.ellipse(wx + Math.cos(a)*k*0.35 - k*0.1, y - k*0.55 + Math.sin(a)*k*0.35, k*0.12, k*0.3, a + Math.PI/2, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#4a2e1a'; ctx.beginPath(); ctx.ellipse(wx, y - k*0.4, k*0.28, k*0.22, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#3a2a1a'; ctx.beginPath(); ctx.arc(wx + k*0.24, y - k*0.68, k*0.08, 0, 7); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(wx + k*0.27, y - k*0.6, k*0.05, 0, 7); ctx.fill();
+  } else if (t.prop === 'sheep'){
+    const wx = x + Math.sin(T*0.12 + t.walk)*s*0.6, k = s*0.8;
+    ctx.fillStyle = PAL.moon ? '#9aa0b0' : '#f1eee6'; ctx.beginPath(); ctx.ellipse(wx, y - k*0.45, k*0.5, k*0.28, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#2a2a2a'; ctx.beginPath(); ctx.ellipse(wx + k*0.5, y - k*0.5, k*0.13, k*0.1, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = Math.max(0.5, k*0.06); for (const dx of [-0.3, -0.1, 0.15, 0.32]){ ctx.beginPath(); ctx.moveTo(wx + dx*k, y - k*0.25); ctx.lineTo(wx + dx*k, y); ctx.stroke(); }
+  } else if (t.prop === 'snowman'){
+    const k = s; ctx.fillStyle = PAL.moon ? '#c8d0e4' : '#f6f8fc';
+    for (const [r, h] of [[0.32, 0.3], [0.24, 0.78], [0.17, 1.12]]){ ctx.beginPath(); ctx.arc(x, y - k*h, k*r, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(x - k*0.14, y - k*1.38, k*0.28, k*0.14); ctx.fillRect(x - k*0.2, y - k*1.26, k*0.4, k*0.04);
+    ctx.fillStyle = '#e8762a'; ctx.beginPath(); ctx.moveTo(x, y - k*1.12); ctx.lineTo(x + k*0.16, y - k*1.1); ctx.lineTo(x, y - k*1.08); ctx.fill();
+    ctx.fillStyle = '#c0392b'; ctx.fillRect(x - k*0.2, y - k*0.98, k*0.4, k*0.06);
+  } else if (t.prop === 'gifts'){
+    const cols = [['#c0392b','#f1c40f'],['#1e8449','#ecf0f1'],['#2e86c1','#f5b041']];
+    cols.forEach(([b, r], i) => { const w = s*(0.8 - i*0.18), bx = x + (i - 1)*s*0.55, h = w*0.8; ctx.fillStyle = b; ctx.fillRect(bx - w/2, y - h, w, h); ctx.fillStyle = r; ctx.fillRect(bx - w*0.07, y - h, w*0.14, h); ctx.fillRect(bx - w/2, y - h*0.58, w, h*0.14); });
+  } else if (t.prop === 'landmark'){
+    drawLandmark(t, x, y, F/base[2], night);
   } else if (t.prop === 'cat'){
     const k = s*0.9, sw = Math.sin(T*1.6 + t.seed)*0.35, look = Math.sin(T*0.31 + t.seed) > 0.85 ? 1 : 0;
     ctx.fillStyle = '#07060a'; ctx.strokeStyle = '#07060a'; ctx.lineCap = 'round';
@@ -797,6 +1254,47 @@ function drawProp(t){
     ctx.beginPath(); ctx.moveTo(hx - k*0.16, hy - k*0.05); ctx.lineTo(hx - k*0.12, hy - k*0.3); ctx.lineTo(hx - k*0.02, hy - k*0.14); ctx.moveTo(hx + k*0.16, hy - k*0.05); ctx.lineTo(hx + k*0.12, hy - k*0.3); ctx.lineTo(hx + k*0.02, hy - k*0.14); ctx.fill();
     ctx.lineWidth = Math.max(1, k*0.07); ctx.beginPath(); ctx.moveTo(x + k*0.2, y - k*0.08); ctx.quadraticCurveTo(x + k*0.55, y - k*0.1, x + k*(0.45 + sw*0.3), y - k*(0.55 + sw*0.2)); ctx.stroke();
     const blink = Math.sin(T*0.7 + t.seed*1.7) > 0.97; if (!blink && k > 4){ ctx.fillStyle = night ? '#d6f25a' : '#c9dc4a'; for (const e of [-1, 1]){ ctx.beginPath(); ctx.ellipse(hx + e*k*0.065, hy - k*0.01, k*0.035, k*0.025, 0, 0, 7); ctx.fill(); } }
+  }
+}
+function drawLandmark(t, x, y, k, night){
+  const hz = Math.min(0.8, Math.max(0, PAL.fog ? (F/k - 30)/260 : (F/k - 80)/900)), col = c => mix(c, PAL.haze, hz), lit = night || PAL.tod === 'dusk';
+  const quad = (pts, c) => { ctx.fillStyle = c; ctx.beginPath(); pts.forEach(([px, py], i) => i ? ctx.lineTo(x + px*k, y - py*k) : ctx.moveTo(x + px*k, y - py*k)); ctx.closePath(); ctx.fill(); };
+  switch (t.mark){
+    case 'lighthouse': {
+      quad([[-2.6,0],[2.6,0],[1.8,22],[-1.8,22]], col('#efe9df'));
+      for (const b of [4, 11, 18]) quad([[-2.6 + b*0.04,b],[2.6 - b*0.04,b],[2.6 - (b+3)*0.04,b+3],[-2.6 + (b+3)*0.04,b+3]], col('#c0392b'));
+      quad([[-2.2,22],[2.2,22],[2.2,23],[-2.2,23]], col('#2a2a2a')); quad([[-1.4,23],[1.4,23],[1.4,25.2],[-1.4,25.2]], lit ? '#ffe9a0' : col('#7a8a98')); quad([[-1.8,25.2],[1.8,25.2],[0,27.5]], col('#8e2a20'));
+      if (lit){ const a = T*0.9, len = 260; ctx.save(); ctx.globalCompositeOperation = 'lighter'; const gx = x, gy = y - 24*k; const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, len*k*0.08 + 40); g.addColorStop(0, 'rgba(255,240,180,.55)'); g.addColorStop(1, 'rgba(255,240,180,0)'); ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + Math.cos(a)*len*k*0.6, gy - 6*k + Math.sin(a)*8*k); ctx.lineTo(gx + Math.cos(a)*len*k*0.6, gy + 6*k + Math.sin(a)*8*k); ctx.closePath(); ctx.fill(); ctx.restore(); }
+      break; }
+    case 'barn': {
+      quad([[-7,0],[7,0],[7,7],[0,11],[-7,7]], col('#8e2f25')); quad([[-7.6,6.8],[0,11.6],[7.6,6.8],[7.6,7.6],[0,12.3],[-7.6,7.6]], col('#3b2a24'));
+      quad([[-2,0],[2,0],[2,5],[-2,5]], col('#6e2219')); ctx.strokeStyle = col('#efe6d8'); ctx.lineWidth = Math.max(0.6, k*0.3); ctx.beginPath(); ctx.moveTo(x - 2*k, y); ctx.lineTo(x + 2*k, y - 5*k); ctx.moveTo(x + 2*k, y); ctx.lineTo(x - 2*k, y - 5*k); ctx.stroke();
+      quad([[8,0],[12,0],[12,13],[8,13]], col('#a9a9a2')); ctx.fillStyle = col('#8a8a84'); ctx.beginPath(); ctx.arc(x + 10*k, y - 13*k, 2*k, Math.PI, 0); ctx.fill(); break; }
+    case 'windmill': {
+      quad([[-2.2,0],[2.2,0],[1.4,12],[-1.4,12]], col('#d8d0c0')); quad([[-1.8,12],[1.8,12],[0,14.5]], col('#5a3a2a'));
+      const a = T*(0.4 + WIND.mph*0.05), cx2 = x, cy2 = y - 12.6*k; ctx.strokeStyle = col('#3a3028'); ctx.lineWidth = Math.max(1, k*0.7);
+      for (let i=0;i<4;i++){ const b = a + i*Math.PI/2; ctx.beginPath(); ctx.moveTo(cx2, cy2); ctx.lineTo(cx2 + Math.cos(b)*8*k, cy2 + Math.sin(b)*8*k); ctx.stroke(); } break; }
+    case 'clubhouse': {
+      quad([[-17,0],[17,0],[17,6],[-17,6]], col('#eae6dc')); quad([[-18,6],[18,6],[14,9],[-14,9]], col('#4a4038'));
+      ctx.fillStyle = lit ? 'rgba(255,214,130,.95)' : col('#5a6470'); for (let i=-14;i<=12;i+=4) ctx.fillRect(x + i*k, y - 4.4*k, 2.2*k, 2*k);
+      ctx.strokeStyle = col('#dddddd'); ctx.lineWidth = Math.max(0.6, k*0.2); ctx.beginPath(); ctx.moveTo(x + 20*k, y); ctx.lineTo(x + 20*k, y - 12*k); ctx.stroke(); ctx.fillStyle = HALLOWEEN ? '#ff7a1a' : '#e4573f'; ctx.fillRect(x + 20*k, y - 12*k, 3*k, 1.8*k); break; }
+    case 'waterfall': {
+      quad([[-13,0],[13,0],[10,15],[4,20],[-6,19],[-12,12]], col('#5a554e')); quad([[-3,0],[3,0],[2.2,18.5],[-2.2,18.5]], col('#cfe4f0'));
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(0.6, k*0.4); ctx.setLineDash([3*k, 4*k]); ctx.lineDashOffset = -T*40; ctx.beginPath(); ctx.moveTo(x - k, y - 18*k); ctx.lineTo(x - k, y); ctx.moveTo(x + k, y - 18*k); ctx.lineTo(x + k, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(x, y, 5*k, 1.2*k, 0, 0, 7); ctx.fill(); break; }
+    case 'cabin': {
+      quad([[-4.5,0],[4.5,0],[4.5,3.6],[-4.5,3.6]], col('#6b4a2e')); quad([[-5.2,3.4],[5.2,3.4],[0,6.4]], col('#3a2a22')); quad([[2.4,4],[3.4,4],[3.4,7],[2.4,7]], col('#5a5048'));
+      ctx.fillStyle = lit ? 'rgba(255,200,110,.95)' : col('#3a3a3a'); ctx.fillRect(x - 3*k, y - 2.6*k, 1.6*k, 1.3*k); ctx.fillRect(x + 1.2*k, y - 2.6*k, 1.6*k, 1.3*k);
+      for (let i=0;i<5;i++){ const u = ((T*0.25 + i/5) % 1), r = (0.8 + u*2.2)*k; ctx.fillStyle = `rgba(220,220,225,${0.35*(1 - u)})`; ctx.beginPath(); ctx.arc(x + 2.9*k + u*3*k, y - (7.5 + u*9)*k, r, 0, 7); ctx.fill(); } break; }
+    case 'ruins': {
+      quad([[-3,0],[3,0],[2.6,10],[1.5,12.5],[0.5,10.5],[-1,13.5],[-2.6,9]], col('#8b8478')); quad([[3.5,0],[11,0],[11,2.5],[8,4],[5,3.2],[3.5,4.2]], col('#7d776c'));
+      ctx.fillStyle = col('#2a2622'); ctx.fillRect(x - 0.3*k, y - 7*k, 0.6*k, 2.2*k); break; }
+    case 'bridge': {
+      const zc = t.z, bx = t.x, h = zz => 1.1 + 0.6*Math.cos((zz - zc)/7*Math.PI/2);
+      if (polyPath([[bx - 1.8, zc - 7],[bx + 1.8, zc - 7],[bx + 1.8, zc + 7],[bx - 1.8, zc + 7]], (xx, zz) => h(zz))){ ctx.fillStyle = col('#9a8f80'); ctx.fill(); ctx.strokeStyle = col('#5e564c'); ctx.lineWidth = 1; ctx.stroke(); }
+      for (const sx2 of [-1.8, 1.8]){ ctx.strokeStyle = col('#6e665a'); ctx.lineWidth = Math.max(1, k*0.25); ctx.beginPath(); let first = true; for (let zz = zc - 7; zz <= zc + 7; zz += 1){ const q = proj(bx + sx2, h(zz) + 0.9, zz); if (!q) continue; if (first) ctx.moveTo(q[0], q[1]); else ctx.lineTo(q[0], q[1]); first = false; } ctx.stroke(); }
+      break; }
   }
 }
 function drawDeadTree(t, base, top, hpx, wpx, mirror, hazeT){
@@ -816,8 +1314,10 @@ function drawTree(t, mirror){
   if (t.prop){ if (!mirror) drawProp(t); return; }
   const base = proj(t.x, 0, t.z); if (!base) return; const top = proj(t.x, mirror ? -t.h : t.h, t.z); if (!top) return;
   const hpx = base[1]-top[1], wpx = t.w*F/base[2]; if (Math.abs(hpx) < 1.2) return;
-  const dist = base[2], hazeT = Math.min(0.85, Math.max(0, (dist-60)/700));
+  const dist = base[2], hazeT = Math.min(PAL.fog ? 0.7 : 0.85, Math.max(0, PAL.fog ? (dist-25)/260 : (dist-60)/700));
   if (PAL.kind === 'dead'){ drawDeadTree(t, base, top, hpx, wpx, mirror, hazeT); return; }
+  if (t.kind === 'palm'){ drawPalm(t, base, top, hpx, wpx, mirror, hazeT); return; }
+  if (t.kind === 'cactus'){ drawCactus(t, base, top, hpx, wpx, mirror, hazeT); return; }
   const g = rng(t.seed);
   if (t.round){
     ctx.fillStyle = mix('#3b2c22', PAL.haze, hazeT); ctx.fillRect(base[0]-wpx*0.05, top[1]+hpx*0.55, wpx*0.1, hpx*0.45);
@@ -833,9 +1333,35 @@ function drawTree(t, mirror){
     ctx.moveTo(base[0], yT); ctx.lineTo(base[0]+half, yB); ctx.lineTo(base[0]+half*0.4, yB-hpx*0.03); ctx.lineTo(base[0]-half*0.5, yB-hpx*0.02); ctx.lineTo(base[0]-half, yB); ctx.closePath(); }
   ctx.fill();
   if (!mirror && dist < 500){ ctx.strokeStyle = `rgba(${PAL.rim},${0.35*(1-hazeT)})`; ctx.lineWidth = Math.max(0.6, wpx*0.02); ctx.beginPath(); ctx.moveTo(base[0], top[1]); ctx.lineTo(base[0]+wpx*0.45*Math.sign(PAL.sun[0]||1), top[1]+hpx*0.86); ctx.stroke(); }
+  if (THEME === 'christmas' && !mirror && dist < 420) drawLights(t, base, top, hpx, wpx);
+}
+function drawLights(t, base, top, hpx, wpx){
+  const cols = ['255,80,80','255,215,80','90,255,140','90,180,255'], g = rng(t.seed + 7);
+  for (let k=0;k<12;k++){ const f = 0.18 + k*0.065, half = wpx*0.5*(0.25 + 0.75*f)*(k % 2 ? 0.7 : -0.7), x = base[0] + half*(0.6 + g()*0.4), y = top[1] + hpx*f;
+    const a = 0.55 + 0.45*Math.sin(T*3 + t.seed + k*1.7); ctx.fillStyle = `rgba(${cols[(k + t.seed) % 4]},${a})`; ctx.beginPath(); ctx.arc(x, y, Math.max(1, wpx*0.035), 0, 7); ctx.fill(); }
+}
+function drawPalm(t, base, top, hpx, wpx, mirror, hazeT){
+  const g = rng(t.seed), lean = (g() - 0.5)*wpx*0.9, tx = base[0] + lean, ty = top[1];
+  ctx.save(); if (mirror){ ctx.translate(0, base[1]*2); ctx.scale(1, -1); }
+  const H0 = Math.abs(hpx), y0 = base[1], y1 = base[1] - H0;
+  ctx.strokeStyle = mix('#6e5638', PAL.haze, hazeT); ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, H0*0.035);
+  ctx.beginPath(); ctx.moveTo(base[0], y0); ctx.quadraticCurveTo(base[0] + lean*0.15, y0 - H0*0.5, tx, y1); ctx.stroke();
+  ctx.fillStyle = mix(PAL.tree[0], PAL.haze, hazeT);
+  for (let k=0;k<8;k++){ const a = -Math.PI/2 + (k - 3.5)*0.48 + (g() - 0.5)*0.2, L = H0*(0.26 + g()*0.1), ex = tx + Math.cos(a)*L*1.2, ey = y1 + Math.sin(a)*L*0.35 + L*0.55*Math.abs(Math.cos(a));
+    ctx.beginPath(); ctx.moveTo(tx, y1); ctx.quadraticCurveTo((tx + ex)/2, y1 - L*0.35, ex, ey); ctx.quadraticCurveTo((tx + ex)/2, y1 - L*0.12, tx, y1 + wpx*0.03); ctx.fill(); }
+  ctx.restore();
+}
+function drawCactus(t, base, top, hpx, wpx, mirror, hazeT){
+  const g = rng(t.seed), H0 = Math.abs(hpx), w = Math.max(1.5, wpx*0.32), x = base[0], y = base[1];
+  ctx.save(); if (mirror){ ctx.translate(0, y*2); ctx.scale(1, -1); }
+  ctx.strokeStyle = mix(PAL.tree[t.tone > .5 ? 0 : 1], PAL.haze, hazeT); ctx.lineCap = 'round'; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - H0); ctx.stroke(); ctx.lineWidth = w*0.75;
+  const arm = (side, at, up) => { ctx.beginPath(); ctx.moveTo(x, y - H0*at); ctx.lineTo(x + side*wpx*0.42, y - H0*at); ctx.lineTo(x + side*wpx*0.42, y - H0*(at + up)); ctx.stroke(); };
+  arm(-1, 0.4 + g()*0.15, 0.3); if (g() < 0.8) arm(1, 0.55 + g()*0.15, 0.25);
+  ctx.restore();
 }
 function drawTreeShadow(t){
-  if (t.prop) return;
+  if (t.prop || PAL.nosun || PAL.fog) return;
   const len = t.h*(PAL.sun[1] < 0.1 ? 3.4 : 2.2), w = t.w*0.45, sx = -PAL.sun[0]*len*0.9;
   if (polyPath([[t.x-w,t.z],[t.x+w,t.z],[t.x+sx+w*0.3,t.z-len],[t.x+sx-w*0.3,t.z-len]], (x,z) => Hh(x,z)+0.02)){ ctx.fillStyle = 'rgba(20,24,40,.2)'; ctx.fill(); }
 }
@@ -844,10 +1370,11 @@ function drawGround(hz){
   const [fx, fz] = fwd(700); const fe = proj(fx, 0, fz);
   const g = ctx.createLinearGradient(0, fe ? fe[1] : hz, 0, H);
   g.addColorStop(0, PAL.gfar); g.addColorStop(0.35, PAL.gmid); g.addColorStop(1, PAL.gnear); groundGrad = g;
-  if (polyPath([[-6000,-6000],[6000,-6000],[6000,740],[-6000,740]])){ ctx.fillStyle = g; ctx.fill(); }
+  if (polyPath([[-6000,-6000],[6000,-6000],[6000,GROUND_FAR],[-6000,GROUND_FAR]])){ ctx.fillStyle = g; ctx.fill(); }
 }
 function drawLake(hz){
-  if (!polyPath(lakePts)) return;
+  let any = false; ctx.beginPath(); for (const w of WATER) if (polyPath(w, 0, true)) any = true;
+  if (!any) return;
   const [nx, nz] = fwd(14), [fx, fz] = fwd(320);
   const near = proj(nx, 0, nz), far = proj(fx, 0, fz);
   const y0 = far ? far[1] : hz, y1 = near ? Math.min(H, near[1]) : H;
@@ -865,8 +1392,11 @@ function drawLake(hz){
       const a = Math.max(0, Math.sin(T*gl.sp*1.7+gl.ph))*(1-Math.abs(gl.u-0.5)*1.6); if (a <= 0.02) continue; const len = 2 + gl.l*(4+(y-yt)*0.05);
       ctx.strokeStyle = `rgba(255,240,205,${a*0.8})`; ctx.lineWidth = 1 + (y-yt)/(yb-yt+1)*1.2; ctx.beginPath(); ctx.moveTo(x-len, y); ctx.lineTo(x+len, y); ctx.stroke(); } }
   ctx.restore();
+  // dry land inside the water: islands and peninsulas
+  for (const l of LAND){ if (polyPath(l)){ ctx.fillStyle = groundGrad || PAL.gmid; ctx.fill(); ctx.strokeStyle = 'rgba(30,40,24,.35)'; ctx.lineWidth = 1.2; ctx.stroke(); } }
 }
 function drawCourseNear(){
+  for (const p of DEEP){ if (polyPath(p)){ ctx.fillStyle = 'rgba(16,26,12,.34)'; ctx.fill(); ctx.strokeStyle = 'rgba(10,16,8,.25)'; ctx.lineWidth = 1.2; ctx.stroke(); } }
   if (polyPath([[TEE.x0,TEE.z0],[TEE.x1,TEE.z0],[TEE.x1,TEE.z1],[TEE.x0,TEE.z1]])){ ctx.fillStyle = PAL.fair; ctx.fill(); }
   for (let i=0;i<4;i++){ if (polyPath([[TEE.x0+i*3.5,TEE.z0],[TEE.x0+i*3.5+1.75,TEE.z0],[TEE.x0+i*3.5+1.75,TEE.z1],[TEE.x0+i*3.5,TEE.z1]], 0.01)){ ctx.fillStyle='rgba(255,255,220,.06)'; ctx.fill(); } }
   for (const r of reeds){ const b = proj(r.x,0,r.z), t = proj(r.x+0.2,r.h,r.z); if (!b || !t || b[2] > 260) continue; const s = F/b[2];
@@ -874,7 +1404,7 @@ function drawCourseNear(){
     for (let k=-2;k<=2;k++){ ctx.moveTo(b[0]+k*0.12*s, b[1]); ctx.lineTo(t[0]+k*0.25*s+Math.sin(T+r.x)*0.3*s, t[1]); } ctx.stroke(); }
 }
 function drawGreenComplex(){
-  if (polyPath(fairwayPts, Hh)){ ctx.fillStyle = groundGrad || PAL.fair; ctx.fill(); ctx.fillStyle = 'rgba(235,255,190,.13)'; ctx.fill(); }
+  for (const f of FAIRS){ if (polyPath(f, Hh)){ ctx.fillStyle = groundGrad || PAL.fair; ctx.fill(); ctx.fillStyle = 'rgba(235,255,190,.13)'; ctx.fill(); } }
   if (polyPath(fringePts, Hh)){ ctx.fillStyle = PAL.fringe; ctx.fill(); }
   if (polyPath(greenPts, Hh)){
     const c = proj(GR.x, Hh(GR.x,GR.z), GR.z); const r = c ? GR.rx*F/c[2] : 50;
@@ -893,7 +1423,7 @@ function drawGreenComplex(){
   if (!reading){ ctx.save(); if (polyPath(greenPts, Hh)){ ctx.clip();
     for (let k=-14;k<=14;k++){ const x = GR.x + k*3; if (polyPath([[x,GR.z-GR.rz-3],[x+1.5,GR.z-GR.rz-3],[x+1.5,GR.z+GR.rz+3],[x,GR.z+GR.rz+3]], (x,z) => Hh(x,z)+0.01)){ ctx.fillStyle = 'rgba(255,255,225,.05)'; ctx.fill(); } } }
     ctx.restore(); }
-  for (const b of BUNKERS){ if (polyPath(b.pts, (x,z) => Hh(x,z)-0.05)){ ctx.fillStyle = '#e9d3a3'; ctx.fill(); ctx.strokeStyle = 'rgba(60,52,30,.55)'; ctx.lineWidth = 1.4; ctx.stroke(); } }
+  for (const b of BUNKERS){ if (polyPath(b.pts, (x,z) => Hh(x,z)-0.05)){ ctx.fillStyle = PAL.moon ? '#8f8a7a' : '#e9d3a3'; ctx.fill(); ctx.strokeStyle = b.pot ? 'rgba(40,34,18,.85)' : 'rgba(60,52,30,.55)'; ctx.lineWidth = b.pot ? 2.4 : 1.4; ctx.stroke(); } }
   if (reading){
     ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
     const pr = mode === 'putt', list = pr ? puttArrows : arrows, hd = pr ? 7 : 5; if (pr) ctx.lineWidth = 2;
@@ -933,13 +1463,13 @@ const CLUBS = [
 CLUBS.forEach(c => { c.carry = Math.round(simFlat(c.speed, c.launch*D2R, 1)); });
 const SHORT = { chip:{name:'Chip', launch:15, spin:0.45, carry:30}, pitch:{name:'Pitch', launch:38, spin:1.0, carry:50}, flop:{name:'Flop', launch:56, spin:1.0, carry:30}, sand:{name:'Sand', launch:44, spin:0.9, carry:40} };
 for (const k in SHORT){ const s = SHORT[k]; let lo = 3, hi = 60; for (let i=0;i<30;i++){ const m = (lo+hi)/2; if (simFlat(m, s.launch*D2R, s.spin) < s.carry) lo = m; else hi = m; } s.v100 = (lo+hi)/2; }
-const SURF = {
-  green:{keep:0.22, e:0.16, dec:0.65}, fringe:{keep:0.3, e:0.2, dec:1.5}, fairway:{keep:0.42, e:0.25, dec:1.5},
-  rough:{keep:0.2, e:0.12, dec:5}, tee:{keep:0.35, e:0.2, dec:2}, sand:{keep:0.03, e:0.02, dec:40} };
+const SURF = {   // COND (from the hole generator) firms up or softens the day's course; all 1 on older holes
+  green:{keep:0.22*COND.gk, e:0.16, dec:0.65*COND.gd}, fringe:{keep:0.3, e:0.2, dec:1.5}, fairway:{keep:0.42*COND.fk, e:0.25, dec:1.5*COND.fd},
+  rough:{keep:0.2, e:0.12, dec:5*COND.rd}, tee:{keep:0.35, e:0.2, dec:2}, sand:{keep:0.03, e:0.02, dec:40}, deep:{keep:0.1, e:0.08, dec:9*COND.rd} };
 const PUTT_RANGES = [4, 8, 15, 30, 60, 100]; // feet rolled at 100% on a flat green
 const MAX_STROKES = 6;
-const LIE_NAME = {tee:'Tee box', fairway:'Fairway', rough:'Rough', sand:'Bunker', fringe:'Fringe', green:'Green', water:'Water'};
-const LIE_IN = {tee:'still on the tee', fairway:'on the fairway', rough:'in the rough', sand:'in the bunker', fringe:'on the fringe', green:'on the green', water:'in the water'};
+const LIE_NAME = {deep:'Deep rough', tee:'Tee box', fairway:'Fairway', rough:'Rough', sand:'Bunker', fringe:'Fringe', green:'Green', water:'Water'};
+const LIE_IN = {deep:'in the deep rough', tee:'still on the tee', fairway:'on the fairway', rough:'in the rough', sand:'in the bunker', fringe:'on the fringe', green:'on the green', water:'in the water'};
 
 // expected strokes to hole out (v1 baseline, tuned to this game; replaced by the field's own data later)
 function interp(tbl, x){ if (x <= tbl[0][0]) return tbl[0][1]; for (let i=1;i<tbl.length;i++){ if (x <= tbl[i][0]){ const a = tbl[i-1], b = tbl[i]; return a[1] + (b[1]-a[1])*(x-a[0])/(b[0]-a[0]); } } const a = tbl.at(-2), b = tbl.at(-1); return b[1] + (b[1]-a[1])*(x-b[0])/(b[0]-a[0]); }
@@ -953,6 +1483,7 @@ function expStrokes(lie, yd){
   if (lie === 'sand') return interp(E_SAND, yd);
   const f = interp(E_FAIR, yd);
   if (lie === 'rough') return f + (yd <= 20 ? 0.12 : yd >= 100 ? 0.18 : 0.12 + 0.06*(yd-20)/80);
+  if (lie === 'deep') return f + 0.32;
   return f;
 }
 
@@ -986,7 +1517,8 @@ function aimGeom(){
 }
 function aimYaw(){ const d = Math.max(0.5, dPin(ball.x, ball.z)); const lat = mode === 'putt' ? aimCups*CUP : aimOff; return yawTo(ball.x, ball.z) + Math.atan2(lat, d); }
 function lieMods(){
-  if (currentLie === 'rough') return {v:0.94, s:0.55};
+  if (currentLie === 'rough') return {v:0.94*COND.rv, s:0.55};
+  if (currentLie === 'deep') return {v:0.8*COND.rv, s:0.4};
   if (currentLie === 'sand') return mode === 'short' && shortType === 'sand' ? {v:1, s:1} : {v: mode === 'full' ? 0.88 : 0.6, s:0.5};
   return {v:1, s:1};
 }
@@ -1023,18 +1555,25 @@ function stepBall(dt, b, sim){
   b.t += dt;
   if (b.state === 'air'){
     const vh = Math.hypot(b.vx, b.vz) || 1, wk = sim === true ? 0 : 1;   // sim === 2: a preview with wind
+    const Wv = b.wv || (b.wv = windFor(b.sx, b.sz));                        // the wind for this shot
     if (WIND_V2){
-      const rx = b.vx - WIND.x*WIND_K*wk, rz = b.vz - WIND.z*WIND_K*wk, v = Math.hypot(rx, b.vy, rz);
+      const rx = b.vx - Wv.x*WIND_K*wk, rz = b.vz - Wv.z*WIND_K*wk, v = Math.hypot(rx, b.vy, rz);
       b.vx += (-KD*v*rx + b.side*b.spin*(b.vz/vh))*dt;
       b.vz += (-KD*v*rz - b.side*b.spin*(b.vx/vh))*dt;
       b.vy += (-G - KD*v*b.vy + KL*v*v*b.spin)*dt;
     } else {
       const v = Math.hypot(b.vx, b.vy, b.vz);
-      b.vx += (-KD*v*b.vx + WIND.x*0.05*wk + b.side*b.spin*(b.vz/vh))*dt;
-      b.vz += (-KD*v*b.vz + WIND.z*0.05*wk - b.side*b.spin*(b.vx/vh))*dt;
+      b.vx += (-KD*v*b.vx + Wv.x*0.05*wk + b.side*b.spin*(b.vz/vh))*dt;
+      b.vz += (-KD*v*b.vz + Wv.z*0.05*wk - b.side*b.spin*(b.vx/vh))*dt;
       b.vy += (-G - KD*v*b.vy + KL*v*v*b.spin)*dt;
     }
     b.x += b.vx*dt; b.y += b.vy*dt; b.z += b.vz*dt; b.spin *= Math.exp(-dt/7);
+    if (SOLID.length && b.y < 32 && !(b.treeT > b.t)) for (const t of SOLID){        // forest chute: the trees are in play
+      const dx = b.x - t.x, dz = b.z - t.z; if (dx > 6 || dx < -6 || dz > 6 || dz < -6) continue;
+      const yy = b.y - Hh(t.x, t.z); if (yy > t.h || yy < 0) continue;
+      const r = yy < t.h*0.2 ? 0.45 : t.w*0.5*(1 - 0.75*(yy - t.h*0.2)/(t.h*0.8));
+      if (dx*dx + dz*dz < r*r){ b.vx *= -0.22; b.vz *= -0.22; b.vy = Math.min(b.vy, 0)*0.4; b.spin *= 0.2; b.side = 0; b.treeT = b.t + 0.25; b.hitTree = true; if (!ffMute) sfx.thud('rough'); break; }
+    }
     const gh = Hh(b.x, b.z);
     if (b.y <= gh && b.vy < 0){
       b.y = gh; const s = surfaceAt(b.x, b.z);
@@ -1106,7 +1645,7 @@ function launch(power, curve, info){
   shotStart = {x:ball.x, z:ball.z, lie:currentLie, d, E:expStrokes(currentLie, d), mode, club: mode === 'full' ? CLUBS[clubIdx].id : null, type: lastSwing.type, aim: mode === 'putt' ? aimCups : aimOff, n: round.strokes + 1, need:NEED};
   const yaw = aimYaw() + (mode === 'putt' ? cu*0.03 : cu*0.035);
   const gh = Hh(ball.x, ball.z);
-  Object.assign(ball, {sx:ball.x, sz:ball.z, trail:[], carry:0, t:0, wet:false, lipped:false, lipT:0, side:0, spin:0});
+  Object.assign(ball, {sx:ball.x, sz:ball.z, trail:[], carry:0, t:0, wet:false, lipped:false, lipT:0, side:0, spin:0, wv:undefined, treeT:0, hitTree:false});
   ball.landX = ball.landZ = undefined;
   if (mode === 'putt'){
     const v = Math.sqrt(2*SURF.green.dec*(PUTT_RANGES[puttRangeIdx]/3)*p);
@@ -1169,6 +1708,7 @@ function setupLie(){
   if (mode === 'short'){ shortType = currentLie === 'sand' ? 'sand' : d < 22 ? 'chip' : 'pitch'; if (currentLie === 'fringe' && d < 14) mode = 'putt'; }
   if (mode === 'putt'){ pickRange(); computeRead(); } else caddieText = '';
   flightFollow = null; phase = 'ready'; motion.state = 'address'; motion.stillSince = 0;
+  Object.assign(WIND, windFor(ball.x, ball.z)); $('windMph').textContent = WIND.mph ? `${WIND.mph} mph` : 'Calm'; renderWind(true);
   addr = addressView();
   $('controls').hidden = false; $('icons').hidden = false;
   renderControls(); readyHint();
@@ -1234,7 +1774,9 @@ function renderHeader(){
   const md = new Date(Date.parse(todayKey + 'T12:00:00Z')).toLocaleDateString('en-US', {month:'short', day:'numeric', timeZone:'UTC'});
   $('edition').textContent = (pastKey ? `Last week · ${dayLabel(pastKey)}` : preview ? `No. ${holeNum} · Preview` : `No. ${holeNum} · ${md}`) + (DIFF_WORD ? ` · ${DIFF_WORD}` : '');
   $('holeName').textContent = holeName;
-  $('holeMeta').textContent = `Par 3 · ${YARDS} yds · ${pinDesc()}${WEATHER === 'drizzle' ? ' · Rain' : ''}`;
+  const wxw = {drizzle:'Rain', snow:'Snow'}[WEATHER] || (LOOK && LOOK.weather === 'fog' ? 'Fog' : '');
+  $('holeMeta').textContent = `Par 3 · ${YARDS} yds · ${pinDesc()}${wxw ? ' · ' + wxw : ''}`;
+  const ht = GEN3 ? describeHole(holeNum) : ''; $('holeType').textContent = ht; $('holeType').hidden = !ht;
   $('windMph').textContent = WIND.mph ? `${WIND.mph} mph` : 'Calm';
   renderWind(true);
 }
@@ -1482,6 +2024,8 @@ const BADGES = [
   {id:'golden', ic:'🌅', name:'Golden hour', desc:'Play a golden-hour hole', tier:'common', t:c => PAL_NAME === 'golden'},
   {id:'mist', ic:'🌫️', name:'Morning mist', desc:'Play a misty morning hole', tier:'common', t:c => PAL_NAME === 'mist'},
   {id:'autumn', ic:'🍂', name:'Fall colors', desc:'Play an autumn hole', tier:'common', t:c => PAL_NAME === 'autumn'},
+  {id:'island', ic:'🏝️', name:'Island life', desc:'Hit an island green off the tee', tier:'uncommon', t:c => !!(LOOK && LOOK.type === 'island' && c.gir)},
+  {id:'chute', ic:'🌲', name:'Threaded it', desc:'Hit the green through the forest chute', tier:'uncommon', t:c => !!(LOOK && LOOK.type === 'chute' && c.gir)},
   {id:'spooky', ic:'🎃', name:'Trick or treat', desc:'Play a Halloween hole', tier:'uncommon', t:c => HALLOWEEN},
   {id:'s3', ic:'🔥', name:'Warm streak', desc:'3-day streak', tier:'common', t:c => c.streak >= 3},
   {id:'h10', ic:'🔟', name:'Regular', desc:'Play 10 Daily Ace rounds', tier:'common', t:c => c.days >= 10},
@@ -1624,7 +2168,7 @@ $('copyBtn').addEventListener('click', () => {
 // hole stills come from a hidden copy of the page rendering that hole (cached on the phone)
 const thumbQ = []; let thumbBusy = false;
 function getThumb(n){
-  const key = 'dailyhole:thumb:2:' + n, c = LS.get(key, null); if (c) return Promise.resolve(c);
+  const key = 'dailyhole:thumb:3:' + n, c = LS.get(key, null); if (c) return Promise.resolve(c);
   return new Promise(res => { thumbQ.push({n, key, res}); pumpThumbs(); });
 }
 function pumpThumbs(){
@@ -1665,9 +2209,9 @@ function openMore(){
   top.appendChild(tile('trophy', 'Scores', "Yesterday's winner and awards", () => { close(); showYesterday(true); }, !(online() && !preview)));
   const list = $('pastList'); list.innerHTML = '';
   // keep only this week's hole pictures on the phone
-  try { const keep = new Set([holeNum, holeNumFor(todayKey), ...lastWeekKeys(todayKey).map(holeNumFor)].map(n => 'dailyhole:thumb:2:' + n)); Object.keys(localStorage).filter(k => k.startsWith('dailyhole:thumb:') && !keep.has(k)).forEach(k => localStorage.removeItem(k)); } catch(e){}
+  try { const keep = new Set([holeNum, holeNumFor(todayKey), ...lastWeekKeys(todayKey).map(holeNumFor)].map(n => 'dailyhole:thumb:3:' + n)); Object.keys(localStorage).filter(k => k.startsWith('dailyhole:thumb:') && !keep.has(k)).forEach(k => localStorage.removeItem(k)); } catch(e){}
   for (const key of lastWeekKeys(todayKey)){
-    const n = holeNumFor(key), r = rng(hash(n*7919)); r(); const name = holeNameFor(n); const pal = isHalloween(n) ? 'Halloween' : ['Golden hour','Morning mist','Autumn color'][Math.floor(r()*3)];
+    const n = holeNumFor(key), r = rng(hash(n*7919)); r(); const name = holeNameFor(n); const pk = picksFor(n), th = themeFor(n), pal = th ? {halloween:'Halloween', thanksgiving:'Thanksgiving', christmas:'Holidays', newyear:'New Year'}[th] + (pk ? ` · ${LABELS[pk.type]}` : '') : pk ? `${LABELS[pk.scenery]} · ${LABELS[pk.type]}` : ['Golden hour','Morning mist','Autumn color'][Math.floor(r()*3)];
     const res = LS.get('dailyhole:past:' + key, null);
     const b = document.createElement('button'); b.className = 'hole-card' + (res ? ' done' : '');
     const pic = document.createElement('div'); pic.className = 'pic';
@@ -1965,9 +2509,20 @@ const sfx = (() => {
     if (WEATHER === 'drizzle'){ const r = loopNoise(2, false), rf = ac.createBiquadFilter(), rg = ac.createGain(); rf.type = 'highpass'; rf.frequency.value = 1800; rg.gain.value = 0.035; r.connect(rf); rf.connect(rg); rg.connect(out); r.start(); nodes.push(r); }
     amb = {out, nodes, timers:[]};
     if (HALLOWEEN){ const cr = () => { if (!amb) return; if (ambOn() && !document.hidden) crickets(out); amb.timers.push(setTimeout(cr, 1800 + Math.random()*2600)); }; amb.timers.push(setTimeout(cr, 800)); }
-    const birdLoop = () => { if (!amb) return; if (ambOn() && !document.hidden) (HALLOWEEN ? owl : bird)(out); amb.timers.push(setTimeout(birdLoop, 2500 + Math.random()*(WEATHER === 'drizzle' ? 14000 : 7000))); };
+    if (PAL.sea || C.TYPE === 'cliff'){ const sf = loopNoise(4, true), sfl = ac.createBiquadFilter(), sfg = ac.createGain(); sfl.type = 'lowpass'; sfl.frequency.value = 700; sfg.gain.value = 0.05; sf.connect(sfl); sfl.connect(sfg); sfg.connect(out); sf.start(); nodes.push(sf, lfo(0.09, 0.045, sfg.gain)); }
+    if (THEME === 'christmas'){ const bl = () => { if (!amb) return; if (ambOn() && !document.hidden) bells(out); amb.timers.push(setTimeout(bl, 14000 + Math.random()*16000)); }; amb.timers.push(setTimeout(bl, 4000)); }
+    const birdLoop = () => { if (!amb) return; if (ambOn() && !document.hidden) (HALLOWEEN ? owl : (PAL.sea || C.TYPE === 'cliff') && Math.random() < 0.5 ? gull : bird)(out); amb.timers.push(setTimeout(birdLoop, 2500 + Math.random()*(WEATHER === 'drizzle' ? 14000 : 7000))); };
     amb.timers.push(setTimeout(birdLoop, 1500));
     if (WEATHER === 'leaves'){ const rustle = () => { if (!amb) return; if (ambOn() && !document.hidden){ const n = loopNoise(1.2, false), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = 0.6; g.gain.setValueAtTime(0, ac.currentTime); g.gain.linearRampToValueAtTime(0.02, ac.currentTime + 0.4); g.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2); n.connect(f); f.connect(g); g.connect(out); n.start(); n.stop(ac.currentTime + 1.3); } amb.timers.push(setTimeout(rustle, 4000 + Math.random()*7000)); }; amb.timers.push(setTimeout(rustle, 3000)); }
+  }
+  function gull(out){
+    let t = ac.currentTime + 0.05; for (let i=0;i<2 + Math.floor(Math.random()*3);i++){ const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; const f = 1100 + Math.random()*300;
+      o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f*0.62, t + 0.22); const lp = ac.createBiquadFilter(); lp.type = 'bandpass'; lp.frequency.value = 1400; lp.Q.value = 2;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.012, t + 0.03); g.gain.linearRampToValueAtTime(0, t + 0.24); o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + 0.26); t += 0.3; }
+  }
+  function bells(out){
+    let t = ac.currentTime + 0.05; for (let i=0;i<10;i++){ const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = [2637, 3136, 2794, 3520][i % 4];
+      g.gain.setValueAtTime(0.012, t); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.25); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.27); t += 0.09 + Math.random()*0.05; }
   }
   function owl(out){
     let t = ac.currentTime + 0.05; const base = 330 + Math.random()*60, pat = [0.32, 0.16, 0.55];
@@ -2029,6 +2584,7 @@ const sfx = (() => {
     },
     lip: () => { noise(0.04, 2300, 3, 0.1); setTimeout(() => noise(0.03, 1900, 3, 0.06), 55); },   // ball rattling the rim
     fish: () => noise(0.25, 1400, 0.8, 0.05),
+    pop: () => { noise(0.18, 600, 0.6, 0.12); setTimeout(() => noise(0.4, 3000, 0.4, 0.04), 120); },
     tick: () => noise(0.025, 850, 1.4, 0.07) };   // soft click: phone swing is armed
 })();
 ['pointerdown','pointerup','touchend','click','keydown'].forEach(ev => document.addEventListener(ev, () => { sfx.unlock(); $('soundTip').hidden = true; }, {passive:true, capture:true}));
@@ -2106,15 +2662,16 @@ function updateCamera(dt){
 
 // ---------- life on the course (cosmetic only; seeded so everyone sees the same weather) ----------
 const WX = rng(hash(holeNum*911));
-const WEATHER = HALLOWEEN ? (PAL.moon ? 'wisps' : 'leaves') : PAL_NAME === 'autumn' ? 'leaves' : PAL_NAME === 'mist' ? (WX() < 0.5 ? 'drizzle' : 'calm') : (WX() < 0.3 ? 'leaves' : 'motes');
+const WEATHER = !HALLOWEEN && LOOK ? ({clear:'none', pollen:'motes', leaves:'leaves', rain:'drizzle', fog:'none', overcast:'none', snow:'snow', rainbow:'rainbow', wisps:'wisps'}[LOOK.weather] || 'none') : HALLOWEEN ? (PAL.moon ? 'wisps' : 'leaves') : PAL_NAME === 'autumn' ? 'leaves' : PAL_NAME === 'mist' ? (WX() < 0.5 ? 'drizzle' : 'calm') : (WX() < 0.3 ? 'leaves' : 'motes');
 const parts = [];
 function resetPart(p, top){
   p.x = Math.random()*W; p.y = top ? -20 - Math.random()*H*0.3 : Math.random()*H;
   if (WEATHER === 'leaves'){ p.s = 5 + Math.random()*6; p.vy = 18 + Math.random()*26; p.rot = Math.random()*6; p.spin = (Math.random()-0.5)*3; p.sw = Math.random()*6; p.c = (PAL.leaves || ['#c4562b','#d98c2b','#e0b03a'])[Math.floor(Math.random()*3)]; }
   else if (WEATHER === 'drizzle'){ p.vy = 520 + Math.random()*220; p.l = 10 + Math.random()*12; }
+  else if (WEATHER === 'snow'){ p.s = 1.2 + Math.random()*2.2; p.vy = 22 + Math.random()*30; p.sw = Math.random()*6; }
   else { p.s = 1 + Math.random()*1.8; p.vy = -4 - Math.random()*8; p.sw = Math.random()*6; p.tw = Math.random()*6; if (WEATHER === 'wisps'){ p.y = H*0.3 + Math.random()*H*0.65; p.vy = -2 - Math.random()*4; p.s = 1.2 + Math.random()*1.6; } }
 }
-function initParts(){ const n = reduceMotion ? 0 : WEATHER === 'drizzle' ? 110 : WEATHER === 'leaves' ? 22 : WEATHER === 'motes' ? 34 : WEATHER === 'wisps' ? 26 : 0; for (let i=0;i<n;i++){ const p = {}; resetPart(p, false); parts.push(p); } }
+function initParts(){ const n = reduceMotion ? 0 : WEATHER === 'drizzle' ? 110 : WEATHER === 'leaves' ? 22 : WEATHER === 'motes' ? 34 : WEATHER === 'wisps' ? 26 : WEATHER === 'snow' ? 90 : 0; for (let i=0;i<n;i++){ const p = {}; resetPart(p, false); parts.push(p); } }
 function drawParts(dt){
   if (!parts.length) return;
   const wsx = (WIND.x*cosY - WIND.z*sinY);  // wind across the screen
@@ -2125,6 +2682,9 @@ function drawParts(dt){
       if (p.y > H + 20 || p.x < -30 || p.x > W + 30){ resetPart(p, true); if (wsx > 2) p.x = -10 - Math.random()*W*0.3; else if (wsx < -2) p.x = W + 10 + Math.random()*W*0.3; }
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(1, 0.55 + 0.45*Math.sin(T*2 + p.sw)); ctx.fillStyle = p.c; ctx.globalAlpha = 0.85;
       ctx.beginPath(); ctx.moveTo(-p.s, 0); ctx.quadraticCurveTo(0, -p.s*0.8, p.s, 0); ctx.quadraticCurveTo(0, p.s*0.8, -p.s, 0); ctx.fill(); ctx.restore();
+    } else if (WEATHER === 'snow'){
+      p.y += p.vy*dt; p.x += (wsx*4 + Math.sin(T*0.9 + p.sw)*14)*dt; if (p.y > H + 10){ resetPart(p, true); p.y = -10; } if (p.x < -10) p.x = W + 5; if (p.x > W + 10) p.x = -5;
+      ctx.fillStyle = 'rgba(250,252,255,.85)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill();
     } else if (WEATHER === 'drizzle'){
       p.y += p.vy*dt; p.x += wsx*14*dt; if (p.y > H){ resetPart(p, true); p.y = -Math.random()*60; }
       ctx.strokeStyle = 'rgba(225,232,245,.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - wsx*0.35, p.y - p.l); ctx.stroke();
@@ -2136,14 +2696,14 @@ function drawParts(dt){
   ctx.restore();
 }
 // ducks gliding on the lake, the odd fish, and geese overhead
-const lakeSpots = []; { const r = rng(hash(holeNum*577)); for (let i=0;i<400 && lakeSpots.length < 40;i++){ const x = -90 + r()*180, z = 34 + r()*(GR.z + 40); if (inPoly(lakePts, x, z) && !inPoly(lakePts, x + 3, z + 3) === false) lakeSpots.push({x, z}); } }
-const ducks = HALLOWEEN ? [] : lakeSpots.slice(0, 3).map((p, i) => ({x:p.x, z:p.z, h:i*2.1, sp:0.6 + i*0.15, bob:i}));
+const lakeSpots = []; { const r = rng(hash(holeNum*577)); for (let i=0;i<400 && lakeSpots.length < 40;i++){ const x = -90 + r()*180, z = 34 + r()*(GR.z + 40); if (inWater(x, z) && inWater(x + 3, z + 3)) lakeSpots.push({x, z}); } }
+const ducks = HALLOWEEN || THEME === 'christmas' || THEME === 'newyear' || (LOOK && (LOOK.scenery === 'desert' || C.TYPE === 'cliff')) ? [] : lakeSpots.slice(0, 3).map((p, i) => ({x:p.x, z:p.z, h:i*2.1, sp:0.6 + i*0.15, bob:i}));
 let fishT = 4 + Math.random()*6; const fishes = [];
 let geese = null, geeseT = 12 + Math.random()*20;
 function drawLakeLife(dt){
   for (const d of ducks){
     const nx = d.x + Math.sin(d.h)*d.sp*dt, nz = d.z + Math.cos(d.h)*d.sp*dt;
-    if (inPoly(lakePts, nx, nz) && inPoly(lakePts, nx + Math.sin(d.h)*3, nz + Math.cos(d.h)*3)){ d.x = nx; d.z = nz; d.h += Math.sin(T*0.2 + d.bob)*0.12*dt; } else d.h += 2.2;
+    if (inWater(nx, nz) && inWater(nx + Math.sin(d.h)*3, nz + Math.cos(d.h)*3)){ d.x = nx; d.z = nz; d.h += Math.sin(T*0.2 + d.bob)*0.12*dt; } else d.h += 2.2;
     const p = proj(d.x, 0.02, d.z); if (!p) continue; const s = Math.max(1.2, 0.35*F/p[2]); if (s < 1.3 && p[2] > 260) continue;
     const dir = Math.sign(Math.sin(d.h)*cosY - Math.cos(d.h)*sinY) || 1;
     ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p[0] - dir*s*1.2, p[1] + s*0.2); ctx.lineTo(p[0] - dir*s*4, p[1] - s*0.3); ctx.moveTo(p[0] - dir*s*1.2, p[1] + s*0.2); ctx.lineTo(p[0] - dir*s*4, p[1] + s*0.8); ctx.stroke();
@@ -2183,7 +2743,7 @@ function drawAim(){
     for (let s=0.2; s<=L; s+=0.2){ const x = ball.x + Math.sin(yaw)*s, z = ball.z + Math.cos(yaw)*s; const p = proj(x, Hh(x,z)+0.02, z); if (!p){ first = true; continue; } if (first) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); first = false; }
     ctx.stroke(); ctx.setLineDash([]); return;
   }
-  if (targetMode() || aimDist !== null){
+  {  // one marker only: the target you're playing to (at the pin until you move it)
     const g = aimGeom(), r = mode === 'full' ? 3.2 : 1.1, gy = (x, z) => Hh(x, z) + 0.05;
     if (targetMode()){ ctx.setLineDash([3, 6]); ctx.strokeStyle = 'rgba(231,192,104,.7)'; ctx.lineWidth = 1.4; ctx.beginPath(); let first = true;
       for (let k=0;k<=40;k++){ const u = k/40, x = ball.x + (g.x - ball.x)*u, z = ball.z + (g.z - ball.z)*u, q = proj(x, gy(x, z), z); if (!q){ first = true; continue; } if (first) ctx.moveTo(q[0], q[1]); else ctx.lineTo(q[0], q[1]); first = false; }
@@ -2193,10 +2753,6 @@ function drawAim(){
     ctx.strokeStyle = 'rgba(231,192,104,.95)'; ctx.lineWidth = 1.6;
     for (const [ax, az] of [[1,0],[-1,0],[0,1],[0,-1]]){ const a1 = proj(g.x + ax*r*0.55, gy(g.x, g.z), g.z + az*r*0.55), a2 = proj(g.x + ax*r*1.35, gy(g.x, g.z), g.z + az*r*1.35); if (a1 && a2){ ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.stroke(); } }
   }
-  if (reading || !showTick() || !predicted || predicted.x === undefined) return;
-  const rad = mode === 'full' ? 2.6 : 1.2; const pts = []; for (let i=0;i<24;i++){ const a = i/24*Math.PI*2; pts.push([predicted.x + Math.cos(a)*rad, predicted.z + Math.sin(a)*rad]); }
-  if (polyPath(pts, (x,z) => Hh(x,z)+0.04)){ ctx.setLineDash([4,4]); ctx.strokeStyle = 'rgba(244,238,226,.9)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); }
-  const c = proj(predicted.x, Hh(predicted.x, predicted.z)+0.04, predicted.z); if (c){ ctx.fillStyle = 'rgba(244,238,226,.9)'; ctx.beginPath(); ctx.arc(c[0], c[1], 2, 0, 7); ctx.fill(); }
 }
 function drawBall(){
   if (ball.state === 'wet') return;
@@ -2233,7 +2789,9 @@ function frame(now){
   for (const [z, t] of vis) if (z >= dP && (!reading || z > dP + 20)) drawTree(t, false);
   drawFlag(); drawBall();
   if (!reading) for (const [z, t] of vis) if (z < dP && z > closeCut) drawTree(t, false);
-  drawSplashes(dt); drawLakeLife(dt); drawGeese(dt, hz); drawParts(dt);
+  drawSplashes(dt); drawLakeLife(dt); drawGeese(dt, hz);
+  if (PAL.fog){ const fg = ctx.createLinearGradient(0, hz - H*0.25, 0, H); fg.addColorStop(0, 'rgba(225,228,232,.55)'); fg.addColorStop(0.35, 'rgba(225,228,232,.38)'); fg.addColorStop(1, 'rgba(225,228,232,.06)'); ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H); }
+  drawParts(dt);
   const v = ctx.createRadialGradient(W/2, H*0.45, Math.min(W,H)*0.35, W/2, H*0.5, Math.max(W,H)*0.85); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(12,16,12,.42)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   drawSwipeTrail();
