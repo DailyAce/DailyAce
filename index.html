@@ -916,6 +916,9 @@ function drawFlag(){
 
 // ---------- clubs, shots, physics ----------
 const G = 10.72, KD = 0.005, KL = 0.004, CUP = 0.118;
+// From hole 6 on, wind pushes on the ball through air drag (mph -> yd/s, a bit stronger aloft), so a 10 mph wind
+// costs a 7 iron about 12 yds into it, adds about 7 helping, and moves it about 12 yds across.
+const WIND_V2 = holeNum >= 6, WIND_K = 0.4889*1.25;
 function simFlat(speed, launch, spin){ let y=0.03, z=0, vy=speed*Math.sin(launch), vz=speed*Math.cos(launch), s=spin; const dt=1/120;
   for (let i=0;i<4000;i++){ const v=Math.hypot(vy,vz); vy+=(-G-KD*v*vy+KL*v*v*s)*dt; vz+=(-KD*v*vz)*dt; y+=vy*dt; z+=vz*dt; s*=Math.exp(-dt/7); if (y<=0 && vy<0) break; } return z; }
 const CLUBS = [
@@ -994,10 +997,10 @@ function shotParams(power){
   const s = SHORT[shortType];
   return {speed:s.v100*Math.sqrt(clamp(power, 0.02, 1.06))*m.v, launch:s.launch*D2R, spin:s.spin*m.s};
 }
-function simShot(power){
+function simShot(power, withWind){
   const L = shotParams(power), yaw = aimYaw(), gh = Hh(ball.x, ball.z);
   const b = {x:ball.x, y:gh+0.05, z:ball.z, sx:ball.x, sz:ball.z, vx:L.speed*Math.cos(L.launch)*Math.sin(yaw), vy:L.speed*Math.sin(L.launch), vz:L.speed*Math.cos(L.launch)*Math.cos(yaw), spin:L.spin, side:0, state:'air', t:0};
-  for (let i=0;i<4000 && b.state === 'air';i++) stepBall(1/120, b, true);
+  for (let i=0;i<4000 && b.state === 'air';i++) stepBall(1/120, b, withWind ? 2 : true);
   return b;
 }
 function predict(){ predicted = null; if (mode === 'putt') return; const b = simShot(1); if (b.landX !== undefined) predicted = {x:b.landX, z:b.landZ}; }
@@ -1019,10 +1022,18 @@ function computeNeed(){
 function stepBall(dt, b, sim){
   b.t += dt;
   if (b.state === 'air'){
-    const v = Math.hypot(b.vx, b.vy, b.vz), vh = Math.hypot(b.vx, b.vz) || 1, wk = sim ? 0 : 1;
-    b.vx += (-KD*v*b.vx + WIND.x*0.05*wk + b.side*b.spin*(b.vz/vh))*dt;
-    b.vz += (-KD*v*b.vz + WIND.z*0.05*wk - b.side*b.spin*(b.vx/vh))*dt;
-    b.vy += (-G - KD*v*b.vy + KL*v*v*b.spin)*dt;
+    const vh = Math.hypot(b.vx, b.vz) || 1, wk = sim === true ? 0 : 1;   // sim === 2: a preview with wind
+    if (WIND_V2){
+      const rx = b.vx - WIND.x*WIND_K*wk, rz = b.vz - WIND.z*WIND_K*wk, v = Math.hypot(rx, b.vy, rz);
+      b.vx += (-KD*v*rx + b.side*b.spin*(b.vz/vh))*dt;
+      b.vz += (-KD*v*rz - b.side*b.spin*(b.vx/vh))*dt;
+      b.vy += (-G - KD*v*b.vy + KL*v*v*b.spin)*dt;
+    } else {
+      const v = Math.hypot(b.vx, b.vy, b.vz);
+      b.vx += (-KD*v*b.vx + WIND.x*0.05*wk + b.side*b.spin*(b.vz/vh))*dt;
+      b.vz += (-KD*v*b.vz + WIND.z*0.05*wk - b.side*b.spin*(b.vx/vh))*dt;
+      b.vy += (-G - KD*v*b.vy + KL*v*v*b.spin)*dt;
+    }
     b.x += b.vx*dt; b.y += b.vy*dt; b.z += b.vz*dt; b.spin *= Math.exp(-dt/7);
     const gh = Hh(b.x, b.z);
     if (b.y <= gh && b.vy < 0){
@@ -1239,7 +1250,20 @@ function renderWind(force){
 }
 function renderLie(){
   const d = dPin(ball.x, ball.z);
-  $('caddie').hidden = !(mode === 'putt' && caddieText); $('caddie').textContent = caddieText;
+  let windTxt = '';
+  if (mode !== 'putt' && !rangeMode && WIND.mph >= 3 && phase === 'ready'){
+    // how long the shot plays in today's wind, from the same flight with and without it
+    const p = mode === 'full' ? 1 : 0.8, a = simShot(p, false), w = simShot(p, true);
+    if (a.landX !== undefined && w.landX !== undefined){
+      const ca = Math.hypot(a.landX - ball.x, a.landZ - ball.z), cw = Math.hypot(w.landX - ball.x, w.landZ - ball.z), tgt = aimGeom().along, plays = tgt*ca/Math.max(1, cw);
+      const yw = aimYaw(), drift = ((w.landX - a.landX)*Math.cos(yw) - (w.landZ - a.landZ)*Math.sin(yw))*tgt/Math.max(1, ca), th = mode === 'full' ? 2 : 1, bits = [];
+      if (Math.abs(plays - tgt) >= th) bits.push(`plays like ${fmtShort(plays, mode === 'full' ? 'fairway' : currentLie)}`);
+      if (Math.abs(drift) >= th) bits.push(`drifts ${mode === 'full' ? Math.round(Math.abs(drift)) + ' yds' : fmtShort(Math.abs(drift), currentLie)} ${drift > 0 ? 'right' : 'left'}`);
+      if (bits.length) windTxt = `Wind: ${bits.join(', ')}`;
+    }
+  }
+  const cTxt = mode === 'putt' ? caddieText : windTxt;
+  $('caddie').hidden = !cTxt; $('caddie').textContent = cTxt;
   $('lieDist').textContent = mode === 'putt' || d < 25 ? fmtDist(d) : `${Math.round(d)} yds`;
   $('lieTxt').textContent = rangeMode ? 'Driving range' : `${practice ? 'Practice · ' : ''}Shot ${round.strokes + 1} · ${LIE_NAME[currentLie]}`;
 }
