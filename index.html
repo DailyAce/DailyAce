@@ -2970,7 +2970,7 @@ async function buildShareImage(){
   const bd = [...(ev.fresh || []), ...(ev.ups || [])].map(id => BADGES.find(b => b.id === id)).filter(Boolean).slice(0, 4);
   if (bd.length) bits.push(bd.map(b => `${b.ic} ${b.name}`).join('  '));
   g.fillStyle = SOFT; fit(bits.join('   ·   '), 500, 34, SW - 128); g.fillText(bits.join('   ·   '), 64, 1790);
-  g.fillStyle = '#e7c068'; font(600, 34); g.fillText('Play today’s hole · dailyace.github.io', 64, 1868);
+  g.fillStyle = '#e7c068'; font(600, 34); g.fillText('Play today’s hole · ' + (location.host + location.pathname).replace(/\/(index\.html)?$/, ''), 64, 1868);
   const blob = await new Promise(r => c.toBlob(r, 'image/png'));
   if (!blob || ver !== shareVer) return;
   if (shareURL) URL.revokeObjectURL(shareURL);
@@ -3231,7 +3231,7 @@ async function openLeagues(from){
 }
 function closeLeagues(){ $('leagueCard').hidden = true; if (lgReturn === 'summary' && phase === 'summary') $('summary').hidden = false; else if (lgReturn === 'settings') openCard('setCard'); else if (phase === 'ready'){ $('controls').hidden = false; readyHint(); } else if (phase === 'summary') $('summary').hidden = false; }
 async function inviteLeague(L){
-  const url = `https://dailyace.github.io/#join=${L.code}`, text = `Join my Daily Ace league "${L.name}". Code ${L.code}`;
+  const url = `${location.origin}${location.pathname}#join=${L.code}`, text = `Join my Daily Ace league "${L.name}". Code ${L.code}`;
   try { if (navigator.share){ await navigator.share({title:'Daily Ace league', text, url}); return; } } catch(e){ if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(`${text}\n${url}`); $('lgMsg').textContent = 'Invite copied. Paste it in your group chat.'; } catch(e){ $('lgMsg').textContent = `Share this: ${url}`; }
 }
