@@ -262,6 +262,9 @@ a.btn{text-align:center;text-decoration:none}
 #shotBar{flex-direction:column;align-items:stretch;gap:2px}
 .srow.two{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
 .srow.one{display:flex;justify-content:center}
+.srow.types{display:flex;justify-content:space-evenly;align-items:center;gap:2px}
+.srow.types .chip{flex:0 1 auto;min-width:0;padding-inline:12px}
+.srow.types .chip small{margin-left:5px}
 .srow + .srow{border-top:1px solid var(--edge);padding-top:2px}
 #shotBar .col{display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
 .lie{display:flex;align-items:baseline;gap:10px;white-space:nowrap;text-shadow:0 1px 12px rgba(8,12,10,.8)}
@@ -2098,9 +2101,10 @@ function renderControls(){
             `<button class="chip" data-act="full" aria-pressed="${!knock}">Full</button><button class="chip" data-act="punch" aria-pressed="${knock}">Punch</button>`);
   } else if (mode === 'short' || (mode === 'putt' && currentLie !== 'green')){
     const opts = currentLie === 'sand' ? ['sand','chip','pitch'] : ['chip','pitch','flop'];
-    let types = opts.map(k => `<button class="chip" data-act="short" data-v="${k}" aria-pressed="${mode === 'short' && shortType === k}">${SHORT[k].name}</button>`).join('');
+    // one full-width row of shot types; the picked one carries its distance, like the club readout does
+    let types = opts.map(k => { const on = mode === 'short' && shortType === k; return `<button class="chip" data-act="short" data-v="${k}" aria-pressed="${on}">${SHORT[k].name}${on ? `<small>${SHORT[k].carry}</small>` : ''}</button>`; }).join('');
     if (canPutt()) types += `<button class="chip" data-act="putt" aria-pressed="${mode === 'putt'}">Putt</button>`;
-    h = mode === 'putt' ? row(types) + row(rangeCol, aimCol) : row(types, `<span class="chip readout">${SHORT[shortType].carry}<small>yds</small></span>`);
+    h = `<div class="srow types">${types}</div>` + (mode === 'putt' ? row(rangeCol, aimCol) : '');
   } else {
     h = row(rangeCol, aimCol);
   }
