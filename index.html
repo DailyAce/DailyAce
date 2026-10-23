@@ -422,7 +422,7 @@ a.btn{text-align:center;text-decoration:none}
     <div class="card wide" id="moreCard" hidden>
       <div class="card-head"><div class="label">More golf</div><div class="title">None of this counts</div></div>
       <div class="tiles" id="moreTop"></div>
-      <div class="label">Last week's holes</div>
+      <div class="label">The last five days</div>
       <div class="hole-cards" id="pastList"></div>
       <div class="btns"><button class="btn quiet" id="moreClose">Close</button></div>
     </div>
@@ -477,7 +477,7 @@ a.btn{text-align:center;text-decoration:none}
       <div class="help-sec"><h3>Swiping</h3><p class="body">Drag down on the course to take it back, then flick straight up. Farther back means more power, and a slow flick loses some. Drift <b>right</b> and the ball curves right (slice). Drift <b>left</b> and it curves left (hook). Putts only care how far you pull back.</p></div>
       <div class="help-sec"><h3>Swinging your phone</h3><p class="body">Take your stance with the phone in your dominant hand like the grip: <b>screen up, top pointing down at the ball</b>, the screen sitting on the swing plane. The game only arms when you're set up this way and still. Then swing through. <b>Speed</b> sets power, and the <b>club face</b> at impact sets curve: open goes right, closed goes left (for a right-hander). Look down at the face gauge to square it up before you swing. Waving the phone around doesn't count.</p></div>
       <div class="help-sec"><h3>Shots</h3><p class="body"><b>Full</b> is a normal swing. <b>Punch</b> flies low and runs. Around the green, <b>Chip</b> runs out, <b>Pitch</b> lands soft, and <b>Flop</b> goes straight up and stops. <b>Sand</b> gets you out of a bunker. From the fringe you can <b>Putt</b>.</p></div>
-      <div class="help-sec"><h3>More golf</h3><p class="body">Tap the target icon for the driving range and last week's Monday to Friday holes. None of it counts. After each phone swing you'll see a chart of what your club face did from takeaway to impact.</p></div>
+      <div class="help-sec"><h3>More golf</h3><p class="body">Tap the target icon for the driving range and the holes from the last five days. None of it counts. After each phone swing you'll see a chart of what your club face did from takeaway to impact.</p></div>
       <div class="help-sec"><h3>On the green</h3><p class="body">Pace is in <b>feet</b>: pull back to the distance you want the ball to roll on a flat green. Your caddie tells you if it plays uphill or downhill and how many <b>cups</b> it breaks. <b>Read green</b> zooms in on your line. Anything inside <b>3 feet</b> is a gimme.</p></div>
       <div class="btns"><button class="btn" id="helpClose">Let's play</button></div>
     </div>
@@ -556,11 +556,12 @@ const hm = /^#h(\d{1,4})(?:s([0-2]))?$/.exec(location.hash || '');
 if (hm){ holeNum = Math.max(1, +hm[1]); preview = true; }
 const tm = /^#t(-?\d{1,4})$/.exec(location.hash || ''), thumb = !!tm;
 if (thumb){ holeNum = +tm[1]; preview = true; document.documentElement.classList.add('thumb'); }
-function lastWeekKeys(key){ const t = Date.parse(key + 'T12:00:00Z'), wd = (new Date(t).getUTCDay() + 6) % 7, mon = t - (wd + 7)*86400000; return [0,1,2,3,4].map(i => new Date(mon + i*86400000).toISOString().slice(0, 10)); }
+// the five days before today, oldest first: each day yesterday's hole joins and the oldest drops off
+function recentKeys(key){ const t = Date.parse(key + 'T12:00:00Z'); return [5,4,3,2,1].map(i => new Date(t - i*86400000).toISOString().slice(0, 10)); }
 const holeNumFor = key => Math.round((Date.parse(key + 'T00:00:00Z') - EPOCH)/86400000) + 1;
 let pastKey = null;
 const dm = /^#d(\d{4}-\d{2}-\d{2})$/.exec(location.hash || '');
-if (dm && lastWeekKeys(todayKey).includes(dm[1])){ pastKey = dm[1]; holeNum = holeNumFor(pastKey); preview = true; }
+if (dm && recentKeys(todayKey).includes(dm[1])){ pastKey = dm[1]; holeNum = holeNumFor(pastKey); preview = true; }
 // Weekend loop: Saturdays and Sundays (from hole 8) are three holes. SUB is which of the three this page plays:
 // the first one you haven't finished today (or the one named in a preview link like #h8s1).
 const LOOP_FROM = 8;
@@ -2000,7 +2001,7 @@ function pinDesc(){
 }
 function renderHeader(){
   const md = new Date(Date.parse(todayKey + 'T12:00:00Z')).toLocaleDateString('en-US', {month:'short', day:'numeric', timeZone:'UTC'});
-  $('edition').textContent = LOOP ? `No. ${holeNum} · Hole ${HOLE_SUB + 1} of 3` + (DIFF_WORD ? ` · ${DIFF_WORD}` : '') : (pastKey ? `Last week · ${dayLabel(pastKey)}` : preview ? `No. ${holeNum} · Preview` : `No. ${holeNum} · ${md}`) + (DIFF_WORD ? ` · ${DIFF_WORD}` : '');
+  $('edition').textContent = LOOP ? `No. ${holeNum} · Hole ${HOLE_SUB + 1} of 3` + (DIFF_WORD ? ` · ${DIFF_WORD}` : '') : (pastKey ? `Replay · ${dayLabel(pastKey)}` : preview ? `No. ${holeNum} · Preview` : `No. ${holeNum} · ${md}`) + (DIFF_WORD ? ` · ${DIFF_WORD}` : '');
   $('holeName').textContent = holeName;
   const wxw = {drizzle:'Rain', snow:'Snow'}[WEATHER] || (LOOK && LOOK.weather === 'fog' ? 'Fog' : '');
   $('holeMeta').innerHTML = ''; for (const t of ['Par 3', `${YARDS} yds`, pinDesc(), wxw].filter(Boolean)){ const sp = document.createElement('span'); sp.textContent = t; $('holeMeta').appendChild(sp); }
@@ -2383,7 +2384,7 @@ function showSummary(){
   $('vsYou').textContent = c.teeFt === null ? 'In the water' : c.teeFt === 0 ? 'In the cup' : fmtDist(c.teeFt/3);
   $('vsBucket').textContent = TOUR_BUCKET; $('vsTour').textContent = `about ${TOUR_FT} ft`;
   $('vsLadder').textContent = c.teeFt === null ? '—' : c.teeFt === 0 ? 'Beyond Tour' : ladderLabel(c.teeFt);
-  $('sumStreak').textContent = pastKey ? "Last week's hole. It doesn't count toward your streak." : preview ? 'Preview hole. Streaks count on the real daily.' : `Day ${c.streak} of your streak · come back tomorrow`;
+  $('sumStreak').textContent = pastKey ? "A past hole. It doesn't count toward your streak." : preview ? 'Preview hole. Streaks count on the real daily.' : `Day ${c.streak} of your streak · come back tomorrow`;
   const nb = (fresh || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean).sort((a,b) => TIER_RANK[a.tier] - TIER_RANK[b.tier]);
   const ub = (ev.ups || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean);
   const items = [...nb.map(b => ({b, tag:'New'})), ...ub.map(b => ({b, tag:METALS[metalIdx(b, ev.counts[b.id])]}))];
@@ -2466,7 +2467,7 @@ function tile(icon, title, sub, onclick, disabled){
   if (disabled) b.disabled = true; else b.onclick = onclick; return b;
 }
 function replayPast(){
-  // last week's holes never count, so just start a clean round on the same hole
+  // past holes never count, so just start a clean round on the same hole
   ['moreCard','summary','badgeCard','shareCard'].forEach(id => $(id).hidden = true);
   mainRound = freshRound(); round = mainRound; practice = false; setupLie(); Object.assign(cam, addr);
 }
@@ -2483,8 +2484,8 @@ function openMore(){
   if (online() && !preview){ const lb = document.createElement('button'); lb.className = 'more-wide'; lb.innerHTML = '<div><b>Leagues</b><br><span>Private leaderboards with your friends</span></div><span>›</span>'; lb.onclick = () => { $('moreCard').hidden = true; openLeagues(phase === 'summary' ? 'summary' : null); }; top.after(lb); lb.id = 'moreLeagues'; }
   const list = $('pastList'); list.innerHTML = '';
   // keep only this week's hole pictures on the phone
-  try { const keep = new Set([holeNum, holeNumFor(todayKey), ...lastWeekKeys(todayKey).map(holeNumFor)].map(n => 'dailyhole:thumb:3:' + n)); Object.keys(localStorage).filter(k => k.startsWith('dailyhole:thumb:') && !keep.has(k)).forEach(k => localStorage.removeItem(k)); } catch(e){}
-  for (const key of lastWeekKeys(todayKey)){
+  try { const keep = new Set([holeNum, holeNumFor(todayKey), ...recentKeys(todayKey).map(holeNumFor)].map(n => 'dailyhole:thumb:3:' + n)); Object.keys(localStorage).filter(k => k.startsWith('dailyhole:thumb:') && !keep.has(k)).forEach(k => localStorage.removeItem(k)); } catch(e){}
+  for (const key of recentKeys(todayKey)){
     const n = holeNumFor(key), r = rng(hash(n*7919)); r(); const name = holeNameFor(n); const pk = picksFor(n), th = themeFor(n), pal = th ? {halloween:'Halloween', thanksgiving:'Thanksgiving', christmas:'Holidays', newyear:'New Year'}[th] + (pk ? ` · ${LABELS[pk.type]}` : '') : pk ? `${LABELS[pk.scenery]} · ${LABELS[pk.type]}` : ['Golden hour','Morning mist','Autumn color'][Math.floor(r()*3)];
     const res = LS.get('dailyhole:past:' + key, null);
     const b = document.createElement('button'); b.className = 'hole-card' + (res ? ' done' : '');
@@ -3210,7 +3211,7 @@ async function buildShareImage(){
   });
   // field, streak, badges
   g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1660, SW - 128, 2);
-  g.textAlign = 'left'; const fl = pastKey ? "Last week's hole · doesn't count" : fieldLine();
+  g.textAlign = 'left'; const fl = pastKey ? "Past hole · doesn't count" : fieldLine();
   g.fillStyle = INK; font(700, 44); if (fl) g.fillText(fl, 64, 1730);
   const ev = lastEval || {fresh:[], ups:[]}, bits = [];
   if (!preview && !pastKey){ const days = LS.get('dailyhole:days', []); bits.push(`🔥 ${Math.max(1, streakFrom(days))}-day streak`); }
