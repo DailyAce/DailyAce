@@ -39,24 +39,33 @@ button{font-family:var(--sans)}
 
 /* HUD */
 .hud{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;
-  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
-  padding-block:calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 12px)}
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.idblock{min-width:0;display:flex;flex-direction:column;gap:6px;text-shadow:0 1px 14px rgba(8,12,10,.55)}
+  --gx:max(16px, env(safe-area-inset-left, 0px));padding-left:var(--gx);padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:0 calc(env(safe-area-inset-bottom, 0px) + 12px)}
+.top{display:flex;flex-direction:column;gap:12px}
+.strip{pointer-events:auto;display:flex;justify-content:space-between;align-items:center;background:#070908;margin:0 calc(-1*var(--gx));padding:calc(env(safe-area-inset-top, 0px) + 6px) var(--gx) 6px;box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.strip .icons{gap:2px}
+.strip .icon{background:transparent;border:0;width:38px;height:34px;border-radius:10px}
+.holebar{display:grid;grid-template-columns:64px minmax(0,1fr) 64px;align-items:center;gap:8px}
+.holebar .idblock{align-items:center;text-align:center;gap:5px}
+.balance{display:flex;justify-content:flex-end}
+.balance .tag{pointer-events:auto;font-size:.6rem;padding:6px 8px;line-height:1.2;text-align:center}
+.idblock{min-width:0;display:flex;flex-direction:column;gap:6px;text-shadow:0 1px 14px rgba(8,12,10,.65)}
 .brand{display:flex;align-items:center;gap:8px}
 .brand svg{width:20px;height:20px;flex:none}
 .wordmark{font-weight:700;font-size:.95rem;letter-spacing:-.01em;white-space:nowrap}
-.edition{font-size:.64rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);opacity:.78;font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:4px}
-.hole-name{font-size:1.85rem}
+.edition{font-size:.62rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink);opacity:.8;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hole-name{font-size:1.75rem;max-width:100%}
 .hole-type{font-size:.72rem;color:var(--ink);opacity:.7;white-space:nowrap;margin-top:2px;letter-spacing:.01em}
-.hole-meta{font-size:.8rem;white-space:nowrap;color:var(--ink);opacity:.82;font-variant-numeric:tabular-nums}
+.hole-meta{font-size:.8rem;white-space:nowrap;display:flex;gap:10px;justify-content:center;color:var(--ink);opacity:.82;font-variant-numeric:tabular-nums}
 .side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
 .glass{background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(14px) saturate(1.1);-webkit-backdrop-filter:blur(14px) saturate(1.1)}
-.wind{display:flex;align-items:center;gap:8px;border-radius:999px;padding:6px 12px 6px 9px}
-.wind svg{width:18px;height:18px;transition:transform .6s ease;color:var(--ink)}
-.wind-txt{display:flex;flex-direction:column;line-height:1.1}
+.wind{display:flex;flex-direction:column;align-items:center;gap:4px;text-shadow:0 1px 10px rgba(8,12,10,.7)}
+.wgauge{position:relative;width:52px;height:52px;flex:none;border-radius:50%;background:rgba(8,12,10,.42);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:grid;place-items:center;color:var(--ink)}
+.wgauge .ticks{position:absolute;inset:0;width:100%;height:100%}
+.wind #windArrow{width:24px;height:24px;transition:transform .6s ease;color:var(--fair)}
+.wind-txt{display:flex;flex-direction:column;align-items:center;line-height:1.1}
 .wind-txt b{font-weight:700;font-stretch:85%;font-size:.95rem;font-variant-numeric:tabular-nums}
-.wind-txt span{white-space:nowrap;font-size:.58rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.wind-txt span{width:84px;text-align:center;white-space:normal;line-height:1.2;margin-top:1px;font-size:.56rem;color:var(--ink)!important;opacity:.85;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
 .icons{display:flex;gap:6px}
 .icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--ink);cursor:pointer;padding:0}
 .icon svg{width:17px;height:17px}
@@ -231,12 +240,31 @@ a.btn{text-align:center;text-decoration:none}
 .badge.locked .ic{filter:grayscale(1)}
 
 /* controls */
-.bottom{display:flex;flex-direction:column;gap:8px;align-items:center}
+.bottom{display:flex;flex-direction:column;gap:6px;align-items:center}
+.dock{pointer-events:auto;width:min(520px,100%);border-radius:22px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:2px}
+.dock-info{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;column-gap:12px;row-gap:2px;padding:2px 8px 4px;min-width:0;text-align:center}
+.dock-info .lie{text-shadow:none;flex:none}
+.dock-info .lie .num{font-size:1.45rem}
+.dock-info .caddie{all:unset;font-size:.74rem;font-weight:600;color:var(--fair);text-align:center;max-width:100%}
+.dock-info .caddie[hidden]{display:none}
+.dock-row{display:flex;align-items:center;justify-content:space-between;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.dock-row::-webkit-scrollbar{display:none}
+.dock-row + .dock-row{border-top:1px solid var(--edge);padding-top:2px}
+.dock .chip{padding:9px 11px}
+.dock .chip.step{padding:9px 10px}
+.aim,.views{display:flex;align-items:center;gap:2px}
+#shotBar{justify-content:center}
+#shotBar{flex-direction:column;align-items:stretch;gap:2px}
+.srow.two{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.srow.one{display:flex;justify-content:center}
+.srow + .srow{border-top:1px solid var(--edge);padding-top:2px}
+#shotBar .col{display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
 .lie{display:flex;align-items:baseline;gap:10px;white-space:nowrap;text-shadow:0 1px 12px rgba(8,12,10,.8)}
 .lie .num{font-size:1.9rem}
 .lie .label{color:var(--ink);opacity:.85}
 .caddie{font-size:.86rem;font-weight:600;text-align:center;max-width:34ch;text-wrap:balance;padding:8px 14px;border-radius:999px;background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.hint{font-size:.86rem;text-align:center;max-width:32ch;text-wrap:balance;text-shadow:0 1px 12px rgba(8,12,10,.9);min-height:1.3em;opacity:.92}
+.hint{font-size:.84rem;text-align:center;max-width:34ch;text-wrap:balance;text-shadow:0 1px 12px rgba(8,12,10,.9);opacity:.92}
+.hint:empty{display:none}
 .rows{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:100%}
 .bar{pointer-events:auto;display:flex;align-items:center;gap:2px;border-radius:999px;padding:4px;max-width:100%}
 .chip{font-size:.82rem;font-weight:600;color:var(--ink);background:transparent;border:0;padding:10px 12px;border-radius:999px;white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
@@ -246,7 +274,7 @@ a.btn{text-align:center;text-decoration:none}
 .chip.readout.tap{cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
 .chip[aria-pressed="true"] small{color:#4c5246}
-.soundtip{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 118px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:8px 14px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;white-space:nowrap;z-index:7}
+.soundtip{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 172px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:8px 14px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;white-space:nowrap;z-index:7}
 .flytag{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:10px;align-items:baseline;padding:10px 16px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.85rem;font-weight:600;white-space:nowrap;z-index:6}
 .flytag .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}.flytag .skip{color:var(--soft);font-weight:500}
 .sep{width:1px;height:22px;background:var(--edge);margin:0 4px}
@@ -279,27 +307,30 @@ a.btn{text-align:center;text-decoration:none}
 <div class="meter" id="meter"><i id="meterFill"></i><em id="meterNeed"></em><span id="meterPct"></span></div>
 <div class="hud">
   <header class="top">
-    <div class="idblock">
+    <div class="strip">
       <div class="brand">
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8.3 14.6V5.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8.9 5.4l5 2.1-5 2.1z" fill="#e4573f"/></svg>
         <span class="wordmark">daily ace</span>
       </div>
-      <div class="edition" id="edition">No. 1</div>
-      <div class="hole-name title" id="holeName">Loading</div>
-      <div class="hole-meta" id="holeMeta"></div>
-      <div class="hole-type" id="holeType" hidden></div>
+      <div class="icons" id="icons">
+        <button class="icon" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.4 7.3a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.3 1-1.3 1.9v.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="10" cy="15.3" r="1.1" fill="currentColor"/></svg></button>
+        <button class="icon" id="rangeBtn" aria-label="More golf" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="1" fill="currentColor"/></svg></button>
+        <button class="icon" id="setBtn" aria-label="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h9M15 6h2M3 14h2M8 14h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="13.5" cy="6" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6.5" cy="14" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+      </div>
     </div>
-    <div class="side">
-      <div class="wind glass" title="Wind">
-        <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l5.5 7.5h-3.6V21h-3.8V10.5H6.5z" fill="currentColor"/></svg>
+    <div class="holebar">
+      <div class="wind" title="Wind">
+        <div class="wgauge"><svg viewBox="0 0 56 56" aria-hidden="true" class="ticks"><circle cx="28" cy="28" r="25" fill="none" stroke="currentColor" stroke-opacity=".28" stroke-width="1.2"/><g stroke="currentColor" stroke-opacity=".55" stroke-width="1.4" stroke-linecap="round"><path d="M28 4v4M28 48v4M4 28h4M48 28h4"/></g></svg>
+          <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l5.5 7.5h-3.6V21h-3.8V10.5H6.5z" fill="currentColor"/></svg></div>
         <div class="wind-txt"><b id="windMph">0 mph</b><span id="windDir">calm</span></div>
       </div>
-      <div class="icons" id="icons">
-        <button class="icon glass" id="helpBtn" aria-label="How to play"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.4 7.3a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.3 1-1.3 1.9v.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="10" cy="15.3" r="1.1" fill="currentColor"/></svg></button>
-        <button class="icon glass" id="rangeBtn" aria-label="Driving range" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="1" fill="currentColor"/></svg></button>
-        <button class="icon glass" id="setBtn" aria-label="Swing settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h9M15 6h2M3 14h2M8 14h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="13.5" cy="6" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6.5" cy="14" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+      <div class="idblock">
+        <div class="edition" id="edition">No. 1</div>
+        <div class="hole-name title" id="holeName">Loading</div>
+        <div class="hole-meta" id="holeMeta"></div>
+        <div class="hole-type" id="holeType" hidden></div>
       </div>
-      <button class="tag" id="psTag" hidden>Practice swing on</button>
+      <div class="balance"><button class="tag" id="psTag" hidden>Practice swing</button></div>
     </div>
   </header>
 
@@ -438,6 +469,7 @@ a.btn{text-align:center;text-decoration:none}
     <div class="card" id="helpCard" hidden>
       <div class="card-head"><div class="label">How to play</div><div class="title">One hole. Every day.</div></div>
       <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100 against a Tour pro hitting from the same spot: 50 matches the Tour, above 50 beats it. Your average grade breaks ties, so a par with great shots beats a scrappy par.</p></div>
+      <div class="help-sec"><h3>Gestures</h3><p class="body"><b>Tap</b> the course to aim, or drag the yellow target. <b>Drag down and flick up</b> to swing. <b>Pinch in</b> to see the whole hole, pinch out to come back. <b>Double-tap the green</b> to read it: a grid appears with little balls rolling downhill along it. Still balls mean flat; fast red ones mean steep. Double-tap again to go back. When putting, the arrows aim your line in cups.</p></div>
       <div class="help-sec"><h3>Weekends</h3><p class="body">Saturday and Sunday are a three-hole loop. Play them in order; your score is total strokes against par 9, then your average grade across all three.</p></div>
       <div class="help-sec"><h3>Leagues</h3><p class="body">Start a private league from the scorecard or settings, then send friends the invite. Everyone in it gets their own leaderboard for the day and the week.</p></div>
       <div class="help-sec"><h3>The week</h3><p class="body">Holes get harder through the week. Monday is the easiest, with a big green and soft slopes. Each day the hole gets longer, the green smaller and the slopes and wind stronger, up to Friday, the toughest. The weekend eases off. Today's difficulty shows under the logo.</p></div>
@@ -459,6 +491,7 @@ a.btn{text-align:center;text-decoration:none}
       <div class="set-row"><div class="label">Dominant hand</div><div class="seg" id="segHand"><button data-v="R" aria-pressed="true">Right</button><button data-v="L" aria-pressed="false">Left</button></div></div>
       <div class="set-row"><div class="label">Address position</div><div class="seg" id="segAddr"><button data-v="std" aria-pressed="true">Standard</button><button data-v="mine" aria-pressed="false">Record mine</button></div><div class="body">Standard: phone in your dominant hand like the grip, screen up, top pointing at the ball. Record mine saves how you hold it.</div></div>
       <div class="set-row"><div class="label">Sound</div><div class="seg" id="segSound"><button data-v="all" aria-pressed="true">Nature + shots</button><button data-v="fx" aria-pressed="false">Shots only</button><button data-v="off" aria-pressed="false">Off</button></div><div class="body">Birds, wind and water play quietly in the background.</div></div>
+      <div class="set-row"><div class="label">Guides</div><div class="seg" id="segGuide"><button data-v="1" aria-pressed="true">On</button><button data-v="0" aria-pressed="false">Off</button></div><div class="body">The power line on the meter and the tips above the controls.</div></div>
       <div class="set-row"><div class="label">Phone curve direction</div><div class="seg" id="segFlip"><button data-v="0" aria-pressed="true">Normal</button><button data-v="1" aria-pressed="false">Flipped</button></div><div class="body">If your hooks go right, flip it.</div></div>
       <div class="body" id="diag"></div>
       <div class="btns"><button class="btn" id="setClose">Done</button></div>
@@ -480,19 +513,14 @@ a.btn{text-align:center;text-decoration:none}
   <button id="soundTip" class="soundtip glass" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>Tap anywhere for sound</button>
   <button id="flyTag" class="flytag glass" hidden><span class="k">Flyover</span><span id="flyName"></span><span class="skip">Tap to skip</span></button>
   <footer class="bottom" id="controls">
-    <div class="lie" id="lieLine"><span class="num" id="lieDist">—</span><span class="label" id="lieTxt"></span></div>
-    <div class="caddie" id="caddie" hidden></div>
     <div class="hint" id="hint"></div>
-    <div class="rows">
-      <div class="bar glass" id="shotBar"></div>
-      <div class="bar glass" id="aimBar">
-        <button class="chip step" id="aimL" aria-label="Aim left">◀</button>
-        <span class="chip readout" id="aimLbl">At pin</span>
-        <button class="chip step" id="aimR" aria-label="Aim right">▶</button>
-        <span class="sep"></span>
-        <button class="chip" id="holeBtn" aria-pressed="false">Hole</button>
-        <button class="chip" id="readBtn" aria-pressed="false">Green</button>
+    <div class="dock glass" id="dock">
+      <div class="dock-info">
+        <div class="lie" id="lieLine"><span class="num" id="lieDist">—</span><span class="label" id="lieTxt"></span></div>
+        <div class="caddie" id="caddie" hidden></div>
       </div>
+      <div class="dock-row" id="shotBar"></div>
+      <div hidden id="aimBar"><button id="aimL"></button><span id="aimLbl"></span><button id="aimR"></button><button id="holeBtn"></button><button id="readBtn"></button></div>
     </div>
   </footer>
 </div>
@@ -1419,6 +1447,48 @@ function drawTreeShadow(t){
   const len = t.h*(PAL.sun[1] < 0.1 ? 3.4 : 2.2), w = t.w*0.45, sx = -PAL.sun[0]*len*0.9;
   if (polyPath([[t.x-w,t.z],[t.x+w,t.z],[t.x+sx+w*0.3,t.z-len],[t.x+sx-w*0.3,t.z-len]], (x,z) => Hh(x,z)+0.02)){ ctx.fillStyle = 'rgba(20,24,40,.2)'; ctx.fill(); }
 }
+// green reading, PGA Tour style: a grid over the green with small balls rolling along its lines.
+// Each ball moves downhill along its line, faster where the slope is steeper; still balls mean flat.
+let gridSegs = null, gridDots = null, gridYaw = null, gridT = 0;
+function buildGrid(){
+  gridYaw = addr.yaw; const ux = Math.sin(gridYaw), uz = Math.cos(gridYaw), vx = Math.cos(gridYaw), vz = -Math.sin(gridYaw);
+  const R = Math.max(GR.rx, GR.rz)*1.25, SP = 1.5, segs = [];
+  for (const fam of [0, 1]){
+    const [dx, dz, ox, oz] = fam ? [vx, vz, ux, uz] : [ux, uz, vx, vz];
+    for (let off = -R; off <= R; off += SP){
+      let t0 = null;
+      for (let t = -R; t <= R + 0.5; t += 0.5){
+        const x = GR.x + ox*off + dx*t, z = GR.z + oz*off + dz*t, on = t <= R && gDist(x, z) <= 1.0;
+        if (on && t0 === null) t0 = t;
+        if (!on && t0 !== null){ if (t - 0.5 - t0 > 1.2) segs.push({dx, dz, bx:GR.x + ox*off, bz:GR.z + oz*off, t0, t1:t - 0.5}); t0 = null; }
+      }
+    }
+  }
+  gridSegs = segs; gridDots = [];
+  const g = rng(hash(holeNum*41 + 3));
+  for (const sg of segs){ const n = Math.max(1, Math.round((sg.t1 - sg.t0)/2.6)); for (let i=0;i<n;i++) gridDots.push({sg, t:sg.t0 + (sg.t1 - sg.t0)*((i + g())/n)}); }
+}
+function drawGreenGrid(){
+  if (!gridSegs || gridYaw !== addr.yaw) buildGrid();
+  const now = performance.now(), dt = Math.min(0.05, gridT ? (now - gridT)/1000 : 0); gridT = now;
+  ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.lineWidth = 1.2;
+  for (const sg of gridSegs){
+    ctx.beginPath(); let first = true;
+    for (let t = sg.t0; t <= sg.t1 + 1e-6; t += 0.6){ const x = sg.bx + sg.dx*t, z = sg.bz + sg.dz*t, q = proj(x, Hh(x, z) + 0.03, z); if (!q){ first = true; continue; } if (first) ctx.moveTo(q[0], q[1]); else ctx.lineTo(q[0], q[1]); first = false; }
+    ctx.stroke();
+  }
+  const SPEED = reduceMotion ? 20 : 55;
+  for (const d of gridDots){
+    const sg = d.sg, x = sg.bx + sg.dx*d.t, z = sg.bz + sg.dz*d.t, gr = grad(x, z), m = Math.hypot(gr[0], gr[1]);
+    const along = -(gr[0]*sg.dx + gr[1]*sg.dz); d.t += along*SPEED*dt;
+    if (d.t > sg.t1) d.t = sg.t0; else if (d.t < sg.t0) d.t = sg.t1;
+    const q = proj(x, Hh(x, z) + 0.04, z); if (!q) continue;
+    const col = m < 0.008 ? '210,235,255' : m < 0.018 ? '120,210,255' : m < 0.03 ? '255,226,110' : m < 0.045 ? '255,160,70' : '255,85,70';
+    const r = Math.max(1.6, Math.min(4.5, 0.11*F/q[2]));
+    ctx.fillStyle = `rgba(${col},.95)`; ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
 let groundGrad = null;
 function drawGround(hz){
   const [fx, fz] = fwd(700); const fe = proj(fx, 0, fz);
@@ -1472,20 +1542,13 @@ function drawGreenComplex(){
     if (!a || !b || !d || !e) continue;
     if (Math.max(a[0],b[0],d[0],e[0]) < 0 || Math.min(a[0],b[0],d[0],e[0]) > W || Math.max(a[1],b[1],d[1],e[1]) < 0 || Math.min(a[1],b[1],d[1],e[1]) > H) continue;
     ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.lineTo(e[0],e[1]); ctx.lineTo(d[0],d[1]); ctx.closePath();
-    ctx.fillStyle = reading && c.readCol ? c.readCol : c.col; ctx.fill();
+    ctx.fillStyle = c.col; ctx.fill();
   }
   if (!reading){ ctx.save(); if (polyPath(greenPts, Hh)){ ctx.clip();
     for (let k=-14;k<=14;k++){ const x = GR.x + k*3; if (polyPath([[x,GR.z-GR.rz-3],[x+1.5,GR.z-GR.rz-3],[x+1.5,GR.z+GR.rz+3],[x,GR.z+GR.rz+3]], (x,z) => Hh(x,z)+0.01)){ ctx.fillStyle = 'rgba(255,255,225,.05)'; ctx.fill(); } } }
     ctx.restore(); }
   for (const b of BUNKERS){ if (polyPath(b.pts, (x,z) => Hh(x,z)-0.05)){ ctx.fillStyle = PAL.moon ? '#8f8a7a' : '#e9d3a3'; ctx.fill(); ctx.strokeStyle = b.pot ? 'rgba(40,34,18,.85)' : 'rgba(60,52,30,.55)'; ctx.lineWidth = b.pot ? 2.4 : 1.4; ctx.stroke(); } }
-  if (reading){
-    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
-    const pr = mode === 'putt', list = pr ? puttArrows : arrows, hd = pr ? 7 : 5; if (pr) ctx.lineWidth = 2;
-    for (const a of list){ const L = pr ? Math.min(0.75, 0.25 + a.s*10) : Math.min(2.4, 0.6 + a.s*45); const x2 = a.x + a.gx*L, z2 = a.z + a.gz*L;
-      const p = proj(a.x, Hh(a.x,a.z)+0.05, a.z), q = proj(x2, Hh(x2,z2)+0.05, z2); if (!p || !q) continue;
-      ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
-      const ang = Math.atan2(q[1]-p[1], q[0]-p[0]); ctx.beginPath(); ctx.moveTo(q[0],q[1]); ctx.lineTo(q[0]-hd*Math.cos(ang-0.5), q[1]-hd*Math.sin(ang-0.5)); ctx.lineTo(q[0]-hd*Math.cos(ang+0.5), q[1]-hd*Math.sin(ang+0.5)); ctx.closePath(); ctx.fill(); }
-  }
+  if (reading) drawGreenGrid();
   const cup = proj(PIN.x, Hh(PIN.x,PIN.z), PIN.z);
   if (cup){ const r = Math.max(1.5, 0.059*F/cup[2]*(1 + clamp((cup[2]-8)/50, 0, 1))); const ry = r*Math.max(0.25, Math.sin(cam.pitch + Math.atan2(cam.y - Hh(PIN.x,PIN.z), Math.max(1, cup[2])))); if (mode === 'putt'){ ctx.strokeStyle = 'rgba(255,255,245,.7)'; ctx.lineWidth = Math.max(1, r*0.18); ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r*1.12, ry*1.12, 0, 0, 7); ctx.stroke(); } ctx.fillStyle = '#1b2417'; ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r, ry, 0, 0, 7); ctx.fill(); }
 }
@@ -1560,7 +1623,8 @@ function loadRound(){ if (preview) return freshRound(); const r = LS.get(roundKe
 let mainRound = loadRound(), round = mainRound;
 function saveRound(){ if (!preview && !practice && !rangeMode) LS.set(roundKey, round); }
 const priorDays = LS.get('dailyhole:days', []).filter(k => k !== todayKey).length;
-const showTick = () => practice || preview || rangeMode || priorDays < 3;
+let guides = LS.get('dailyhole:guides', true) !== false;
+const showTick = () => guides || practice || preview || rangeMode;
 
 const dPin = (x, z) => Math.hypot(x-PIN.x, z-PIN.z);
 const yawTo = (x, z) => Math.atan2(PIN.x-x, PIN.z-z);
@@ -1679,7 +1743,7 @@ function findDrop(x, z){
     let best = null;
     for (let k=0;k<72;k++){ const a = k/72*Math.PI*2; const px = x + Math.cos(a)*r, pz = z + Math.sin(a)*r; const s = surfaceAt(px, pz);
       if ((s === 'fairway' || s === 'rough' || s === 'fringe' || s === 'tee') && dPin(px, pz) >= d0 - 0.5){ const dd = dPin(px, pz); if (!best || dd < best.d) best = {x:px, z:pz, d:dd}; } }
-    if (best){ const s = surfaceAt(best.x, best.z); const back = yawTo(best.x, best.z); return {x:best.x - Math.sin(back)*(s === 'fringe' ? 0 : 1.5), z:best.z - Math.cos(back)*(s === 'fringe' ? 0 : 1.5)}; }
+    if (best){ const s = surfaceAt(best.x, best.z); const back = yawTo(best.x, best.z); const p2 = {x:best.x - Math.sin(back)*(s === 'fringe' ? 0 : 1.5), z:best.z - Math.cos(back)*(s === 'fringe' ? 0 : 1.5)}; return surfaceAt(p2.x, p2.z) === 'water' ? {x:best.x, z:best.z} : p2; }   // never drop back into the water
   }
   return {x:0, z:0};
 }
@@ -1830,7 +1894,7 @@ function renderHeader(){
   $('edition').textContent = LOOP ? `No. ${holeNum} · Hole ${HOLE_SUB + 1} of 3` + (DIFF_WORD ? ` · ${DIFF_WORD}` : '') : (pastKey ? `Last week · ${dayLabel(pastKey)}` : preview ? `No. ${holeNum} · Preview` : `No. ${holeNum} · ${md}`) + (DIFF_WORD ? ` · ${DIFF_WORD}` : '');
   $('holeName').textContent = holeName;
   const wxw = {drizzle:'Rain', snow:'Snow'}[WEATHER] || (LOOK && LOOK.weather === 'fog' ? 'Fog' : '');
-  $('holeMeta').textContent = `Par 3 · ${YARDS} yds · ${pinDesc()}${wxw ? ' · ' + wxw : ''}`;
+  $('holeMeta').innerHTML = ''; for (const t of ['Par 3', `${YARDS} yds`, pinDesc(), wxw].filter(Boolean)){ const sp = document.createElement('span'); sp.textContent = t; $('holeMeta').appendChild(sp); }
   const ht = LOOK ? [LABELS[LOOK.type], LABELS[LOOK.cond], LABELS[LOOK.wind]].filter(Boolean).join(' · ') : ''; $('holeType').textContent = ht; $('holeType').hidden = !ht;
   $('windMph').textContent = WIND.mph ? `${WIND.mph} mph` : 'Calm';
   renderWind(true);
@@ -1859,25 +1923,28 @@ function renderLie(){
       if (bits.length) windTxt = `Wind: ${bits.join(', ')}`;
     }
   }
-  const cTxt = mode === 'putt' ? caddieText : windTxt;
+  const ag = aimGeom(), aimTxt = mode === 'putt' ? (aimCups ? `Aim ${Math.abs(aimCups)} cup${Math.abs(aimCups) === 1 ? '' : 's'} ${aimCups < 0 ? 'left' : 'right'}` : '') : (aimDist !== null || aimOff ? `Target ${fmtShort(ag.along, 'fairway')}${Math.abs(ag.lat) >= 0.5 ? ` ${Math.round(Math.abs(ag.lat))} ${ag.lat < 0 ? 'L' : 'R'}` : ''}` : '');
+  const cTxt = [aimTxt, mode === 'putt' ? caddieText.replace(/^Caddie: /, '') : windTxt.replace(/^Wind: /, '')].filter(Boolean).join(' · ');
   $('caddie').hidden = !cTxt; $('caddie').textContent = cTxt;
   $('lieDist').textContent = mode === 'putt' || d < 25 ? fmtDist(d) : `${Math.round(d)} yds`;
   $('lieTxt').textContent = rangeMode ? 'Driving range' : `${practice ? 'Practice · ' : ''}Shot ${round.strokes + 1} · ${LIE_NAME[currentLie]}`;
 }
 function renderControls(){
   const bar = $('shotBar'); let h = '';
+  const row = (...cols) => `<div class="srow ${cols.length > 1 ? 'two' : 'one'}">` + cols.map(c => `<div class="col">${c}</div>`).join('<span class="sep"></span>') + '</div>';
+  const aimCol = `<button class="chip step" data-act="aimL" aria-label="Aim left">◀</button><span class="chip readout">${aimCups === 0 ? 'Straight' : `${Math.abs(aimCups)} cup${Math.abs(aimCups) === 1 ? '' : 's'} ${aimCups < 0 ? 'L' : 'R'}`}</span><button class="chip step" data-act="aimR" aria-label="Aim right">▶</button>`;
+  const rangeCol = `<button class="chip step" data-act="rangeDown" aria-label="Shorter range">‹</button><span class="chip readout">${PUTT_RANGES[puttRangeIdx]}<small>ft</small></span><button class="chip step" data-act="rangeUp" aria-label="Longer range">›</button>`;
   if (mode === 'full'){
     const c = CLUBS[clubIdx]; const knock = fullType === 'punch';
-    h = `<button class="chip step" data-act="clubDown" aria-label="Less club">‹</button><span class="chip readout">${c.id}<small>${knock ? Math.round(c.carry*0.76) : c.carry}</small></span><button class="chip step" data-act="clubUp" aria-label="More club">›</button><span class="sep"></span>`+
-        `<button class="chip" data-act="full" aria-pressed="${!knock}">Full</button><button class="chip" data-act="punch" aria-pressed="${knock}">Punch</button>`;
+    h = row(`<button class="chip step" data-act="clubDown" aria-label="Less club">‹</button><span class="chip readout">${c.id}<small>${knock ? Math.round(c.carry*0.76) : c.carry}</small></span><button class="chip step" data-act="clubUp" aria-label="More club">›</button>`,
+            `<button class="chip" data-act="full" aria-pressed="${!knock}">Full</button><button class="chip" data-act="punch" aria-pressed="${knock}">Punch</button>`);
   } else if (mode === 'short' || (mode === 'putt' && currentLie !== 'green')){
     const opts = currentLie === 'sand' ? ['sand','chip','pitch'] : ['chip','pitch','flop'];
-    h = opts.map(k => `<button class="chip" data-act="short" data-v="${k}" aria-pressed="${mode === 'short' && shortType === k}">${SHORT[k].name}</button>`).join('');
-    if (canPutt()) h += `<button class="chip" data-act="putt" aria-pressed="${mode === 'putt'}">Putt</button>`;
-    h += `<span class="sep"></span>`;
-    h += mode === 'putt' ? `<button class="chip readout tap" data-act="range">Range<small>${PUTT_RANGES[puttRangeIdx]} ft</small></button>` : `<span class="chip readout">${SHORT[shortType].carry}<small>yds</small></span>`;
+    let types = opts.map(k => `<button class="chip" data-act="short" data-v="${k}" aria-pressed="${mode === 'short' && shortType === k}">${SHORT[k].name}</button>`).join('');
+    if (canPutt()) types += `<button class="chip" data-act="putt" aria-pressed="${mode === 'putt'}">Putt</button>`;
+    h = mode === 'putt' ? row(types) + row(rangeCol, aimCol) : row(types, `<span class="chip readout">${SHORT[shortType].carry}<small>yds</small></span>`);
   } else {
-    h = `<button class="chip step" data-act="rangeDown" aria-label="Shorter range">‹</button><span class="chip readout">Range<small>${PUTT_RANGES[puttRangeIdx]} ft</small></span><button class="chip step" data-act="rangeUp" aria-label="Longer range">›</button>`;
+    h = row(rangeCol, aimCol);
   }
   bar.innerHTML = h;
   { const ag = aimGeom(), side = Math.abs(ag.lat) < 0.5 ? '' : ` ${Math.round(Math.abs(ag.lat))} ${ag.lat < 0 ? 'L' : 'R'}`;
@@ -1895,6 +1962,7 @@ $('shotBar').addEventListener('click', e => {
   else if (a === 'range') puttRangeIdx = (puttRangeIdx + 1) % PUTT_RANGES.length;
   else if (a === 'rangeDown') puttRangeIdx = Math.max(0, puttRangeIdx-1);
   else if (a === 'rangeUp') puttRangeIdx = Math.min(PUTT_RANGES.length-1, puttRangeIdx+1);
+  else if (a === 'aimL' || a === 'aimR'){ stepAim(a === 'aimL' ? -1 : 1); return; }
   addr = addressView(); renderControls(); readyHint();
 });
 function stepAim(dir){ if (phase !== 'ready') return; if (mode === 'putt') aimCups = clamp(aimCups + dir, -40, 40); else { const st = mode === 'full' ? 2 : 1, mx = mode === 'full' ? 40 : 20; aimOff = clamp(Math.round((aimOff + dir*st)/st)*st, -mx, mx); } renderControls(); }
@@ -1920,12 +1988,13 @@ $('aimLbl').addEventListener('click', () => { if (phase !== 'ready' || mode === 
 $('aimL').addEventListener('click', () => stepAim(-1));
 $('aimR').addEventListener('click', () => stepAim(1));
 function setReading(on){ reading = on; if (on && holeView) setHoleView(false); $('lieLine').hidden = on && mode === 'putt'; $('readBtn').setAttribute('aria-pressed', String(on)); $('readBtn').textContent = 'Green'; }
-$('readBtn').addEventListener('click', () => { if (phase !== 'ready') return; setReading(!reading); if (reading) setHint(mode === 'putt' ? 'Arrows point downhill. Your line is dashed.' : 'Drag the target to pick your spot. Arrows point downhill.'); else readyHint(); });
+$('readBtn').addEventListener('click', () => { if (phase !== 'ready') return; setReading(!reading); if (reading) setHint(mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper.' : 'Drag the target to pick your spot. Arrows point downhill.'); else readyHint(); });
 
 function readyHint(){
   if (phase !== 'ready' || reading) return;
+  if (!showTick() && !rangeMode){ setHint(''); return; }   // after the first few days the controls speak for themselves
   if (inputMode === 'motion'){ setHint(mode === 'putt' ? 'Set up, hold still, then rock it gently like a putter.' : 'Set up, hold still, then swing.'); return; }
-  setHint(mode === 'putt' ? 'Pull down to set the pace in feet, then push up smoothly.' : mode === 'short' ? `Drag down and flick up. 100% carries ${SHORT[shortType].carry} yds.` : 'Drag down to take it back, then flick up to swing.');
+  setHint(mode === 'putt' ? 'Tap to aim. Pull down for pace, push up to putt. Double-tap the green to read it.' : mode === 'short' ? `Tap to aim. Drag down and flick up; 100% carries ${SHORT[shortType].carry} yds.` : 'Tap to aim. Drag down and flick up to swing. Pinch to see the whole hole.');
 }
 
 // ---------- shot card ----------
@@ -2362,10 +2431,11 @@ function maybeFly(){ if (phase === 'ready' && round.shots.length === 0 && !range
 $('setBtn').addEventListener('click', () => { if (phase !== 'ready') return; renderSettings(); openCard('setCard'); });
 $('setClose').addEventListener('click', () => closeCard('setCard'));
 function segSet(id, v){ [...$(id).querySelectorAll('button')].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v)))); }
-function renderSettings(){ segSet('segSound', soundMode); if (document.activeElement !== $('setTag')) $('setTag').value = myTag || ''; $('setTagMsg').textContent = online() ? 'Shows on the leaderboard.' : 'Saved on this phone until the leaderboard connects.'; $('diag').textContent = lastDiag || 'Swing once and your last swing\'s numbers show here.'; segSet('segHand', hand); segSet('segAddr', addrCal ? 'mine' : 'std'); segSet('segInput', inputMode); segSet('segFeel', feelIdx); segSet('segPS', practiceSwing ? 1 : 0); segSet('segFlip', curveFlip ? 1 : 0); }
+function renderSettings(){ segSet('segSound', soundMode); segSet('segGuide', guides ? 1 : 0); if (document.activeElement !== $('setTag')) $('setTag').value = myTag || ''; $('setTagMsg').textContent = online() ? 'Shows on the leaderboard.' : 'Saved on this phone until the leaderboard connects.'; $('diag').textContent = lastDiag || 'Swing once and your last swing\'s numbers show here.'; segSet('segHand', hand); segSet('segAddr', addrCal ? 'mine' : 'std'); segSet('segInput', inputMode); segSet('segFeel', feelIdx); segSet('segPS', practiceSwing ? 1 : 0); segSet('segFlip', curveFlip ? 1 : 0); }
 $('segInput').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.v === 'motion') enableMotion(); else { inputMode = 'swipe'; $('inputNote').textContent = ''; } renderSettings(); });
 $('segFeel').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; feelIdx = +b.dataset.v; LS.set('dailyhole:feel', feelIdx); renderSettings(); });
 $('segPS').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; practiceSwing = b.dataset.v === '1'; $('psTag').hidden = !practiceSwing; renderSettings(); });
+$('segGuide').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; guides = b.dataset.v === '1'; LS.set('dailyhole:guides', guides); computeNeed(); readyHint(); renderSettings(); });
 $('segFlip').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; curveFlip = b.dataset.v === '1'; LS.set('dailyhole:flip', curveFlip); renderSettings(); });
 $('segHand').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; hand = b.dataset.v; LS.set('dailyhole:hand', hand); renderSettings(); });
 $('segAddr').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.v === 'mine') calibrate(); else { addrCal = null; LS.set('dailyhole:addr', null); renderSettings(); } });
@@ -2404,22 +2474,49 @@ function drawSwipeTrail(){
   ctx.restore();
 }
 const backCap = () => mode === 'putt' ? 1.05 : 1.12;
-let tdrag = null, tapStart = null;
+let tdrag = null, tapStart = null, pinch = null, lastTap = null, tapTimer = 0;
+let tapForSound = false;   // the first tap that turns sound on doesn't also move your aim
+const touches = new Map();
+// gestures: tap to aim, drag down and flick up to swing, pinch in for the whole hole (out to come back),
+// double-tap the green to read it
+function zoomOut(){ if (phase !== 'ready') return; if (reading) setReading(false); else if (!holeView){ setHoleView(true); setHint(mode === 'putt' ? 'The whole hole. Pinch out to come back.' : 'The whole hole. Tap or drag the target. Pinch out to come back.'); } }
+function zoomIn(){ if (phase !== 'ready') return; if (holeView){ setHoleView(false); readyHint(); } else if (!reading){ setReading(true); setHint(mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper. Double-tap to go back.' : 'Drag the target to pick your spot. Double-tap to go back.'); } }
+function setPuttAimAt(pt){
+  if (!pt) return; const d = Math.max(0.5, dPin(ball.x, ball.z)), y0 = yawTo(ball.x, ball.z);
+  let ang = Math.atan2(pt.x - ball.x, pt.z - ball.z) - y0; while (ang > Math.PI) ang -= 2*Math.PI; while (ang < -Math.PI) ang += 2*Math.PI;
+  aimCups = clamp(Math.round(Math.tan(clamp(ang, -1.2, 1.2))*d/CUP), -40, 40); renderControls();
+}
+function singleTap(x, y){
+  if (phase !== 'ready' || fly || tapForSound) return; const pt = screenToGround(x, y); if (!pt) return;
+  if (mode === 'putt') setPuttAimAt(pt); else setTargetAt(pt);
+}
+function doubleTap(x, y){
+  if (phase !== 'ready') return; const pt = screenToGround(x, y), onGreen = pt && gDist(pt.x, pt.z) <= FRINGE_SCALE + 0.4;
+  if (reading){ setReading(false); readyHint(); return; }
+  if (onGreen){ setReading(true); setHint(mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper. Double-tap to go back.' : 'Drag the target to pick your spot. Double-tap to go back.'); }
+  else if (holeView){ setHoleView(false); readyHint(); }
+}
+document.addEventListener('gesturestart', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
   sfx.unlock();
+  touches.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  tapForSound = !$('soundTip').hidden;
+  if (touches.size === 2){ const [a1, a2] = [...touches.values()]; pinch = {d0:Math.hypot(a1.x - a2.x, a1.y - a2.y), done:false}; swipe = null; tdrag = null; tapStart = null; meter.classList.remove('show'); liveTrail = null; return; }
+  if (touches.size > 2 || pinch) return;
   if (fly){ endFlyover(); return; }
   if (phase === 'flight'){ fastForward(); return; }
-  tapStart = null;
-  if (targetMode()){
-    const g = aimGeom(), p = proj(g.x, Hh(g.x, g.z), g.z), near = p && Math.hypot(e.clientX - p[0], e.clientY - p[1]) < 56;
-    if (near || reading || inputMode !== 'swipe'){ tdrag = true; cv.setPointerCapture(e.pointerId); setTargetAt(screenToGround(e.clientX, e.clientY)); return; }
-    tapStart = {x:e.clientX, y:e.clientY, t:performance.now()};   // a quick tap moves the target; a pull-back swings
+  tapStart = phase === 'ready' ? {x:e.clientX, y:e.clientY, t:performance.now()} : null;
+  if (phase === 'ready' && mode !== 'putt'){
+    const g = aimGeom(), p = proj(g.x, Hh(g.x, g.z), g.z), near = p && Math.hypot(e.clientX - p[0], e.clientY - p[1]) < 48;
+    if (near || (targetMode() && (reading || inputMode !== 'swipe'))){ tdrag = true; cv.setPointerCapture(e.pointerId); return; }
   }
   if (phase !== 'ready' || inputMode !== 'swipe' || reading) return;
   swipe = {y0:e.clientY, x0:e.clientX, maxY:e.clientY, maxX:e.clientX, back:0, samples:[], all:[[e.clientX, e.clientY]], fired:false}; liveTrail = null; cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointermove', e => {
-  if (tdrag){ setTargetAt(screenToGround(e.clientX, e.clientY)); return; }
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (pinch){ if (touches.size === 2 && !pinch.done){ const [a1, a2] = [...touches.values()], r = Math.hypot(a1.x - a2.x, a1.y - a2.y)/Math.max(1, pinch.d0); if (r < 0.75){ pinch.done = true; zoomOut(); } else if (r > 1.33){ pinch.done = true; zoomIn(); } } return; }
+  if (tdrag){ if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 6) tapStart = null; if (!tapStart) setTargetAt(screenToGround(e.clientX, e.clientY)); return; }
   if (!swipe || swipe.fired) return; const now = performance.now();
   if (e.clientY >= swipe.maxY){ swipe.maxY = e.clientY; swipe.maxX = e.clientX; swipe.samples = []; }
   swipe.back = clamp((swipe.maxY - swipe.y0)/(H*0.28), 0, backCap());
@@ -2441,12 +2538,27 @@ function fireSwipe(){
   if (mode === 'putt'){ launch(back, curve, {input:'swipe', back:+back.toFixed(2), range:PUTT_RANGES[puttRangeIdx], trail}); return; }
   launch(back*tempo, curve, {input:'swipe', back:+back.toFixed(2), tempo:+tempo.toFixed(2), trail});
 }
+function endTouch(e){
+  touches.delete(e.pointerId);
+  if (pinch){ if (!touches.size) pinch = null; swipe = null; tdrag = null; tapStart = null; meter.classList.remove('show'); return true; }
+  return false;
+}
 cv.addEventListener('pointerup', e => {
-  if (tdrag){ tdrag = null; return; }
-  if (tapStart && swipe && !swipe.fired && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) < 12 && performance.now() - tapStart.t < 400){ swipe = null; meter.classList.remove('show'); tapStart = null; setTargetAt(screenToGround(e.clientX, e.clientY)); return; }
+  if (endTouch(e)) return;
+  const tapped = tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) < 12 && performance.now() - tapStart.t < 380;
   tapStart = null;
-  if (swipe && !swipe.fired){ const s = swipe.samples; if (swipe.back > 0.03 && s.length > 1 && s.at(-1)[2] < swipe.maxY - 20) fireSwipe(); else { swipe = null; meter.classList.remove('show'); } } });
-cv.addEventListener('pointercancel', () => { tdrag = null; tapStart = null; swipe = null; meter.classList.remove('show'); });
+  if (tdrag && !tapped){ tdrag = null; return; }
+  tdrag = null;
+  if (tapped){
+    if (swipe){ swipe = null; meter.classList.remove('show'); }
+    const now = performance.now(), x = e.clientX, y = e.clientY;
+    if (lastTap && now - lastTap.t < 320 && Math.hypot(x - lastTap.x, y - lastTap.y) < 50){ clearTimeout(tapTimer); lastTap = null; doubleTap(x, y); }
+    else { lastTap = {x, y, t:now}; clearTimeout(tapTimer); tapTimer = setTimeout(() => { lastTap = null; singleTap(x, y); }, 300); }
+    return;
+  }
+  if (swipe && !swipe.fired){ const s2 = swipe.samples; if (swipe.back > 0.03 && s2.length > 1 && s2.at(-1)[2] < swipe.maxY - 20) fireSwipe(); else { swipe = null; meter.classList.remove('show'); } }
+});
+cv.addEventListener('pointercancel', e => { touches.delete(e.pointerId); if (!touches.size) pinch = null; tdrag = null; tapStart = null; swipe = null; meter.classList.remove('show'); });
 
 // ---------- motion input ----------
 // Address pose: phone in the dominant hand like the grip, screen up, top pointing down the shaft at the ball,
@@ -2688,13 +2800,21 @@ if (soundMode !== 'off' && !thumb) setTimeout(() => { if (!sfx.started()) $('sou
 $('segSound').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; sfx.setMode(b.dataset.v); renderSettings(); });
 
 // ---------- camera ----------
+let dockTop = 0;
+function framedView(b, yaw, gh){
+  const r = $('dock').getBoundingClientRect(); if (r.top > 0 && r.height > 0) dockTop = r.top;
+  const yb = Math.min(H*0.8, (dockTop || H*0.78) - (showTick() ? 100 : 56)), yhz = H*0.33;
+  const p = Math.atan((CY - yhz)/F), a = p + Math.atan((yb - CY)/F), h = b*Math.tan(a);
+  return {x:ball.x - Math.sin(yaw)*b, y:gh + h, z:ball.z - Math.cos(yaw)*b, pitch:p, yaw};
+}
 function addressView(){
   const gh = Hh(ball.x, ball.z);
-  if (round.shots.length === 0) return {x:0, y:12, z:-55, pitch:5.1*D2R, yaw:0};
+  if (round.shots.length === 0) return framedView(40, 0, gh);
   const yaw = yawTo(ball.x, ball.z), s = Math.sin(yaw), c = Math.cos(yaw), d = dPin(ball.x, ball.z);
-  // full shots and the short game: camera low and back, horizon high on the screen, ball just above the controls
-  if (mode === 'full'){ const b = 40; return {x:ball.x - s*b, y:gh + b*0.216, z:ball.z - c*b, pitch:5.1*D2R, yaw}; }
-  if (mode === 'short'){ const b = 18 + d*0.25; return {x:ball.x - s*b, y:gh + b*0.216, z:ball.z - c*b, pitch:5.1*D2R, yaw}; }
+  // full shots and the short game: the ball sits just above the controls and the horizon a third of the way down,
+  // so the hole fills the screen instead of the ground at your feet
+  if (mode === 'full') return framedView(40, yaw, gh);
+  if (mode === 'short') return framedView(12 + d*0.3, yaw, gh);
   let back, hgt, look;
   if (false){ back = 0; hgt = 0; look = 0; }
   else { back = Math.max(3.4, 2.6 + d*0.35); hgt = Math.max(1.5, 1.2 + d*0.1); look = d*0.35; }
@@ -3359,7 +3479,7 @@ else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', f
 cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
 requestAnimationFrame(frame);
 }
-window.__dh = {dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
+window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
 })();
 </script>
 
