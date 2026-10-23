@@ -2583,6 +2583,7 @@ function drawSwipeTrail(){
   ctx.restore();
 }
 const backCap = () => mode === 'putt' ? 1.05 : 1.12;
+const AIM_LIFT = 50;   // px the dragged reticle sits above the fingertip
 let tdrag = null, tapStart = null, pinch = null, lastTap = null, tapTimer = 0;
 let tapForSound = false;   // the first tap that turns sound on doesn't also move your aim
 const touches = new Map();
@@ -2617,7 +2618,12 @@ cv.addEventListener('pointerdown', e => {
   tapStart = phase === 'ready' ? {x:e.clientX, y:e.clientY, t:performance.now()} : null;
   if (phase === 'ready' && mode !== 'putt'){
     const g = aimGeom(), p = proj(g.x, Hh(g.x, g.z), g.z), near = p && Math.hypot(e.clientX - p[0], e.clientY - p[1]) < 48;
-    if (near || (targetMode() && (reading || inputMode !== 'swipe'))){ tdrag = true; cv.setPointerCapture(e.pointerId); return; }
+    const canSwing = inputMode === 'swipe' && !reading;
+    // the reticle rides above the fingertip so it stays visible; grabbing it directly starts from where it sits and eases up
+    const grab = near ? {ox:p[0] - e.clientX, oy:p[1] - e.clientY} : {ox:0, oy:-AIM_LIFT};
+    if (!canSwing && (near || targetMode())){ tdrag = {x0:e.clientX, y0:e.clientY, ...grab}; cv.setPointerCapture(e.pointerId); return; }
+    // touched the reticle but a swing is possible: wait for the first move. Pulling down = swing, anything else = move the target
+    if (near) tdrag = {pending:true, x0:e.clientX, y0:e.clientY, ...grab};
   }
   if (phase !== 'ready' || inputMode !== 'swipe' || reading) return;
   swipe = {y0:e.clientY, x0:e.clientX, maxY:e.clientY, maxX:e.clientX, back:0, samples:[], all:[[e.clientX, e.clientY]], fired:false}; liveTrail = null; cv.setPointerCapture(e.pointerId);
@@ -2625,7 +2631,18 @@ cv.addEventListener('pointerdown', e => {
 cv.addEventListener('pointermove', e => {
   if (touches.has(e.pointerId)) touches.set(e.pointerId, {x:e.clientX, y:e.clientY});
   if (pinch){ if (touches.size === 2 && !pinch.done){ const [a1, a2] = [...touches.values()], r = Math.hypot(a1.x - a2.x, a1.y - a2.y)/Math.max(1, pinch.d0); if (r < 0.75){ pinch.done = true; zoomOut(); } else if (r > 1.33){ pinch.done = true; zoomIn(); } } return; }
-  if (tdrag){ if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 6) tapStart = null; if (!tapStart) setTargetAt(screenToGround(e.clientX, e.clientY)); return; }
+  if (tdrag && tdrag.pending){
+    const dx = e.clientX - tdrag.x0, dy = e.clientY - tdrag.y0;
+    if (Math.hypot(dx, dy) < 9) return;
+    if (dy > 0 && dy > Math.abs(dx)*0.8) tdrag = null;                       // pulling back: it's a swing
+    else { tdrag.pending = false; swipe = null; meter.classList.remove('show'); }
+  }
+  if (tdrag){
+    if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 6) tapStart = null;
+    if (!tapStart){ const k = targetMode() ? clamp(Math.hypot(e.clientX - tdrag.x0, e.clientY - tdrag.y0)/50, 0, 1) : 0, ox = tdrag.ox*(1 - k), oy = tdrag.oy + (-AIM_LIFT - tdrag.oy)*k;   // lift only in the whole-hole and green views
+      tdrag.fx = e.clientX; tdrag.fy = e.clientY; setTargetAt(screenToGround(e.clientX + ox, e.clientY + oy)); }
+    return;
+  }
   if (!swipe || swipe.fired) return; const now = performance.now();
   if (e.clientY >= swipe.maxY){ swipe.maxY = e.clientY; swipe.maxX = e.clientX; swipe.samples = []; }
   swipe.back = clamp((swipe.maxY - swipe.y0)/(H*0.28), 0, backCap());
@@ -3077,6 +3094,8 @@ function drawAim(){
     if (polyPath(ring, gy)){ ctx.fillStyle = 'rgba(231,192,104,.16)'; ctx.fill(); ctx.strokeStyle = 'rgba(231,192,104,.95)'; ctx.lineWidth = 2; ctx.stroke(); }
     ctx.strokeStyle = 'rgba(231,192,104,.95)'; ctx.lineWidth = 1.6;
     for (const [ax, az] of [[1,0],[-1,0],[0,1],[0,-1]]){ const a1 = proj(g.x + ax*r*0.55, gy(g.x, g.z), g.z + az*r*0.55), a2 = proj(g.x + ax*r*1.35, gy(g.x, g.z), g.z + az*r*1.35); if (a1 && a2){ ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.stroke(); } }
+    // while dragging: a faint stem from the fingertip up to the reticle
+    if (tdrag && !tdrag.pending && tdrag.fx !== undefined){ const c = proj(g.x, gy(g.x, g.z), g.z); if (c && Math.hypot(c[0] - tdrag.fx, c[1] - tdrag.fy) > 24){ ctx.strokeStyle = 'rgba(231,192,104,.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(tdrag.fx, tdrag.fy - 18); ctx.lineTo(c[0], c[1] + 6); ctx.stroke(); } }
   }
 }
 function drawBall(){
@@ -3585,6 +3604,18 @@ if (online()) refreshLeagues();
 if (mainRound.done) { const cam0 = addressView(); Object.assign(cam, cam0); showSummary(); showYesterday(false); }
 else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openCard('helpCard'); else showYesterday(false).then(shown => { if (!shown) maybeFly(); }); }
 cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
+// The address framing depends on the screen height and where the dock sits. Those can still change after load
+// (Safari toolbars, fonts, a preview sheet opening), so reframe when they settle; otherwise the view only
+// corrected itself on the next round.
+function reframe(){
+  if (phase !== 'ready' || fly || !addr) return;
+  const old = addr, settled = Math.hypot(cam.x - old.x, cam.y - old.y, cam.z - old.z) < 0.05 && Math.abs(cam.pitch - old.pitch) < 1e-3;
+  addr = addressView(); if (settled) Object.assign(cam, addr);
+}
+let reframeT = 0; const reframeSoon = () => { clearTimeout(reframeT); reframeT = setTimeout(reframe, 120); };
+window.addEventListener('resize', reframeSoon); if (window.visualViewport) visualViewport.addEventListener('resize', reframeSoon);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(reframeSoon);
+[300, 1000, 2500].forEach(ms => setTimeout(reframe, ms));
 requestAnimationFrame(frame);
 }
 window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
