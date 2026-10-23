@@ -1196,8 +1196,15 @@ const sizeK = z => 1 + 2*clamp((z-6)/30, 0, 1);
 
 // ---------- scenery drawing ----------
 let T = 0;
+// ---- art direction: one light source per hole. At dusk, golden hour, dawn and night the sun or moon is composed
+// into the frame low over the treeline (on the side its palette puts it), so the water, the green and the rim
+// light all answer to something the player can see. Cosmetic only: nothing here touches physics or the generator.
+const ART_LOW = !PAL.nosun && (!!PAL.moon || ['dusk','golden','dawn'].includes(PAL.tod) || ['dusk','golden','mist'].includes(PAL_NAME));
+const ART = {fa:0, tufts:null, grain:null, grainDpr:0};
 function sunScreen(){
-  const d0 = PAL.sun[0], d1 = PAL.sun[1]; const rx = d0*cosY - sinY, rz = d0*sinY + cosY;
+  let d0 = PAL.sun[0], d1 = PAL.sun[1];
+  if (ART_LOW){ d0 = Math.sign(d0 || 1)*0.3*W/F; d1 = (PAL.moon ? 0.09 : 0.08)*H/F; }
+  const rx = d0*cosY - sinY, rz = d0*sinY + cosY;
   const yy = d1*cosP + rz*sinP, zz = -d1*sinP + rz*cosP;
   if (zz < 0.08) return [W/2 + (rx >= 0 ? 1 : -1)*W*3, CY - H];
   return [W/2 + rx*F/zz, CY - yy*F/zz];
@@ -1213,7 +1220,7 @@ function drawSky(hz){
   const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(W,H)*(PAL.moon ? 0.35 : 0.6));
   glow.addColorStop(0, `rgba(${PAL.glow},${PAL.moon ? .7 : .95})`); glow.addColorStop(0.05, `rgba(${PAL.glow},.6)`); glow.addColorStop(0.25, `rgba(${PAL.glow},.2)`); glow.addColorStop(1, `rgba(${PAL.glow},0)`);
   if (!PAL.nosun){ ctx.fillStyle = glow; ctx.fillRect(0, 0, W, hz+2); }
-  const sr = Math.max(9, F*(PAL.moon ? 0.024 : 0.016)); if (!PAL.nosun){ ctx.fillStyle = PAL.core; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill(); }
+  const sr = Math.max(9, F*(PAL.moon ? (ART_LOW ? 0.04 : 0.024) : ART_LOW ? 0.022 : 0.016)); if (!PAL.nosun){ ctx.fillStyle = PAL.core; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7); ctx.fill(); }
   if (WEATHER === 'rainbow') drawRainbow(hz, sx);
   if (THEME === 'newyear') drawFireworks(hz);
   if (PAL.moon){ ctx.fillStyle = 'rgba(150,150,170,.28)'; [[-0.3,-0.2,0.28],[0.25,0.15,0.2],[-0.05,0.4,0.14],[0.35,-0.35,0.12]].forEach(([a,b,r]) => { ctx.beginPath(); ctx.arc(sx + a*sr, sy + b*sr, r*sr, 0, 7); ctx.fill(); }); }
@@ -1281,16 +1288,17 @@ function drawProp(t){
   const base = proj(t.x, Hh(t.x, t.z), t.z); if (!base) return; const s = t.h*F/base[2]; if (s < 0.8) return;
   const x = base[0], y = base[1], night = !!PAL.moon, fl = 0.75 + 0.25*Math.sin(T*9 + t.seed) * Math.sin(T*3.7 + t.seed*0.3);
   if (t.prop === 'pumpkin'){
-    const gl = ctx.createRadialGradient(x, y - s*0.45, 0, x, y - s*0.45, s*(night ? 3.4 : 2.4)); gl.addColorStop(0, `rgba(255,150,40,${(night ? 0.42 : 0.28)*fl})`); gl.addColorStop(1, 'rgba(255,150,40,0)');
-    ctx.fillStyle = gl; ctx.fillRect(x - s*3.4, y - s*3.9, s*6.8, s*6.8);
-    if (s < 2.2){ ctx.fillStyle = `rgba(255,170,60,${0.9*fl})`; ctx.beginPath(); ctx.arc(x, y - s*0.4, Math.max(1, s*0.45), 0, 7); ctx.fill(); return; }
-    ctx.fillStyle = night ? '#a8501a' : '#d9691c'; ctx.beginPath(); ctx.ellipse(x, y - s*0.42, s*0.62, s*0.44, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(80,30,6,.55)'; ctx.lineWidth = Math.max(0.6, s*0.05); for (const k of [-0.32, 0, 0.32]){ ctx.beginPath(); ctx.ellipse(x + k*s, y - s*0.42, s*0.2, s*0.43, 0, 0, 7); ctx.stroke(); }
-    ctx.fillStyle = '#3b4a1e'; ctx.fillRect(x - s*0.05, y - s*0.98, s*0.1, s*0.16);
-    ctx.fillStyle = `rgba(255,${200 + 40*fl|0},90,${0.95*fl})`; ctx.beginPath();
-    ctx.moveTo(x - s*0.32, y - s*0.5); ctx.lineTo(x - s*0.18, y - s*0.68); ctx.lineTo(x - s*0.08, y - s*0.5);
-    ctx.moveTo(x + s*0.32, y - s*0.5); ctx.lineTo(x + s*0.18, y - s*0.68); ctx.lineTo(x + s*0.08, y - s*0.5);
-    ctx.moveTo(x - s*0.36, y - s*0.34); for (let i=0;i<=6;i++) ctx.lineTo(x - s*0.36 + i*s*0.12, y - s*(i % 2 ? 0.28 : 0.36)); ctx.lineTo(x + s*0.3, y - s*0.2); ctx.lineTo(x - s*0.3, y - s*0.2); ctx.closePath(); ctx.fill();
+    // candlelight pools on the ground; amber, so the flag keeps the one hot accent on the hole
+    const gl = ctx.createRadialGradient(x, y - s*0.3, 0, x, y - s*0.3, s*(night ? 2.8 : 2)); gl.addColorStop(0, `rgba(255,176,82,${(night ? 0.34 : 0.22)*fl})`); gl.addColorStop(1, 'rgba(255,176,82,0)');
+    ctx.fillStyle = gl; ctx.fillRect(x - s*2.8, y - s*3.1, s*5.6, s*5.6);
+    if (s < 2.2){ ctx.fillStyle = `rgba(255,186,96,${0.85*fl})`; ctx.beginPath(); ctx.arc(x, y - s*0.4, Math.max(1, s*0.42), 0, 7); ctx.fill(); return; }
+    ctx.fillStyle = night ? '#7c3a14' : '#b8561a'; ctx.beginPath(); ctx.ellipse(x, y - s*0.42, s*0.62, s*0.44, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,14,4,.5)'; ctx.lineWidth = Math.max(0.6, s*0.05); for (const k of [-0.32, 0.32]){ ctx.beginPath(); ctx.ellipse(x + k*s, y - s*0.42, s*0.22, s*0.43, 0, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = '#2e3a18'; ctx.fillRect(x - s*0.05, y - s*0.96, s*0.1, s*0.14);
+    ctx.fillStyle = `rgba(255,${186 + 30*fl|0},96,${0.9*fl})`; ctx.beginPath();
+    ctx.moveTo(x - s*0.3, y - s*0.5); ctx.lineTo(x - s*0.18, y - s*0.64); ctx.lineTo(x - s*0.08, y - s*0.5); ctx.closePath();
+    ctx.moveTo(x + s*0.3, y - s*0.5); ctx.lineTo(x + s*0.18, y - s*0.64); ctx.lineTo(x + s*0.08, y - s*0.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - s*0.3, y - s*0.36); ctx.quadraticCurveTo(x, y - s*0.12, x + s*0.3, y - s*0.36); ctx.quadraticCurveTo(x, y - s*0.24, x - s*0.3, y - s*0.36); ctx.fill();
   } else if (t.prop === 'grave'){
     const w = s*0.32, h = s*0.8, tilt = (t.tone - 0.5)*0.25; ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
     ctx.fillStyle = mix(night ? '#4a4e5e' : '#6d6672', PAL.haze, Math.min(0.6, base[2]/600)); ctx.beginPath();
@@ -1382,10 +1390,11 @@ function drawLandmark(t, x, y, k, night){
 function drawDeadTree(t, base, top, hpx, wpx, mirror, hazeT){
   const g = rng(t.seed), col = mix(t.tone > .5 ? PAL.tree[0] : PAL.tree[1], PAL.haze, hazeT);
   ctx.strokeStyle = col; ctx.lineCap = 'round';
+  const wsx = WIND.x*cosY - WIND.z*sinY, sw = reduceMotion ? 0 : Math.sin(T*1.1 + (t.seed % 97))*0.012*Math.min(2, WIND.mph/8) + clamp(wsx, -20, 20)*0.0015;
   const seg = (x, y, ang, len, w, depth) => {
     const x2 = x + Math.sin(ang)*len, y2 = y - Math.cos(ang)*len; ctx.lineWidth = Math.max(0.5, w); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
     if (depth <= 0 || len < 2) return; const n = depth > 2 ? 2 : 2 + (g() < 0.4 ? 1 : 0);
-    for (let i=0;i<n;i++) seg(x2, y2, ang + (g() - 0.5)*1.5 + (i - (n-1)/2)*0.5, len*(0.55 + g()*0.2), w*0.62, depth - 1);
+    for (let i=0;i<n;i++) seg(x2, y2, ang + (g() - 0.5)*1.5 + (i - (n-1)/2)*0.5 + sw*(mirror ? -1 : 1), len*(0.55 + g()*0.2), w*0.62, depth - 1);
   };
   const sgn = mirror ? -1 : 1, H0 = Math.abs(hpx);
   ctx.save(); if (mirror){ ctx.translate(0, base[1]*2); ctx.scale(1, -1); }
@@ -1396,7 +1405,7 @@ function drawTree(t, mirror){
   if (t.prop){ if (!mirror) drawProp(t); return; }
   const base = proj(t.x, 0, t.z); if (!base) return; const top = proj(t.x, mirror ? -t.h : t.h, t.z); if (!top) return;
   const hpx = base[1]-top[1], wpx = t.w*F/base[2]; if (Math.abs(hpx) < 1.2) return;
-  const dist = base[2], hazeT = Math.min(PAL.fog ? 0.7 : 0.85, Math.max(0, PAL.fog ? (dist-25)/260 : (dist-60)/700));
+  const dist = base[2], hazeT = Math.min(PAL.fog ? 0.7 : 0.85, Math.max(0, PAL.fog ? (dist-25)/260 : (dist-35)/460));
   if (PAL.kind === 'dead'){ drawDeadTree(t, base, top, hpx, wpx, mirror, hazeT); return; }
   if (t.kind === 'palm'){ drawPalm(t, base, top, hpx, wpx, mirror, hazeT); return; }
   if (t.kind === 'cactus'){ drawCactus(t, base, top, hpx, wpx, mirror, hazeT); return; }
@@ -1514,15 +1523,24 @@ function drawLake(hz){
   if (top && bot){ const yt = top[1], yb = Math.min(H, bot[1]);
     for (const gl of glints){ const y = yt + (yb-yt)*Math.pow(gl.v, 1.6); const spread = 8 + (y-yt)*0.55; const x = sx + (gl.u-0.5)*spread*2 + Math.sin(T*gl.sp+gl.ph)*3;
       const a = Math.max(0, Math.sin(T*gl.sp*1.7+gl.ph))*(1-Math.abs(gl.u-0.5)*1.6); if (a <= 0.02) continue; const len = 2 + gl.l*(4+(y-yt)*0.05);
-      ctx.strokeStyle = `rgba(255,240,205,${a*0.8})`; ctx.lineWidth = 1 + (y-yt)/(yb-yt+1)*1.2; ctx.beginPath(); ctx.moveTo(x-len, y); ctx.lineTo(x+len, y); ctx.stroke(); } }
+      ctx.strokeStyle = `rgba(255,240,205,${a*0.8})`; ctx.lineWidth = 1 + (y-yt)/(yb-yt+1)*1.2; ctx.beginPath(); ctx.moveTo(x-len, y); ctx.lineTo(x+len, y); ctx.stroke(); }
+    if (ART_LOW && sx > -W*0.2 && sx < W*1.2){   // a soft glade, narrow at the far shore and widening toward you
+      const col = PAL.moon ? '205,215,255' : PAL.glow, k0 = PAL.moon ? 1 : 0.6, L = Math.max(20, yb - yt); ctx.globalCompositeOperation = 'screen';
+      for (const [wk, a0, cy] of [[0.22, 0.2, 0.25], [0.1, 0.22, 0.12]]){
+        ctx.save(); ctx.translate(sx, yt + L*cy); ctx.scale(wk, 1); const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, L*0.75);
+        rg.addColorStop(0, `rgba(${col},${a0*k0})`); rg.addColorStop(0.5, `rgba(${col},${a0*k0*0.35})`); rg.addColorStop(1, `rgba(${col},0)`);
+        ctx.fillStyle = rg; ctx.fillRect(-L*0.75, -L*0.75, L*1.5, L*1.5); ctx.restore(); }
+      ctx.globalCompositeOperation = 'source-over'; } }
   ctx.restore();
   // dry land inside the water: islands and peninsulas
   for (const l of LAND){ if (polyPath(l)){ ctx.fillStyle = groundGrad || PAL.gmid; ctx.fill(); ctx.strokeStyle = 'rgba(30,40,24,.35)'; ctx.lineWidth = 1.2; ctx.stroke(); } }
 }
 function drawCourseNear(){
   for (const p of DEEP){ if (polyPath(p)){ ctx.fillStyle = 'rgba(16,26,12,.34)'; ctx.fill(); ctx.strokeStyle = 'rgba(10,16,8,.25)'; ctx.lineWidth = 1.2; ctx.stroke(); } }
-  if (polyPath([[TEE.x0,TEE.z0],[TEE.x1,TEE.z0],[TEE.x1,TEE.z1],[TEE.x0,TEE.z1]])){ ctx.fillStyle = PAL.fair; ctx.fill(); }
-  for (let i=0;i<4;i++){ if (polyPath([[TEE.x0+i*3.5,TEE.z0],[TEE.x0+i*3.5+1.75,TEE.z0],[TEE.x0+i*3.5+1.75,TEE.z1],[TEE.x0+i*3.5,TEE.z1]], 0.01)){ ctx.fillStyle='rgba(255,255,220,.06)'; ctx.fill(); } }
+  artTufts();
+  if (polyPath(teeShape(1.2, 2.4))){ ctx.fillStyle = 'rgba(8,14,6,.12)'; ctx.fill(); }
+  if (polyPath(teeShape(0, 1.8))){ ctx.fillStyle = PAL.fair; ctx.fill();
+    ctx.save(); ctx.clip(); for (let i=0;i<4;i++){ if (polyPath([[TEE.x0+i*3.5,TEE.z0-1],[TEE.x0+i*3.5+1.75,TEE.z0-1],[TEE.x0+i*3.5+1.75,TEE.z1+1],[TEE.x0+i*3.5,TEE.z1+1]], 0.01)){ ctx.fillStyle='rgba(255,255,220,.06)'; ctx.fill(); } } ctx.restore(); }
   for (const r of reeds){ const b = proj(r.x,0,r.z), t = proj(r.x+0.2,r.h,r.z); if (!b || !t || b[2] > 260) continue; const s = F/b[2];
     ctx.strokeStyle = 'rgba(46,50,30,.85)'; ctx.lineWidth = Math.max(0.6, 0.06*s); ctx.beginPath();
     for (let k=-2;k<=2;k++){ ctx.moveTo(b[0]+k*0.12*s, b[1]); ctx.lineTo(t[0]+k*0.25*s+Math.sin(T+r.x)*0.3*s, t[1]); } ctx.stroke(); }
@@ -1558,9 +1576,100 @@ function drawFlag(){
   const hh = b[1]-t[1]; ctx.strokeStyle = '#f2ece0'; ctx.lineWidth = Math.max(1, 0.03*F/b[2]); ctx.beginPath(); ctx.moveTo(b[0],b[1]); ctx.lineTo(t[0],t[1]); ctx.stroke();
   const wsx = WIND.x*cosY - WIND.z*sinY; const dir = WIND.mph && Math.abs(wsx) > 0.3 ? Math.sign(wsx) : 1;
   const fw = Math.max(6, Math.abs(hh)*0.42)*dir, fh = Math.max(4, Math.abs(hh)*0.24), wave = Math.sin(T*(2+WIND.mph*0.25))*fh*0.18;
-  ctx.fillStyle = HALLOWEEN ? '#ff7a1a' : '#e4573f'; ctx.beginPath(); ctx.moveTo(t[0],t[1]); ctx.quadraticCurveTo(t[0]+fw*0.5, t[1]+wave, t[0]+fw, t[1]+fh*0.5+wave*0.5); ctx.quadraticCurveTo(t[0]+fw*0.5, t[1]+fh+wave, t[0], t[1]+fh); ctx.closePath(); ctx.fill();
+  if (ART_LOW && mode !== 'putt'){ const r = Math.max(9, Math.abs(hh)*0.9), hg = ctx.createRadialGradient(t[0], t[1] + fh*0.4, 0, t[0], t[1] + fh*0.4, r);
+    hg.addColorStop(0, 'rgba(255,214,190,.42)'); hg.addColorStop(1, 'rgba(255,214,190,0)'); ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = hg; ctx.fillRect(t[0] - r, t[1] + fh*0.4 - r, r*2, r*2); ctx.restore(); }
+  ctx.fillStyle = HALLOWEEN ? '#ff5240' : '#e4573f'; ctx.beginPath(); ctx.moveTo(t[0],t[1]); ctx.quadraticCurveTo(t[0]+fw*0.5, t[1]+wave, t[0]+fw, t[1]+fh*0.5+wave*0.5); ctx.quadraticCurveTo(t[0]+fw*0.5, t[1]+fh+wave, t[0], t[1]+fh); ctx.closePath(); ctx.fill();
 }
 
+// ---------- art direction pass (cosmetic only) ----------
+// Tee box as a rounded pad in course units; pad grows it, r rounds the corners.
+function teeShape(pad, r){
+  const x0 = TEE.x0 - pad, x1 = TEE.x1 + pad, z0 = TEE.z0 - pad, z1 = TEE.z1 + pad, pts = [];
+  for (const [cx, cz, a0] of [[x1 - r, z1 - r, 0], [x0 + r, z1 - r, Math.PI/2], [x0 + r, z0 + r, Math.PI], [x1 - r, z0 + r, Math.PI*1.5]])
+    for (let k=0;k<=4;k++){ const a = a0 + k/4*Math.PI/2; pts.push([cx + Math.cos(a)*r, cz + Math.sin(a)*r]); }
+  return pts;
+}
+// Tufts of rough between the tee and the hazard, so the foreground has texture instead of a flat block.
+function artTufts(){
+  if (!ART.tufts){ ART.tufts = []; const r = rng(hash(holeNum*313 + HOLE_SUB*7 + 17)), zMax = Math.min(GR.z - GR.rz - 8, 110);
+    for (let i=0;i<900 && ART.tufts.length < 170;i++){ const z = TEE.z1 + 2 + r()*Math.max(4, zMax - TEE.z1 - 2), x = (r() - 0.5)*110 + GR.x*z/Math.max(1, GR.z), s = surfaceAt(x, z);
+      if ((s === 'rough' || s === 'deep') && !inWater(x, z)) ART.tufts.push({x, z, h:0.3 + r()*0.35, ph:r()*6, lt:r() < 0.35}); } }
+  const wsx = clamp(WIND.x*cosY - WIND.z*sinY, -20, 20), dark = PAL.moon ? 'rgba(4,8,6,.5)' : 'rgba(14,24,10,.32)', light = `rgba(${PAL.rim},${PAL.moon ? 0.12 : 0.16})`;
+  ctx.lineCap = 'round'; ctx.lineWidth = 1.3;
+  for (const lt of [false, true]){ ctx.strokeStyle = lt ? light : dark; ctx.beginPath();   // one path per tone keeps this cheap
+    for (const t of ART.tufts){ if (t.lt !== lt) continue; const b = proj(t.x, 0, t.z); if (!b || b[2] > 150) continue; const s = F/b[2], hpx = t.h*s; if (hpx < 1.5) continue;
+      const lean = (wsx*0.02 + (reduceMotion ? 0 : Math.sin(T*1.6 + t.ph)*0.06))*hpx;
+      for (const k of [-1, 0, 1]){ ctx.moveTo(b[0] + k*0.12*s, b[1]); ctx.quadraticCurveTo(b[0] + k*0.16*s + lean*0.4, b[1] - hpx*0.6, b[0] + k*0.28*s + lean, b[1] - hpx*(k ? 0.8 : 1)); } }
+    ctx.stroke(); }
+}
+// The green is the brightest place below the horizon: a soft pool of the day's light on it.
+function artGreenLight(){
+  if (reading || mode === 'putt') return;
+  const c = proj(GR.x, Hh(GR.x, GR.z), GR.z); if (!c) return; const rx = GR.rx*F/c[2]; if (rx > W*0.55 || rx < 2) return;
+  const col = PAL.moon ? '200,212,255' : PAL.glow || '255,245,220', a = PAL.moon ? 0.26 : ART_LOW ? 0.2 : 0.13, R = clamp(rx*2.4, 30, W*0.7);
+  ctx.save(); ctx.globalCompositeOperation = 'screen';
+  if (polyPath(greenPts, Hh)){ ctx.fillStyle = `rgba(${col},${a*0.55})`; ctx.fill(); }
+  ctx.translate(c[0], c[1]); ctx.scale(1, 0.42); const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+  g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(0.45, `rgba(${col},${a*0.45})`); g.addColorStop(1, `rgba(${col},0)`);
+  ctx.fillStyle = g; ctx.fillRect(-R, -R, R*2, R*2); ctx.restore();
+}
+// Edges fall off toward dark, centered between the screen and the green, so the eye lands on the target.
+function artVignette(){
+  let cx = W/2, cy = H*0.45; const c = !reading && mode !== 'putt' ? proj(GR.x, Hh(GR.x, GR.z), GR.z) : null;
+  if (c){ cx = W/2 + clamp(c[0] - W/2, -W*0.3, W*0.3)*0.5; cy = H*0.45 + clamp(c[1] - H*0.45, -H*0.2, H*0.12)*0.5; }
+  const dk = ART_LOW ? 0.55 : 0.42, tint = PAL.moon ? '6,8,22' : ART_LOW ? '18,10,20' : '12,16,12';
+  const v = ctx.createRadialGradient(cx, cy, Math.min(W,H)*0.3, cx, cy, Math.max(W,H)*0.82); v.addColorStop(0, `rgba(${tint},0)`); v.addColorStop(0.55, `rgba(${tint},${dk*0.32})`); v.addColorStop(1, `rgba(${tint},${dk})`);
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+// A foreground silhouette at the edge of the tee shot, opposite the light, that frames the hole (repoussoir).
+// It belongs to the tee view only: it fades out as the camera leaves to follow the ball, read a green or see the hole.
+function artFrame(dt){
+  const want = !thumb && !fly && !reading && !holeView && !rangeMode && phase === 'ready' && currentLie === 'tee' && mode !== 'putt' ? 1 : 0;
+  ART.fa += (want - ART.fa)*Math.min(1, dt*(want ? 2.5 : 5)); if (ART.fa < 0.02) return;
+  const [sx] = sunScreen(), side = ART_LOW ? (sx < W/2 ? 1 : -1) : 1, ex = side > 0 ? W : 0, inw = -side;
+  const kind = PAL.kind === 'dead' ? 'dead' : (LOOK && LOOK.scenery === 'desert') || (C.TYPE === 'links' && PAL.kind !== 'dead') ? 'grass' : LOOK && LOOK.scenery === 'tropical' ? 'palm' : PAL.kind === 'mixed' || PAL.kind === 'round' || (LOOK && (LOOK.scenery === 'parkland' || LOOK.scenery === 'autumn')) ? 'broad' : 'conifer';
+  const g = rng(hash(holeNum*977 + HOLE_SUB*13 + 5)), wsx = clamp(WIND.x*cosY - WIND.z*sinY, -20, 20), sway = reduceMotion ? 0 : Math.sin(T*1.2)*0.012*Math.min(2, WIND.mph/8) + wsx*0.0012;
+  const ink = mix(PAL.tree[0], '#040508', PAL.moon ? 0.55 : 0.4), ox = clamp(cam.yaw - addr.yaw, -0.4, 0.4)*F*0.25;
+  ctx.save(); ctx.globalAlpha = ART.fa; ctx.translate(ox, 0);
+  // near rough in the bottom corner on the same side, for every scene
+  ctx.fillStyle = ink; ctx.beginPath(); ctx.moveTo(ex, H*0.6); ctx.quadraticCurveTo(ex + inw*W*0.1, H*0.7, ex + inw*W*0.03, H); ctx.lineTo(ex, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = ink; ctx.lineCap = 'round';
+  for (let i=0;i<14;i++){ const bx = ex + inw*W*(0.005 + g()*0.075), by = H*(0.66 + g()*0.2), h = H*(0.04 + g()*0.06), lean = inw*h*(0.15 + g()*0.25) + h*(sway*6 + Math.sin(T*1.7 + i)*0.02);
+    ctx.lineWidth = 1.2 + g()*1.6; ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + lean*0.3, by - h*0.6, bx + lean, by - h); ctx.stroke(); }
+  if (kind === 'dead'){
+    const lv = [[], [], [], [], []], lw = [0, 0, 0, 0, 0];   // segments grouped by depth: one stroke per level
+    const seg = (x, y, ang, len, w, depth) => { const x2 = x + Math.sin(ang)*len, y2 = y - Math.cos(ang)*len; lv[depth].push(x, y, x2, y2); lw[depth] = Math.max(lw[depth], w);
+      if (depth <= 0 || len < 4) return; const n = 2 + (g() < 0.35 ? 1 : 0); for (let i=0;i<n;i++) seg(x2, y2, ang + (g() - 0.5)*1.1 + (i - (n-1)/2)*0.55 + sway*(5 - depth), len*(0.6 + g()*0.15), w*0.6, depth - 1); };
+    const tx = ex + inw*W*0.025, tw = W*0.06; ctx.fillStyle = ink; ctx.beginPath(); ctx.moveTo(tx - tw*0.6, H*0.84); ctx.quadraticCurveTo(tx + inw*tw*0.4, H*0.45, tx - inw*tw*0.1, -10); ctx.lineTo(tx + inw*tw*0.9 - inw*tw*0.4, -10); ctx.quadraticCurveTo(tx + inw*tw*1.2, H*0.45, tx + tw*0.9, H*0.84); ctx.closePath(); ctx.fill();
+    for (const [hy, len, a] of [[0.44, 0.17, 0.95], [0.3, 0.15, 0.7], [0.17, 0.12, 0.5]]) seg(tx + inw*tw*0.4, H*hy, inw*a, W*len, tw*0.38, 4);
+    lv.forEach((L, d) => { if (!L.length) return; ctx.lineWidth = Math.max(0.6, lw[d]); ctx.beginPath(); for (let i=0;i<L.length;i+=4){ ctx.moveTo(L[i], L[i+1]); ctx.lineTo(L[i+2], L[i+3]); } ctx.stroke(); });
+  } else if (kind === 'conifer'){
+    const cx = ex + inw*W*0.02, half = W*0.15; ctx.fillStyle = ink; ctx.beginPath();
+    for (let i=0;i<9;i++){ const f = i/8, yT = -H*0.04 + H*0.78*f*0.92, yB = yT + H*0.13, hw = half*(0.3 + 0.7*f)*(0.9 + g()*0.2), s2 = sway*H*0.4*(1 - f);
+      ctx.moveTo(cx + s2, yT); ctx.lineTo(cx + inw*hw + s2, yB); ctx.lineTo(cx + inw*hw*0.45 + s2, yB - H*0.012); ctx.lineTo(cx, yB); ctx.closePath(); }
+    ctx.rect(Math.min(ex, cx), -H*0.05, Math.abs(cx - ex) + 2, H*0.85); ctx.fill();
+  } else if (kind === 'broad'){
+    // a low shrub mass in the corner: frames the hole from below without crowding the title or the sky
+    ctx.fillStyle = ink; ctx.beginPath();
+    for (let i=0;i<16;i++){ const u = i/15, px = ex + inw*W*(0.01 + u*0.13 + (g() - 0.5)*0.03), py = H*(0.6 + u*0.09 + g()*0.05) + sway*H*(1 - u), r = W*(0.05 + g()*0.035)*(1.2 - u*0.5); ctx.moveTo(px + r, py); ctx.ellipse(px, py, r, r*0.75, 0, 0, 7); }
+    ctx.rect(Math.min(ex, ex + inw*W*0.12), H*0.64, W*0.12, H*0.3); ctx.fill();
+  } else if (kind === 'palm'){
+    const bx = ex + inw*W*0.02, by = H*0.86, tx = ex + inw*W*0.17, ty = H*0.14 + sway*H*2; ctx.strokeStyle = ink; ctx.lineWidth = W*0.035;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(ex + inw*W*0.02, H*0.4, tx, ty); ctx.stroke(); ctx.fillStyle = ink;
+    for (let k=0;k<8;k++){ const a = -Math.PI/2 + (k - 3.5)*0.5, L = W*(0.16 + g()*0.06), fx = tx + Math.cos(a)*L*1.3, fy = ty + Math.sin(a)*L*0.4 + L*0.6*Math.abs(Math.cos(a));
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo((tx + fx)/2, ty - L*0.3, fx, fy); ctx.quadraticCurveTo((tx + fx)/2, ty - L*0.08, tx, ty + W*0.008); ctx.fill(); }
+  }
+  ctx.restore();
+}
+// Paper grain over the finished frame: one quiet texture that makes every palette feel printed rather than flat.
+// It lives in a CSS layer above the canvas, so the browser composites it for free instead of the canvas redrawing it.
+function artGrain(){
+  if (ART.grain) return; ART.grain = true;
+  try { const N = 160, c = document.createElement('canvas'); c.width = c.height = N; const gx = c.getContext('2d'), im = gx.createImageData(N, N), r = rng(4242);
+    for (let i=0;i<N*N;i++){ const n = r() + r() - 1; im.data[i*4] = im.data[i*4+1] = im.data[i*4+2] = n > 0 ? 255 : 0; im.data[i*4+3] = Math.round(Math.abs(n)*34); }
+    gx.putImageData(im, 0, 0); const d = document.createElement('div'); d.id = 'grain'; d.setAttribute('aria-hidden', 'true');
+    d.style.cssText = `position:fixed;inset:0;pointer-events:none;background:url(${c.toDataURL()}) repeat;background-size:80px 80px`; cv.after(d); } catch(e){}
+}
 // ---------- clubs, shots, physics ----------
 const G = 10.72, KD = 0.005, KL = 0.004, CUP = 0.118;
 // From hole 6 on, wind pushes on the ball through air drag (mph -> yd/s, a bit stronger aloft), so a 10 mph wind
@@ -2998,7 +3107,7 @@ function frame(now){
   updateCamera(dt);
   const hz = horizonY();
   ctx.clearRect(0, 0, W, H);
-  drawSky(hz); drawRidges(hz); drawGround(hz); drawLake(hz); drawCourseNear(); drawGreenComplex(); drawRangeDots(); drawAim();
+  drawSky(hz); drawRidges(hz); drawGround(hz); drawLake(hz); drawCourseNear(); drawGreenComplex(); artGreenLight(); drawRangeDots(); drawAim();
   const vis = []; for (const t of trees){ const z = camSpace(t.x, 0, t.z)[2]; if (z > (fly ? 38 : 3)) vis.push([z, t]); } vis.sort((a,b) => b[0]-a[0]);
   const dP = camSpace(PIN.x, 0, PIN.z)[2], closeCut = mode === 'full' ? 3 : 8;
   if (!reading) for (const [z, t] of vis) if (z < 400) drawTreeShadow(t);
@@ -3007,9 +3116,8 @@ function frame(now){
   if (!reading) for (const [z, t] of vis) if (z < dP && z > closeCut) drawTree(t, false);
   drawSplashes(dt); drawLakeLife(dt); drawGeese(dt, hz);
   if (PAL.fog){ const fg = ctx.createLinearGradient(0, hz - H*0.25, 0, H); fg.addColorStop(0, 'rgba(225,228,232,.55)'); fg.addColorStop(0.35, 'rgba(225,228,232,.38)'); fg.addColorStop(1, 'rgba(225,228,232,.06)'); ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H); }
-  drawParts(dt);
-  const v = ctx.createRadialGradient(W/2, H*0.45, Math.min(W,H)*0.35, W/2, H*0.5, Math.max(W,H)*0.85); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(12,16,12,.42)');
-  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  artFrame(dt); drawParts(dt);
+  artVignette(); artGrain();
   drawSwipeTrail();
   renderFace(); renderWind(false);
   if (!thumb) requestAnimationFrame(frame);
