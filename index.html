@@ -241,6 +241,11 @@ a.btn{text-align:center;text-decoration:none}
 
 /* controls */
 .bottom{display:flex;flex-direction:column;gap:6px;align-items:center}
+.views{pointer-events:auto;display:flex;gap:2px;padding:3px;border-radius:999px;margin-top:2px}
+.views button{display:flex;align-items:center;gap:6px;font:600 .74rem/1 inherit;font-family:inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);background:transparent;border:0;padding:8px 14px;border-radius:999px;cursor:pointer}
+.views button svg{width:14px;height:14px;flex:none}
+.views button[aria-pressed="true"]{background:var(--ink);color:#0e1611}
+.views button:disabled{opacity:.4;cursor:default}
 .dock{pointer-events:auto;width:min(520px,100%);border-radius:22px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:2px}
 .dock-info{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;column-gap:12px;row-gap:2px;padding:2px 8px 4px;min-width:0;text-align:center}
 .dock-info .lie{text-shadow:none;flex:none}
@@ -522,6 +527,11 @@ a.btn{text-align:center;text-decoration:none}
       <div class="dock-row" id="shotBar"></div>
       <div hidden id="aimBar"><button id="aimL"></button><span id="aimLbl"></span><button id="aimR"></button><button id="holeBtn"></button><button id="readBtn"></button></div>
     </div>
+    <nav class="views glass" id="views" aria-label="Camera view">
+      <button id="viewShot" aria-pressed="true"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="11" r="2.6" fill="currentColor"/><path d="M8 7.4V2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Shot</button>
+      <button id="viewHole" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5L6 3.5h4l4 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8" cy="6" r="1.3" fill="currentColor"/></svg>Hole</button>
+      <button id="viewGreen" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="10" rx="6.2" ry="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 10V2.5l3.4 1.5L8 5.6" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>Green</button>
+    </nav>
   </footer>
 </div>
 
@@ -1671,6 +1681,44 @@ function artGrain(){
     gx.putImageData(im, 0, 0); const d = document.createElement('div'); d.id = 'grain'; d.setAttribute('aria-hidden', 'true');
     d.style.cssText = `position:fixed;inset:0;pointer-events:none;background:url(${c.toDataURL()}) repeat;background-size:80px 80px`; cv.after(d); } catch(e){}
 }
+// ---------- aim arrows on the turf ----------
+// Two chevrons cut into the grass either side of the ball, like a mowing pattern. Tap to nudge the aim; hold to keep going.
+const turfAim = {flash:[0, 0], hold:null};
+const turfAimOn = () => phase === 'ready' && !fly && !thumb && !reading && !holeView && mode !== 'putt' && ball.state !== 'wet';
+function turfAimGeom(side){
+  const y = yawTo(ball.x, ball.z), sx = Math.cos(y), sz = -Math.sin(y), fx = Math.sin(y), fz = Math.cos(y);
+  const L = mode === 'full' ? 3.8 : 2.2, sc = mode === 'full' ? 1.15 : 0.65, cx = ball.x + sx*side*L + fx*0.6*sc, cz = ball.z + sz*side*L + fz*0.6*sc;
+  // a chevron pointing out to the side, in course units
+  const P = (a, b) => [cx + sx*side*a*sc + fx*b*sc, cz + sz*side*a*sc + fz*b*sc];
+  return {cx, cz, pts:[P(0.9, 0), P(-0.2, 1.15), P(-0.75, 1.15), P(0.3, 0), P(-0.75, -1.15), P(-0.2, -1.15)]};
+}
+function drawTurfAim(dt){
+  if (!turfAimOn()) return;
+  const gy = (x, z) => Hh(x, z) + 0.01;
+  for (const [i, side] of [[0, -1], [1, 1]]){
+    turfAim.flash[i] = Math.max(0, turfAim.flash[i] - dt*3);
+    const g = turfAimGeom(side), lim = side < 0 ? aimOff <= -(mode === 'full' ? 40 : 20) : aimOff >= (mode === 'full' ? 40 : 20);
+    const f = turfAim.flash[i], base = lim ? 0.05 : 0.15;
+    if (polyPath(g.pts, gy)){   // light side of the mown stripe, with a darker cut edge so it reads at a glance
+      ctx.fillStyle = `rgba(255,255,226,${base + f*0.3})`; ctx.fill();
+      ctx.strokeStyle = `rgba(10,20,8,${lim ? 0.12 : 0.28})`; ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.stroke(); }
+  }
+}
+// which arrow (if any) a screen point hits: generous targets, since a thumb covers a lot of turf
+function turfAimHit(x, y){
+  if (!turfAimOn()) return 0;
+  for (const side of [-1, 1]){ const g = turfAimGeom(side), c = proj(g.cx, Hh(g.cx, g.cz), g.cz); if (!c) continue;
+    const r = clamp(1.6*F/c[2], 26, 46); if (Math.hypot(x - c[0], (y - c[1])*1.3) < r) return side; }
+  return 0;
+}
+function turfAimStep(side){ stepAim(side); turfAim.flash[side < 0 ? 0 : 1] = 1; if (navigator.vibrate) try { navigator.vibrate(5); } catch(e){} }
+function turfAimRelease(){ if (turfAim.hold){ clearTimeout(turfAim.hold.t); turfAim.hold = null; return true; } return false; }
+function turfAimPress(side, id){
+  turfAimRelease(); turfAimStep(side);
+  const rep = n => { turfAim.hold.t = setTimeout(() => { if (!turfAim.hold || !turfAimOn()) return turfAimRelease(); turfAimStep(side); rep(n + 1); }, n ? 110 : 420); };
+  turfAim.hold = {id, t:0}; rep(0);
+}
+
 // ---------- clubs, shots, physics ----------
 const G = 10.72, KD = 0.005, KL = 0.004, CUP = 0.118;
 // From hole 6 on, wind pushes on the ball through air drag (mph -> yd/s, a bit stronger aloft), so a 10 mph wind
@@ -2097,7 +2145,10 @@ function setTargetAt(pt){
 $('aimLbl').addEventListener('click', () => { if (phase !== 'ready' || mode === 'putt') return; aimOff = 0; aimDist = null; if (mode === 'full'){ const d = dPin(ball.x, ball.z), i = CLUBS.findIndex(c => c.carry >= d - 3); clubIdx = i < 0 ? CLUBS.length - 1 : i; } renderControls(); });
 $('aimL').addEventListener('click', () => stepAim(-1));
 $('aimR').addEventListener('click', () => stepAim(1));
-function setReading(on){ reading = on; if (on && holeView) setHoleView(false); $('lieLine').hidden = on && mode === 'putt'; $('readBtn').setAttribute('aria-pressed', String(on)); $('readBtn').textContent = 'Green'; }
+let viewKey = '';
+function syncViewsIfChanged(){ const k = `${phase}${!!fly}${reading}${holeView}`; if (k !== viewKey){ viewKey = k; syncViews(); } }
+function syncViews(){ const v = reading ? 'Green' : holeView ? 'Hole' : 'Shot'; for (const k of ['Shot','Hole','Green']) $('view' + k).setAttribute('aria-pressed', String(k === v)); const off = phase !== 'ready' || !!fly; for (const k of ['Shot','Hole','Green']) $('view' + k).disabled = off; }
+function setReading(on){ reading = on; if (on && holeView) setHoleView(false); syncViews(); $('lieLine').hidden = on && mode === 'putt'; $('readBtn').setAttribute('aria-pressed', String(on)); $('readBtn').textContent = 'Green'; }
 $('readBtn').addEventListener('click', () => { if (phase !== 'ready') return; setReading(!reading); if (reading) setHint(mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper.' : 'Drag the target to pick your spot. Arrows point downhill.'); else readyHint(); });
 
 function readyHint(){
@@ -2616,6 +2667,7 @@ cv.addEventListener('pointerdown', e => {
   if (touches.size > 2 || pinch) return;
   if (fly){ endFlyover(); return; }
   if (phase === 'flight'){ fastForward(); return; }
+  if (!tapForSound){ const side = turfAimHit(e.clientX, e.clientY); if (side){ tapStart = null; swipe = null; tdrag = null; turfAimPress(side, e.pointerId); cv.setPointerCapture(e.pointerId); return; } }
   tapStart = phase === 'ready' ? {x:e.clientX, y:e.clientY, t:performance.now()} : null;
   if (phase === 'ready' && mode !== 'putt'){
     const g = aimGeom(), p = proj(g.x, Hh(g.x, g.z), g.z), near = p && Math.hypot(e.clientX - p[0], e.clientY - p[1]) < 48;
@@ -2671,6 +2723,7 @@ function endTouch(e){
   return false;
 }
 cv.addEventListener('pointerup', e => {
+  if (turfAim.hold && turfAim.hold.id === e.pointerId){ turfAimRelease(); touches.delete(e.pointerId); return; }
   if (endTouch(e)) return;
   const tapped = tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) < 12 && performance.now() - tapStart.t < 380;
   tapStart = null;
@@ -2685,7 +2738,7 @@ cv.addEventListener('pointerup', e => {
   }
   if (swipe && !swipe.fired){ const s2 = swipe.samples; if (swipe.back > 0.03 && s2.length > 1 && s2.at(-1)[2] < swipe.maxY - 20) fireSwipe(); else { swipe = null; meter.classList.remove('show'); } }
 });
-cv.addEventListener('pointercancel', e => { touches.delete(e.pointerId); if (!touches.size) pinch = null; tdrag = null; tapStart = null; swipe = null; meter.classList.remove('show'); });
+cv.addEventListener('pointercancel', e => { turfAimRelease(); touches.delete(e.pointerId); if (!touches.size) pinch = null; tdrag = null; tapStart = null; swipe = null; meter.classList.remove('show'); });
 
 // ---------- motion input ----------
 // Address pose: phone in the dominant hand like the grip, screen up, top pointing down the shaft at the ball,
@@ -2952,7 +3005,11 @@ function holeViewTarget(){
   const yaw = addr.yaw, s = Math.sin(yaw), c = Math.cos(yaw), d = Math.max(20, dPin(ball.x, ball.z));
   const back = 45, hgt = 30 + d*0.35; return {x:ball.x - s*back, y:Hh(ball.x, ball.z) + hgt, z:ball.z - c*back, pitch:Math.atan2(hgt, back + d*0.62), yaw};
 }
-function setHoleView(on){ holeView = on; $('holeBtn').setAttribute('aria-pressed', String(on)); if (on && reading) setReading(false); }
+function setHoleView(on){ holeView = on; $('holeBtn').setAttribute('aria-pressed', String(on)); if (on && reading) setReading(false); syncViews(); }
+const READ_HINT = () => mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper.' : 'Drag the target to pick your spot.';
+$('viewShot').addEventListener('click', () => { if (phase !== 'ready') return; setReading(false); setHoleView(false); readyHint(); });
+$('viewHole').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(true); setHint(mode === 'putt' ? 'The whole hole.' : 'The whole hole. Tap or drag the target.'); });
+$('viewGreen').addEventListener('click', () => { if (phase !== 'ready') return; setReading(true); setHint(READ_HINT()); });
 $('holeBtn').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(!holeView); if (holeView) setHint(mode === 'putt' ? 'The whole hole. You can still putt from here.' : 'Tap or drag the target to pick your spot. You can still swing from here.'); else readyHint(); });
 const lookAt = (px, pz) => Math.atan2(GR.x - px, GR.z - pz);
 function flyKeys(){
@@ -3127,7 +3184,7 @@ function frame(now){
   updateCamera(dt);
   const hz = horizonY();
   ctx.clearRect(0, 0, W, H);
-  drawSky(hz); drawRidges(hz); drawGround(hz); drawLake(hz); drawCourseNear(); drawGreenComplex(); artGreenLight(); drawRangeDots(); drawAim();
+  drawSky(hz); drawRidges(hz); drawGround(hz); drawLake(hz); drawCourseNear(); drawGreenComplex(); artGreenLight(); drawRangeDots(); drawAim(); drawTurfAim(dt);
   const vis = []; for (const t of trees){ const z = camSpace(t.x, 0, t.z)[2]; if (z > (fly ? 38 : 3)) vis.push([z, t]); } vis.sort((a,b) => b[0]-a[0]);
   const dP = camSpace(PIN.x, 0, PIN.z)[2], closeCut = mode === 'full' ? 3 : 8;
   if (!reading) for (const [z, t] of vis) if (z < 400) drawTreeShadow(t);
@@ -3139,7 +3196,7 @@ function frame(now){
   artFrame(dt); drawParts(dt);
   artVignette(); artGrain();
   drawSwipeTrail();
-  renderFace(); renderWind(false);
+  renderFace(); renderWind(false); syncViewsIfChanged();
   if (!thumb) requestAnimationFrame(frame);
 }
 
