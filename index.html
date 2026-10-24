@@ -563,6 +563,12 @@ window.addEventListener('resize', resize); resize();
 const EPOCH = Date.UTC(2026, 9, 17);
 function nyDateKey(d){ return new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit'}).format(d); }
 const todayKey = nyDateKey(new Date());
+// #reset-today wipes today's round on this phone (testing / after a hole fix), then reloads.
+if (typeof location !== 'undefined' && location.hash === '#reset-today'){
+  try { for (const k of [0, 1, 2]) localStorage.removeItem('dailyhole:r:' + todayKey + (k ? ':' + k : ''));
+    const dd = LS.get('dailyhole:days', []); LS.set('dailyhole:days', dd.filter(x => x !== todayKey)); } catch(e){}
+  history.replaceState(null, '', location.pathname + location.search); location.reload();
+}
 let holeNum = Math.round((Date.parse(todayKey + 'T00:00:00Z') - EPOCH)/86400000) + 1;
 let preview = false;
 const hm = /^#h(\d{1,4})(?:s([0-2]))?$/.exec(location.hash || '');
