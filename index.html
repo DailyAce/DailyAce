@@ -1,6 +1,24 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}</style></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}</style>
 <title>Daily Ace</title>
+<meta name="description" content="Play today’s par 3. See where you land on the leaderboard.">
+<link rel="canonical" href="https://dailyace.github.io/DailyAce/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Daily Ace">
+<meta property="og:url" content="https://dailyace.github.io/DailyAce/">
+<meta property="og:title" content="Daily Ace">
+<meta property="og:description" content="Play today’s par 3. See where you land on the leaderboard.">
+<meta property="og:image" content="https://dailyace.github.io/DailyAce/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A lakeside green at sunset, with the Daily Ace logo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Daily Ace">
+<meta name="twitter:description" content="Play today’s par 3. See where you land on the leaderboard.">
+<meta name="twitter:image" content="https://dailyace.github.io/DailyAce/og.jpg">
+<meta name="theme-color" content="#070908">
+</head><body>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3563,7 +3581,7 @@ async function openLeagues(from){
 }
 function closeLeagues(){ $('leagueCard').hidden = true; if (lgReturn === 'summary' && phase === 'summary') $('summary').hidden = false; else if (lgReturn === 'settings') openCard('setCard'); else if (phase === 'ready'){ $('controls').hidden = false; readyHint(); } else if (phase === 'summary') $('summary').hidden = false; }
 async function inviteLeague(L){
-  const url = `${location.origin}${location.pathname}#join=${L.code}`, text = `Join my Daily Ace league "${L.name}". Code ${L.code}`;
+  const url = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}join.html#join=${L.code}`, text = `Join my Daily Ace league "${L.name}". Code ${L.code}`;
   try { if (navigator.share){ await navigator.share({title:'Daily Ace league', text, url}); return; } } catch(e){ if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(`${text}\n${url}`); $('lgMsg').textContent = 'Invite copied. Paste it in your group chat.'; } catch(e){ $('lgMsg').textContent = `Share this: ${url}`; }
 }
