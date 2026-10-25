@@ -2688,7 +2688,7 @@ let tapForSound = false;   // the first tap that turns sound on doesn't also mov
 const touches = new Map();
 // gestures: tap to aim, drag down and flick up to swing, pinch in for the whole hole (out to come back),
 // double-tap the green to read it
-function zoomOut(){ if (phase !== 'ready') return; if (reading) setReading(false); else if (!holeView){ setHoleView(true); setHint(mode === 'putt' ? 'The whole hole. Pinch out to come back.' : 'The whole hole. Tap or drag the target. Pinch out to come back.'); } }
+function zoomOut(){ if (phase !== 'ready') return; if (reading) setReading(false); else if (!holeView){ setHoleView(true); setHint(mode === 'putt' ? 'The whole hole. Pinch out to come back.' : 'The whole hole. Tap or drag the target, then pinch out to swing.'); } }
 function zoomIn(){ if (phase !== 'ready') return; if (holeView){ setHoleView(false); readyHint(); } else if (!reading){ setReading(true); setHint(mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper. Double-tap to go back.' : 'Drag the target to pick your spot. Double-tap to go back.'); } }
 function setPuttAimAt(pt){
   if (!pt) return; const d = Math.max(0.5, dPin(ball.x, ball.z)), y0 = yawTo(ball.x, ball.z);
@@ -2718,7 +2718,7 @@ cv.addEventListener('pointerdown', e => {
   tapStart = phase === 'ready' ? {x:e.clientX, y:e.clientY, t:performance.now()} : null;
   if (phase === 'ready' && mode !== 'putt'){
     const g = aimGeom(), p = proj(g.x, Hh(g.x, g.z), g.z), near = p && Math.hypot(e.clientX - p[0], e.clientY - p[1]) < 48;
-    const canSwing = inputMode === 'swipe' && !reading;
+    const canSwing = inputMode === 'swipe' && !reading && !holeView;   // the whole-hole view is for aiming only
     // the reticle rides above the fingertip so it stays visible; grabbing it directly starts from where it sits and eases up
     const grab = near ? {ox:p[0] - e.clientX, oy:p[1] - e.clientY} : {ox:0, oy:-AIM_LIFT};
     if (!canSwing && (near || targetMode())){ tdrag = {x0:e.clientX, y0:e.clientY, ...grab}; cv.setPointerCapture(e.pointerId); return; }
@@ -3057,7 +3057,7 @@ const READ_HINT = () => mode === 'putt' ? 'Balls roll downhill: faster and redde
 $('viewShot').addEventListener('click', () => { if (phase !== 'ready') return; setReading(false); setHoleView(false); readyHint(); });
 $('viewHole').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(true); setHint(mode === 'putt' ? 'The whole hole.' : 'The whole hole. Tap or drag the target.'); });
 $('viewGreen').addEventListener('click', () => { if (phase !== 'ready') return; setReading(true); setHint(READ_HINT()); });
-$('holeBtn').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(!holeView); if (holeView) setHint(mode === 'putt' ? 'The whole hole. You can still putt from here.' : 'Tap or drag the target to pick your spot. You can still swing from here.'); else readyHint(); });
+$('holeBtn').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(!holeView); if (holeView) setHint(mode === 'putt' ? 'The whole hole. You can still putt from here.' : 'Tap or drag the target to pick your spot. Go back to Shot view to swing.'); else readyHint(); });
 const lookAt = (px, pz) => Math.atan2(GR.x - px, GR.z - pz);
 function flyKeys(){
   // glide off the tee, orbit the green once at a calm height, then settle behind the ball
