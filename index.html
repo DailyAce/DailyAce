@@ -96,6 +96,10 @@ button{font-family:var(--sans)}
 @keyframes rise{from{transform:translateY(12px);opacity:.3}to{transform:none;opacity:1}}
 .card-head{display:flex;flex-direction:column;gap:6px}
 .card-head .title{font-size:1.35rem}
+.cx{position:sticky;top:0;align-self:flex-end;flex:none;z-index:3;width:34px;height:34px;margin:-6px -6px -48px 0;border:0;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;color:var(--ink);background:rgba(244,238,226,.1);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.cx svg{width:14px;height:14px}
+.cx:focus-visible{outline:2px solid var(--fair);outline-offset:2px}
+.card.has-x>.card-head{padding-right:40px}
 .rule{height:1px;background:var(--edge);border:0;margin:0}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 .btn{font-weight:600;font-size:.9rem;line-height:1;color:var(--clubhouse);background:var(--ink);border:0;border-radius:999px;padding:13px 18px;cursor:pointer;flex:1 1 auto}
@@ -3604,6 +3608,28 @@ $('lgClose').addEventListener('click', closeLeagues);
 $('leaguesBtn').addEventListener('click', () => openLeagues('summary'));
 $('setLeagues').addEventListener('click', () => { $('setCard').hidden = true; openLeagues('settings'); });
 $('boardClose').addEventListener('click', () => { $('boardCard').hidden = true; if (phase === 'summary') $('summary').hidden = false; else if (phase === 'ready'){ $('controls').hidden = false; readyHint(); } });
+
+// Pop-up pages: an X in the top right, and a tap anywhere outside the card closes it. Both just press the card's own close button.
+const DISMISS = {moreCard:'moreClose', boardCard:'boardClose', leagueCard:'lgClose', ydayCard:'ydayClose', helpCard:'helpClose', setCard:'setClose', shareCard:'shareClose', badgeCard:'badgeClose'};
+for (const [card, btn] of Object.entries(DISMISS)){
+  const c = $(card), b = $(btn); if (!c || !b) continue;
+  const x = document.createElement('button'); x.className = 'cx'; x.type = 'button'; x.setAttribute('aria-label', 'Close');
+  x.innerHTML = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  x.addEventListener('click', e => { e.stopPropagation(); b.click(); });
+  c.prepend(x); c.classList.add('has-x');
+}
+const openDismiss = () => Object.keys(DISMISS).map($).filter(c => c && !c.hidden);
+let outsideTap = null;
+const isOutside = e => { const open = openDismiss(); if (!open.length) return null; const t = e.target; if (t.closest && (t.closest('.card') || t.closest('button,input,a,label,select'))) return null; return open[open.length - 1]; };
+window.addEventListener('pointerdown', e => { const c = isOutside(e); if (!c) return; outsideTap = {id:e.pointerId, card:c}; e.preventDefault(); e.stopPropagation(); }, true);
+['pointermove', 'pointercancel'].forEach(t => window.addEventListener(t, e => { if (outsideTap && e.pointerId === outsideTap.id){ e.stopPropagation(); if (t === 'pointercancel') outsideTap = null; } }, true));
+window.addEventListener('pointerup', e => {
+  if (!outsideTap || e.pointerId !== outsideTap.id) return;
+  e.stopPropagation(); const c = outsideTap.card; outsideTap = null;
+  if (!c.hidden) $(DISMISS[c.id]).click();
+  const swallow = ev => { ev.stopPropagation(); ev.preventDefault(); };
+  window.addEventListener('click', swallow, {capture:true, once:true}); setTimeout(() => window.removeEventListener('click', swallow, true), 400);
+}, true);
 
 // ==== HOLE REPLAY (server) ====
 // The leaderboard server cuts this block out of the live page and runs it with the physics above to check rounds.
