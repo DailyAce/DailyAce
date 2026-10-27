@@ -1601,6 +1601,63 @@ function drawCourseNear(){
     ctx.strokeStyle = 'rgba(46,50,30,.85)'; ctx.lineWidth = Math.max(0.6, 0.06*s); ctx.beginPath();
     for (let k=-2;k<=2;k++){ ctx.moveTo(b[0]+k*0.12*s, b[1]); ctx.lineTo(t[0]+k*0.25*s+Math.sin(T+r.x)*0.3*s, t[1]); } ctx.stroke(); }
 }
+// ---------- putting surface (cosmetic only) ----------
+// Slope shading baked from a raking light that sits off to the side of the putt, posterized into a few bands
+// so the green reads like an old sports game instead of a flat fill. Rebuilt when the putting line changes.
+const TURF = {yaw:null, buckets:null, grain:null};
+function buildTurfShade(){
+  TURF.yaw = addr.yaw; const st = 0.75, pad = 3;
+  const x0 = GR.x - GR.rx*FRINGE_SCALE - pad, x1 = GR.x + GR.rx*FRINGE_SCALE + pad, z0 = GR.z - GR.rz*FRINGE_SCALE - pad, z1 = GR.z + GR.rz*FRINGE_SCALE + pad;
+  // light from the right of the line and a little toward you, low in the sky
+  const lx = Math.cos(TURF.yaw)*0.8 - Math.sin(TURF.yaw)*0.6, lz = -Math.sin(TURF.yaw)*0.8 - Math.cos(TURF.yaw)*0.6;
+  const LV = 8; TURF.buckets = Array.from({length:LV*2 + 1}, () => []);
+  for (let z=z0; z<z1; z+=st) for (let x=x0; x<x1; x+=st){
+    const cx = x + st/2, cz = z + st/2; if (gDist(cx, cz) > FRINGE_SCALE + 0.02) continue;
+    const g = grad(cx, cz), k = -(g[0]*lx + g[1]*lz);   // positive = facing the light
+    const lvl = clamp(Math.round(k*LV/0.025), -LV, LV); if (!lvl) continue;
+    TURF.buckets[lvl + LV].push([x, z, st]);
+  }
+  TURF.LV = LV;
+}
+function drawTurfShade(){
+  if (TURF.yaw !== addr.yaw) buildTurfShade();
+  const LV = TURF.LV;
+  for (let b=0; b<TURF.buckets.length; b++){ const cellsB = TURF.buckets[b]; if (!cellsB.length) continue; const lvl = b - LV;
+    ctx.beginPath(); let any = false;
+    for (const [x, z, st] of cellsB){
+      const a = proj(x, Hh(x, z), z), c = proj(x + st, Hh(x + st, z), z), e = proj(x + st, Hh(x + st, z + st), z + st), d = proj(x, Hh(x, z + st), z + st);
+      if (!a || !c || !e || !d) continue; if (a[2] > 70) continue;
+      if (Math.max(a[0], c[0], d[0], e[0]) < 0 || Math.min(a[0], c[0], d[0], e[0]) > W || Math.max(a[1], c[1], d[1], e[1]) < 0) continue;
+      ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(e[0], e[1]); ctx.lineTo(d[0], d[1]); ctx.closePath(); any = true;
+    }
+    if (!any) continue;
+    const t = Math.abs(lvl)/LV;
+    ctx.fillStyle = lvl > 0 ? `rgba(${PAL.moon ? '200,215,255' : '255,240,195'},${(0.05 + t*0.2).toFixed(3)})` : `rgba(6,14,10,${(0.06 + t*0.3).toFixed(3)})`;
+    ctx.fill();
+  }
+}
+// Pixel grain pinned to the ground: big near your feet, tiny toward the hole. This is what gives the green depth.
+function drawTurfGrain(){
+  if (!TURF.grain){ const r = rng(hash(holeNum*977 + HOLE_SUB*13 + 5)), pts = [], sp = 0.22;
+    for (let z = GR.z - GR.rz*FRINGE_SCALE - 2; z < GR.z + GR.rz*FRINGE_SCALE + 2; z += sp) for (let x = GR.x - GR.rx*FRINGE_SCALE - 2; x < GR.x + GR.rx*FRINGE_SCALE + 2; x += sp){
+      const px = x + r()*sp, pz = z + r()*sp, gd = gDist(px, pz); if (gd > FRINGE_SCALE + 0.05) continue;
+      const v = r(); pts.push([px, pz, v < 0.45 ? 0 : v < 0.8 ? 1 : 2, gd > 1]); }
+    TURF.grain = pts; }
+  const tones = PAL.moon ? ['rgba(4,12,8,.4)', 'rgba(170,200,230,.16)', 'rgba(14,30,14,.3)'] : ['rgba(12,32,10,.3)', 'rgba(255,250,210,.18)', 'rgba(30,60,18,.24)'];
+  for (let tn=0; tn<3; tn++){ ctx.fillStyle = tones[tn]; ctx.beginPath();
+    for (const [x, z, t, fr] of TURF.grain){ if (t !== tn) continue; const q = proj(x, Hh(x, z) + 0.005, z); if (!q || q[2] > 28 || q[0] < -4 || q[0] > W + 4 || q[1] > H) continue;
+      // a blade, not a pebble: one pixel wide, a little taller up close, fringe a touch shaggier
+      const h = clamp(Math.round(0.035*F/q[2]*(fr ? 1.5 : 1)), 1, fr ? 4 : 3);
+      ctx.rect(Math.round(q[0]), Math.round(q[1]) - h, 1, h); }
+    ctx.fill(); }
+}
+// The far end of the green softens into the air, near end stays crisp.
+function drawTurfHaze(){
+  const [fx, fz] = fwd(60), far = proj(fx, Hh(fx, fz), fz), nb = proj(ball.x, Hh(ball.x, ball.z), ball.z); if (!far || !nb) return;
+  const col = PAL.moon ? '40,62,70' : (PAL.mistc || '200,215,230');
+  const g = ctx.createLinearGradient(0, far[1], 0, Math.max(far[1] + 1, nb[1])); g.addColorStop(0, `rgba(${col},${PAL.moon ? 0.22 : 0.2})`); g.addColorStop(0.5, `rgba(${col},.04)`); g.addColorStop(1, `rgba(${col},0)`);
+  ctx.save(); ctx.beginPath(); polyPath(fringePts, Hh, true); polyPath(greenPts, Hh, true); ctx.clip(); ctx.fillStyle = g; ctx.fillRect(0, far[1] - H*0.1, W, H); ctx.restore();
+}
 function drawGreenComplex(){
   for (const f of FAIRS){ if (polyPath(f, Hh)){ ctx.fillStyle = groundGrad || PAL.fair; ctx.fill(); ctx.fillStyle = 'rgba(235,255,190,.13)'; ctx.fill(); } }
   if (polyPath(fringePts, Hh)){ ctx.fillStyle = PAL.fringe; ctx.fill(); }
@@ -1618,13 +1675,20 @@ function drawGreenComplex(){
     ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.lineTo(e[0],e[1]); ctx.lineTo(d[0],d[1]); ctx.closePath();
     ctx.fillStyle = c.col; ctx.fill();
   }
+  const near = !reading && camSpace(GR.x, Hh(GR.x, GR.z), GR.z)[2] < 70;
+  if (near) drawTurfShade();
   if (!reading){ ctx.save(); if (polyPath(greenPts, Hh)){ ctx.clip();
-    for (let k=-14;k<=14;k++){ const x = GR.x + k*3; if (polyPath([[x,GR.z-GR.rz-3],[x+1.5,GR.z-GR.rz-3],[x+1.5,GR.z+GR.rz+3],[x,GR.z+GR.rz+3]], (x,z) => Hh(x,z)+0.01)){ ctx.fillStyle = 'rgba(255,255,225,.05)'; ctx.fill(); } } }
+    for (let k=-14;k<=14;k++){ const x = GR.x + k*3; if (polyPath([[x,GR.z-GR.rz-3],[x+1.5,GR.z-GR.rz-3],[x+1.5,GR.z+GR.rz+3],[x,GR.z+GR.rz+3]], (x,z) => Hh(x,z)+0.01)){ ctx.fillStyle = near ? 'rgba(255,255,225,.075)' : 'rgba(255,255,225,.05)'; ctx.fill(); }
+      if (near && polyPath([[x+1.5,GR.z-GR.rz-3],[x+3,GR.z-GR.rz-3],[x+3,GR.z+GR.rz+3],[x+1.5,GR.z+GR.rz+3]], (x,z) => Hh(x,z)+0.01)){ ctx.fillStyle = 'rgba(8,24,8,.05)'; ctx.fill(); } } }
     ctx.restore(); }
+  if (near){ drawTurfGrain(); if (polyPath(greenPts, Hh)){ ctx.strokeStyle = 'rgba(8,18,6,.35)'; ctx.lineWidth = 1.5; ctx.stroke(); } drawTurfHaze(); }
   for (const b of BUNKERS){ if (polyPath(b.pts, (x,z) => Hh(x,z)-0.05)){ ctx.fillStyle = PAL.moon ? '#8f8a7a' : '#e9d3a3'; ctx.fill(); ctx.strokeStyle = b.pot ? 'rgba(40,34,18,.85)' : 'rgba(60,52,30,.55)'; ctx.lineWidth = b.pot ? 2.4 : 1.4; ctx.stroke(); } }
   if (reading) drawGreenGrid();
   const cup = proj(PIN.x, Hh(PIN.x,PIN.z), PIN.z);
-  if (cup){ const r = Math.max(1.5, 0.059*F/cup[2]*(1 + clamp((cup[2]-8)/50, 0, 1))); const ry = r*Math.max(0.25, Math.sin(cam.pitch + Math.atan2(cam.y - Hh(PIN.x,PIN.z), Math.max(1, cup[2])))); if (mode === 'putt'){ ctx.strokeStyle = 'rgba(255,255,245,.7)'; ctx.lineWidth = Math.max(1, r*0.18); ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r*1.12, ry*1.12, 0, 0, 7); ctx.stroke(); } ctx.fillStyle = '#1b2417'; ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r, ry, 0, 0, 7); ctx.fill(); }
+  if (cup){ const r = Math.max(1.5, 0.059*F/cup[2]*(1 + clamp((cup[2]-8)/50, 0, 1))); const ry = r*Math.max(0.25, Math.sin(cam.pitch + Math.atan2(cam.y - Hh(PIN.x,PIN.z), Math.max(1, cup[2])))); if (mode === 'putt'){ ctx.strokeStyle = 'rgba(255,255,245,.32)'; ctx.lineWidth = Math.max(1, r*0.14); ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r*1.14, ry*1.14, 0, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = '#4a4636'; ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r, ry, 0, 0, 7); ctx.fill();   // the far inside wall catches light
+    ctx.save(); ctx.clip(); ctx.fillStyle = '#0c110a'; ctx.beginPath(); ctx.ellipse(cup[0], cup[1] + ry*0.55, r*1.05, ry, 0, 0, 7); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = 'rgba(6,10,5,.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r, ry, 0, 0, 7); ctx.stroke(); }
 }
 function drawFlag(){
   if (mode === 'putt' && phase !== 'summary') return;
@@ -2056,10 +2120,14 @@ function computeRead(){
   let v = paceFor(base), bestC = aimFor(v, 0, 40);
   if (bestC){ v = paceFor(base + Math.atan2(bestC*CUP, d)); bestC = aimFor(v, bestC, 6); v = paceFor(base + Math.atan2(bestC*CUP, d)); }
   const paceFt = Math.max(1, Math.round(v*v/(2*SURF.green.dec)*3));
-  const inch = (Hh(PIN.x, PIN.z) - Hh(ball.x, ball.z))*36, ai = Math.abs(inch);
-  const elev = ai < 2 ? '' : ` (${ai < 12 ? Math.round(ai) + ' in' : (ai/12).toFixed(1).replace(/\.0$/, '') + ' ft'} ${inch > 0 ? 'uphill' : 'downhill'})`;
-  const ac = Math.abs(bestC), brk = ac < 1 ? 'pretty straight' : `aim ${ac >= 40 ? '40+' : ac} cup${ac === 1 ? '' : 's'} ${bestC > 0 ? 'right' : 'left'}`;
-  caddieText = `Caddie: Pace ${paceFt} ft${elev}, ${brk}.`;
+  // A caddie's feel, not a solver's answer: rough slope, a rounded "plays like", and how much it moves.
+  const inch = (Hh(PIN.x, PIN.z) - Hh(ball.x, ball.z))*36, ai = Math.abs(inch), dir = inch > 0 ? 'uphill' : 'downhill';
+  const slope = ai < 2 ? 'Flat' : ai < 6 ? `Slightly ${dir}` : ai < 18 ? dir[0].toUpperCase() + dir.slice(1) : `Steep ${dir}`;
+  const ft = d*3, plays = paceFt < 12 ? Math.max(2, Math.round(paceFt/2)*2) : Math.round(paceFt/5)*5;
+  const feel = Math.abs(paceFt - ft) < Math.max(2, ft*0.12) ? 'plays its length' : `plays like ${paceFt < 12 ? 'about' : 'around'} ${plays} ft`;
+  const ac = Math.abs(bestC), way = bestC < 0 ? 'left to right' : 'right to left';
+  const brk = ac < 1 ? 'Holds its line' : ac <= 2 ? `A touch ${way}` : ac <= 6 ? `Breaks ${way}` : ac <= 14 ? `Big break, ${way}` : `Huge break, ${way}`;
+  caddieText = `Caddie: ${slope}, ${feel}. ${brk}.`;
 window.__read = {v, c:bestC};
   puttArrows = [];
   const L = Math.max(1.5, d + 1);
@@ -3185,10 +3253,13 @@ function drawAim(){
   if (phase !== 'ready') return;
   ctx.lineCap = 'round';
   if (mode === 'putt'){
-    const yaw = aimYaw(), L = Math.min(dPin(ball.x, ball.z)*1.08 + 0.3, 40);
-    ctx.setLineDash([5, 7]); ctx.strokeStyle = 'rgba(244,238,226,.85)'; ctx.lineWidth = 1.6; ctx.beginPath(); let first = true;
-    for (let s=0.2; s<=L; s+=0.2){ const x = ball.x + Math.sin(yaw)*s, z = ball.z + Math.cos(yaw)*s; const p = proj(x, Hh(x,z)+0.02, z); if (!p){ first = true; continue; } if (first) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); first = false; }
-    ctx.stroke(); ctx.setLineDash([]); return;
+    // chalk dots lying on the grass: they shrink, flatten and fade with distance, and stop short of the hole
+    const yaw = aimYaw(), d = dPin(ball.x, ball.z), L = Math.min(d*(guides ? 0.75 : 0.35) + 0.3, 30), sy = Math.sin(yaw), cy = Math.cos(yaw);
+    for (let s=0.33; s<=L; s+=0.333){ const x = ball.x + sy*s, z = ball.z + cy*s, h = Hh(x, z), p = proj(x, h + 0.004, z); if (!p) continue;
+      const fade = 1 - Math.pow(s/L, 1.6); if (fade < 0.04) continue;
+      const r = Math.max(1, 0.024*F/p[2]), ry = r*clamp((cam.y - h)/Math.max(0.5, p[2]), 0.18, 1);
+      ctx.fillStyle = `rgba(244,236,214,${(0.9*fade).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(p[0], p[1], r, ry, 0, 0, 7); ctx.fill(); }
+    return;
   }
   {  // one marker only: the target you're playing to (at the pin until you move it)
     const g = aimGeom(), r = mode === 'full' ? 3.2 : 1.1, gy = (x, z) => Hh(x, z) + 0.05;
