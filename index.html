@@ -213,6 +213,19 @@ a.btn{text-align:center;text-decoration:none}
 .b-word{font-size:.8rem;color:var(--soft)}
 .b-avg{font-weight:700;font-stretch:82%;text-align:right}
 .sc{display:flex;flex-direction:column}
+.precap{display:flex;flex-direction:column;gap:10px}
+.pr-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.pr-make{font:600 .78rem var(--sans);color:#b9d8f0;background:transparent;border:1.5px solid rgba(185,216,240,.55);border-radius:999px;padding:0 12px;min-height:34px;cursor:pointer}
+.pr-make[aria-pressed="true"]{background:#b9d8f0;color:var(--clubhouse);border-color:#b9d8f0}
+#prCv{display:block;width:100%;border-radius:14px}
+.pr-key{display:flex;gap:16px;flex-wrap:wrap;font-size:.74rem;color:var(--soft)}
+.pr-key span{display:flex;align-items:center;gap:6px}
+.pr-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pr-stats div{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:var(--well);min-width:0}
+.pr-stats .label{font-size:.56rem}
+.pr-stats b{font-size:.88rem;font-weight:600}
+.pr-stats .pr-brk{color:#f2a33a}
+.pr-mk{color:#b9d8f0}
 .sc-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--edge)}
 .sc-row:first-child{border-top:0}
 .sc-row i{width:9px;height:9px;border-radius:50%}
@@ -413,6 +426,20 @@ a.btn{text-align:center;text-decoration:none}
       <div class="sum-score"><div><div class="num" id="sumScore">—</div><div class="label sum-sub">Avg shot grade</div></div><div class="sum-word title" id="sumWord">—<small id="sumStrokes"></small></div></div>
       <div class="body" id="sumExplain"></div>
       <div class="sc" id="scorecard"></div>
+      <div class="precap" id="sumPutts" hidden>
+        <div class="pr-head"><div class="label" id="prLabel">Your putts</div><button type="button" class="pr-make" id="prMakeBtn" aria-pressed="false">Make line</button></div>
+        <canvas id="prCv" role="img" aria-label="Contour map of the green with each putt drawn: a dashed line for where you aimed and how hard, a solid line for where it rolled."></canvas>
+        <div class="pr-key"><span><svg width="22" height="4" aria-hidden="true"><line x1="1" y1="2" x2="21" y2="2" stroke="#fffbe8" stroke-width="2" stroke-dasharray="4 3"/></svg>Aim + pace</span><span><svg width="22" height="4" aria-hidden="true"><line x1="1" y1="2" x2="21" y2="2" stroke="#f2a33a" stroke-width="3" stroke-linecap="round"/></svg>Where it rolled</span></div>
+        <div class="board-tabs" id="prTabs"></div>
+        <div class="pr-stats">
+          <div><span class="label">Aimed</span><b id="prAim">—</b></div>
+          <div><span class="label">Pace</span><b id="prPace">—</b></div>
+          <div><span class="label">Broke</span><b id="prBrk" class="pr-brk">—</b></div>
+          <div><span class="label">Result</span><b id="prRes">—</b></div>
+        </div>
+        <div class="body" id="prNote" hidden></div>
+        <div class="body pr-mk" id="prMake" hidden></div>
+      </div>
       <div class="field" id="sumField">
         <div class="label" id="fieldLabel">Today's field</div>
         <div class="field-row" id="fieldReal" hidden><b id="fieldRank">#—</b><span id="fieldRealTxt"></span></div>
@@ -1683,7 +1710,7 @@ function drawGreenComplex(){
     ctx.restore(); }
   if (near){ drawTurfGrain(); if (polyPath(greenPts, Hh)){ ctx.strokeStyle = 'rgba(8,18,6,.35)'; ctx.lineWidth = 1.5; ctx.stroke(); } drawTurfHaze(); }
   for (const b of BUNKERS){ if (polyPath(b.pts, (x,z) => Hh(x,z)-0.05)){ ctx.fillStyle = PAL.moon ? '#8f8a7a' : '#e9d3a3'; ctx.fill(); ctx.strokeStyle = b.pot ? 'rgba(40,34,18,.85)' : 'rgba(60,52,30,.55)'; ctx.lineWidth = b.pot ? 2.4 : 1.4; ctx.stroke(); } }
-  if (reading) drawGreenGrid();
+  if (reading) drawGreenContours();
   const cup = proj(PIN.x, Hh(PIN.x,PIN.z), PIN.z);
   if (cup){ const r = Math.max(1.5, 0.059*F/cup[2]*(1 + clamp((cup[2]-8)/50, 0, 1))); const ry = r*Math.max(0.25, Math.sin(cam.pitch + Math.atan2(cam.y - Hh(PIN.x,PIN.z), Math.max(1, cup[2])))); if (mode === 'putt'){ ctx.strokeStyle = 'rgba(255,255,245,.32)'; ctx.lineWidth = Math.max(1, r*0.14); ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r*1.14, ry*1.14, 0, 0, 7); ctx.stroke(); }
     ctx.fillStyle = '#4a4636'; ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r, ry, 0, 0, 7); ctx.fill();   // the far inside wall catches light
@@ -2264,7 +2291,7 @@ let viewKey = '';
 function syncViewsIfChanged(){ const k = `${phase}${!!fly}${reading}${holeView}`; if (k !== viewKey){ viewKey = k; syncViews(); } }
 function syncViews(){ const v = reading ? 'Green' : holeView ? 'Hole' : 'Shot'; for (const k of ['Shot','Hole','Green']) $('view' + k).setAttribute('aria-pressed', String(k === v)); const off = phase !== 'ready' || !!fly; for (const k of ['Shot','Hole','Green']) $('view' + k).disabled = off; }
 function setReading(on){ reading = on; if (on && holeView) setHoleView(false); syncViews(); $('lieLine').hidden = on && mode === 'putt'; $('readBtn').setAttribute('aria-pressed', String(on)); $('readBtn').textContent = 'Green'; }
-$('readBtn').addEventListener('click', () => { if (phase !== 'ready') return; setReading(!reading); if (reading) setHint(mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper.' : 'Drag the target to pick your spot. Arrows point downhill.'); else readyHint(); });
+$('readBtn').addEventListener('click', () => { if (phase !== 'ready') return; setReading(!reading); if (reading) setHint(READ_HINT()); else readyHint(); });
 
 function readyHint(){
   if (phase !== 'ready' || reading) return;
@@ -2322,6 +2349,7 @@ const LADDER = [[1, 'Tour pro'], [1.7, 'Scratch'], [2.05, '5 handicap'], [2.4, '
 function ladderLabel(ft){ for (const [k, n] of LADDER) if (ft <= TOUR_FT*k) return n; return 'Weekend'; }
 
 function showShotCard(s){
+  logPutt(s);
   phase = 'card'; document.querySelector('.grade-cap').hidden = false;
   $('scLabel').textContent = s.n === 1 ? `Tee shot · ${clubName(s)}` : `Shot ${s.n} · ${shotName(s)}`;
   const res = $('scRes');
@@ -2571,6 +2599,7 @@ function showSummary(){
   $('fieldLabel').textContent = pastKey ? "This hole's field" : "Today's field";
   shareFile = null; updateCountdown(); renderTagBox(); renderField(); runField(); syncRound(); scheduleShare();
   $('summary').hidden = false; $('summary').scrollTop = 0; setHint('');
+  renderPuttRecap();
 }
 // between weekend loop holes: this hole's result and the way to the next one
 function showLoopCard(){
@@ -2781,7 +2810,7 @@ cv.addEventListener('pointerdown', e => {
   if (touches.size === 2){ const [a1, a2] = [...touches.values()]; pinch = {d0:Math.hypot(a1.x - a2.x, a1.y - a2.y), done:false}; swipe = null; tdrag = null; tapStart = null; meter.classList.remove('show'); liveTrail = null; return; }
   if (touches.size > 2 || pinch) return;
   if (fly){ endFlyover(); return; }
-  if (phase === 'flight'){ fastForward(); return; }
+  if (phase === 'flight'){ if (mode === 'putt') ffPutt(); else fastForward(); return; }
   if (!tapForSound){ const side = turfAimHit(e.clientX, e.clientY); if (side){ tapStart = null; swipe = null; tdrag = null; turfAimPress(side, e.pointerId); cv.setPointerCapture(e.pointerId); return; } }
   tapStart = phase === 'ready' ? {x:e.clientX, y:e.clientY, t:performance.now()} : null;
   if (phase === 'ready' && mode !== 'putt'){
@@ -3121,7 +3150,7 @@ function holeViewTarget(){
   const back = 45, hgt = 30 + d*0.35; return {x:ball.x - s*back, y:Hh(ball.x, ball.z) + hgt, z:ball.z - c*back, pitch:Math.atan2(hgt, back + d*0.62), yaw};
 }
 function setHoleView(on){ holeView = on; $('holeBtn').setAttribute('aria-pressed', String(on)); if (on && reading) setReading(false); syncViews(); }
-const READ_HINT = () => mode === 'putt' ? 'Balls roll downhill: faster and redder where it\'s steeper.' : 'Drag the target to pick your spot.';
+const READ_HINT = () => { const g = greenRating(); return mode === 'putt' ? `${g.word} green, ${g.pct.toFixed(1)}% average slope. Close lines are steep; arrows point downhill.` : `${g.word} green. Close lines are steep. Drag the target to pick your spot.`; };
 $('viewShot').addEventListener('click', () => { if (phase !== 'ready') return; setReading(false); setHoleView(false); readyHint(); });
 $('viewHole').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(true); setHint(mode === 'putt' ? 'The whole hole.' : 'The whole hole. Tap or drag the target.'); });
 $('viewGreen').addEventListener('click', () => { if (phase !== 'ready') return; setReading(true); setHint(READ_HINT()); });
@@ -3298,6 +3327,7 @@ function frame(now){
   const dt = Math.min(0.05, (now-lastT)/1000); lastT = now; T += reduceMotion ? dt*0.3 : dt;
   if (phase === 'flight'){ acc += dt; const h = 1/240; while (acc >= h && phase === 'flight'){ stepBall(h, ball, false); acc -= h; }
     if (ball.state === 'air' || ball.state === 'roll'){ const tr = ball.trail, lp = tr.at(-1), gap = mode === 'putt' ? 0.25 : 1.2; if (!lp || Math.hypot(ball.x-lp[0], ball.y-lp[1], ball.z-lp[2]) > gap) tr.push([ball.x, ball.y + (mode === 'putt' ? 0.02 : 0), ball.z]); if (tr.length > 240) tr.shift(); }
+    if (phase === 'flight' && mode === 'putt') tracePutt();
   } else acc = 0;
   updateCamera(dt);
   const hz = horizonY();
@@ -3785,6 +3815,215 @@ function replayDay(body, makeHole){
   return {ok:true, flag, strokes, avg:+(gn ? gs/gn : 0).toFixed(2), word:`${tp === 0 ? 'E' : tp > 0 ? '+' + tp : '-' + (-tp)} (${strokes})`, teeFt, putts, longPutt, updown};
 }
 // ==== END DAY REPLAY ====
+
+// ---------- green reading: contour lines + slope arrows (cosmetic only) ----------
+// Like an old yardage book: lines close together = steep, far apart = flat. Every fifth line is heavier so you
+// can count how far you climb or drop along a putt. Built once per hole in world space, projected each frame.
+const CONTOUR_I = 0.04;   // yards of rise between lines, about an inch and a half
+let contours = null;
+function buildContours(){
+  const st = 0.35, x0 = GR.x - GR.rx*1.3 - 1, z0 = GR.z - GR.rz*1.3 - 1;
+  const nx = Math.ceil((GR.rx*2.6 + 2)/st) + 1, nz = Math.ceil((GR.rz*2.6 + 2)/st) + 1;
+  const hv = new Float32Array(nx*nz), on = new Uint8Array(nx*nz);
+  let lo = Infinity, hi = -Infinity, sum = 0, n = 0;
+  for (let j=0;j<nz;j++) for (let i=0;i<nx;i++){
+    const x = x0 + i*st, z = z0 + j*st, k = j*nx + i; hv[k] = Hh(x, z); on[k] = gDist(x, z) <= 1 ? 1 : 0;
+    if (on[k]){ lo = Math.min(lo, hv[k]); hi = Math.max(hi, hv[k]); if (i % 3 === 0 && j % 3 === 0){ const g = grad(x, z); sum += Math.hypot(g[0], g[1]); n++; } }
+  }
+  const segs = [];
+  for (let L = Math.ceil(lo/CONTOUR_I); L <= Math.floor(hi/CONTOUR_I); L++){
+    const lv = L*CONTOUR_I, heavy = ((L % 5) + 5) % 5 === 0 ? 1 : 0;
+    for (let j=0;j<nz-1;j++) for (let i=0;i<nx-1;i++){
+      const k = j*nx + i; if (!(on[k] && on[k+1] && on[k+nx] && on[k+nx+1])) continue;
+      const a0 = hv[k], a1 = hv[k+1], a2 = hv[k+nx+1], a3 = hv[k+nx], xa = x0 + i*st, za = z0 + j*st, p = [];
+      const e = (u, v, xs, zs, xe, ze) => { if ((u - lv)*(v - lv) < 0){ const t = (lv - u)/(v - u); p.push(xs + t*(xe - xs), zs + t*(ze - zs)); } };
+      e(a0, a1, xa, za, xa + st, za); e(a1, a2, xa + st, za, xa + st, za + st); e(a3, a2, xa, za + st, xa + st, za + st); e(a0, a3, xa, za, xa, za + st);
+      for (let q=0; q+3<p.length; q+=4) segs.push(p[q], lv + 0.02, p[q+1], p[q+2], lv + 0.02, p[q+3], heavy);
+    }
+  }
+  const pct = n ? sum/n*100 : 0;
+  contours = {segs, pct, word: pct < 2.2 ? 'Gentle' : pct < 2.8 ? 'Rolling' : pct < 3.8 ? 'Steep' : 'Severe'};
+}
+function greenRating(){ if (!contours) buildContours(); return contours; }
+let sansFont = null;
+const canvasFont = (px, w = 600) => { if (!sansFont) sansFont = getComputedStyle(document.documentElement).getPropertyValue('--sans').trim() || 'system-ui, sans-serif'; return `${w} ${px}px ${sansFont}`; };
+function drawGreenContours(){
+  if (!contours) buildContours();
+  const S = contours.segs, lightLines = PAL.moon;
+  ctx.save(); ctx.lineCap = 'round';
+  for (const heavy of [0, 1]){
+    ctx.beginPath();
+    for (let i=0;i<S.length;i+=7){ if (S[i+6] !== heavy) continue; const a = proj(S[i], S[i+1], S[i+2]), b = proj(S[i+3], S[i+4], S[i+5]); if (!a || !b) continue; ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+    ctx.strokeStyle = lightLines ? (heavy ? 'rgba(225,236,255,.72)' : 'rgba(225,236,255,.4)') : (heavy ? 'rgba(8,28,8,.62)' : 'rgba(8,28,8,.34)');
+    ctx.lineWidth = heavy ? 1.6 : 1; ctx.stroke();
+  }
+  ctx.restore();
+  if (mode === 'putt' && phase === 'ready'){ slopeArrow(ball.x, ball.z, 10); slopeArrow(PIN.x, PIN.z, 11); }
+}
+// an arrow pointing downhill from a spot, longer where it's steeper, labeled with the slope
+function slopeArrow(x, z, gap){
+  const g = grad(x, z), m = Math.hypot(g[0], g[1]); if (m < 0.002) return;
+  const ux = -g[0]/m, uz = -g[1]/m, a = proj(x, Hh(x, z) + 0.02, z), b = proj(x + ux*0.5, Hh(x + ux*0.5, z + uz*0.5) + 0.02, z + uz*0.5); if (!a || !b) return;
+  let dx = b[0] - a[0], dy = b[1] - a[1]; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+  const pct = m*100, len = 16 + Math.min(26, pct*5), sx = a[0] + dx*gap, sy = a[1] + dy*gap, ex = sx + dx*len, ey = sy + dy*len, px = -dy, py = dx;
+  const path = () => { ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex - dx*5, ey - dy*5); ctx.moveTo(ex, ey); ctx.lineTo(ex - dx*8 + px*5, ey - dy*8 + py*5); ctx.moveTo(ex, ey); ctx.lineTo(ex - dx*8 - px*5, ey - dy*8 - py*5); };
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  path(); ctx.strokeStyle = 'rgba(6,14,6,.7)'; ctx.lineWidth = 4.5; ctx.stroke();
+  path(); ctx.strokeStyle = '#fffbe8'; ctx.lineWidth = 2; ctx.stroke();
+  const label = `${pct.toFixed(1)}%`; ctx.font = canvasFont(12); const tw = ctx.measureText(label).width;
+  let lx = ex + dx*8 + (dx >= 0 ? 0 : -tw), ly = ey + dy*8 + 4; lx = clamp(lx, 6, W - tw - 6);
+  ctx.fillStyle = 'rgba(8,12,8,.72)'; ctx.fillRect(lx - 4, ly - 12, tw + 8, 17); ctx.fillStyle = '#fffbe8'; ctx.fillText(label, lx, ly);
+  ctx.restore();
+}
+
+// ---------- putt recap (cosmetic only) ----------
+// Each putt's aim, pace and the path it actually rolled are kept on this phone (never sent anywhere) so the card
+// can draw them over the contour map: dashed = where you aimed and how hard, solid = where it went.
+const puttKey = 'dailyhole:pp:' + roundKey.slice('dailyhole:r:'.length);
+let puttLog = preview || !mainRound.shots.length ? [] : LS.get(puttKey, []);
+if (!Array.isArray(puttLog)) puttLog = [];
+let puttTrace = null;
+function tracePutt(){
+  if (rangeMode || practice || mode !== 'putt' || !lastSwing) return;
+  if (!puttTrace) puttTrace = {sx:ball.sx, sz:ball.sz, yaw:aimYaw(), cups:aimCups, pace:Math.round(lastSwing.p*(lastSwing.range || 0)*10)/10, cu:lastSwing.cu || 0,
+    v:Math.sqrt(2*SURF.green.dec*((lastSwing.range || 0)/3)*lastSwing.p), pts:[[ball.sx, ball.sz]]};
+  const l = puttTrace.pts.at(-1); if (Math.hypot(ball.x - l[0], ball.z - l[1]) > 0.15) puttTrace.pts.push([ball.x, ball.z]);
+}
+// tap-to-skip during a putt: the same fast-forward, but it keeps sampling the path
+function ffPutt(){ ffMute = true; let i = 0; while (phase === 'flight' && i < 60000){ stepBall(1/240, ball, false); if (i % 12 === 0) tracePutt(); i++; } ffMute = false; ball.trail = []; }
+function logPutt(s){
+  const tr = puttTrace; puttTrace = null;
+  if (!tr || s.mode !== 'putt' || s.wet || practice || rangeMode) return;
+  tr.pts.push(s.holed ? [PIN.x, PIN.z] : [ball.x, ball.z]);
+  const r2 = v => Math.round(v*100)/100, step = Math.max(1, Math.ceil(tr.pts.length/90));
+  const pts = tr.pts.filter((p, i) => i % step === 0 || i === tr.pts.length - 1).map(p => [r2(p[0]), r2(p[1])]);
+  puttLog = puttLog.filter(p => p.n !== s.n);
+  puttLog.push({n:s.n, sx:r2(tr.sx), sz:r2(tr.sz), yaw:+tr.yaw.toFixed(4), cups:tr.cups, pace:tr.pace, cu:tr.cu, v:+tr.v.toFixed(4), fromD:s.fromD, holed:!!s.holed, lipped:!!s.lipped, gimme:!!s.gimmeNext, pts});
+  if (!preview) LS.set(puttKey, puttLog);
+}
+// the same roll as the game's physics, without side effects: used for the "make line" after the hole
+function rollTrace(sx, sz, yaw, v){
+  let x = sx, z = sz, vx = v*Math.sin(yaw), vz = v*Math.cos(yaw), t = 0, lipT = 0; const dt = 1/240, pts = [[x, z]];
+  for (let i=0;i<240*40;i++){
+    t += dt; const s = surfaceAt(x, z); if (s === 'water') break;
+    const S = SURF[s], g = grad(x, z), sp = Math.hypot(vx, vz), ax = -G*5/7*g[0], az = -G*5/7*g[1], sa = Math.hypot(ax, az), dp = dPin(x, z);
+    if (dp < 0.075 && t > lipT){
+      const cap = 2.4*(1 - 0.55*(dp/0.075)**2);
+      if (sp < cap){ pts.push([PIN.x, PIN.z]); return {pts, holed:true, x:PIN.x, z:PIN.z}; }
+      const side = (vx*(PIN.z - z) - vz*(PIN.x - x)) > 0 ? -1 : 1, off = dp/0.075, rot = side*0.35*off, c = Math.cos(rot), sn = Math.sin(rot), keep = 0.75 + 0.1*off;
+      const nvx = vx*c - vz*sn, nvz = vx*sn + vz*c; vx = nvx*keep; vz = nvz*keep; lipT = t + 0.25;
+    }
+    if (sp < 0.04 && sa < S.dec*0.9) break;
+    vx += ax*dt; vz += az*dt; const sp2 = Math.hypot(vx, vz); if (sp2 > 0){ const nsp = Math.max(0, sp2 - S.dec*dt); vx *= nsp/sp2; vz *= nsp/sp2; }
+    x += vx*dt; z += vz*dt; if (i % 24 === 0) pts.push([x, z]);
+  }
+  pts.push([x, z]); return {pts, holed:false, x, z};
+}
+const lenTxt = y => { const ft = Math.abs(y)*3; return ft < 1 ? `${Math.max(1, Math.round(ft*12))} in` : ft < 10 ? `${Math.round(ft*2)/2} ft` : `${Math.round(ft)} ft`; };
+const cupsTxt = k => `${k} cup${k === 1 ? '' : 's'}`;
+let recap = {putts:[], sel:0, make:false};
+function puttInfo(p){
+  if (p.info) return p.info;
+  const d = Math.hypot(PIN.x - p.sx, PIN.z - p.sz), yc = yawTo(p.sx, p.sz), rcx = Math.cos(yc), rcz = -Math.sin(yc), ucx = Math.sin(yc), ucz = Math.cos(yc);
+  const rax = Math.cos(p.yaw), raz = -Math.sin(p.yaw);
+  let brk = 0; for (const [x, z] of p.pts){ const lat = (x - p.sx)*rax + (z - p.sz)*raz; if (Math.abs(lat) > Math.abs(brk)) brk = lat; }
+  const end = p.pts.at(-1), along = (end[0] - PIN.x)*ucx + (end[1] - PIN.z)*ucz, side = (end[0] - PIN.x)*rcx + (end[1] - PIN.z)*rcz;
+  let result;
+  if (p.holed) result = 'In the cup';
+  else { const parts = []; if (Math.abs(along) > 0.08) parts.push(`${lenTxt(along)} ${along > 0 ? 'long' : 'short'}`); if (Math.abs(side) > 0.08) parts.push(`${lenTxt(side)} ${side > 0 ? 'right' : 'left'}`);
+    result = (p.lipped ? 'Lipped out, ' : '') + (parts.join(', ') || 'on the lip'); if (p.gimme) result += ' · conceded'; }
+  const push = d*Math.tan((p.cu || 0)*0.03), pushCups = Math.round(Math.abs(push)/CUP);
+  p.info = {d, label:`Putt ${recap.putts.indexOf(p) + 1} · ${Math.round(d*3)} ft`,
+    aim: p.cups ? `${cupsTxt(Math.abs(p.cups))} ${p.cups > 0 ? 'right' : 'left'}` : 'At the cup',
+    pace: `${Math.round(p.pace)} ft · ${Math.round(d*3)} ft to the cup`,
+    brk: Math.abs(brk) < 0.03 ? 'Held its line' : `${lenTxt(brk)} ${brk > 0 ? 'right' : 'left'}`, result,
+    note: pushCups >= 1 ? `Your stroke started it ${cupsTxt(pushCups)} ${push > 0 ? 'right' : 'left'} of where you aimed.` : ''};
+  return p.info;
+}
+function puttMake(p){
+  if (p.mk) return p.mk;
+  const d = Math.hypot(PIN.x - p.sx, PIN.z - p.sz), base = yawTo(p.sx, p.sz), makes = []; let best = null;
+  for (let k=-40;k<=40;k++){ const r = rollTrace(p.sx, p.sz, base + Math.atan2(k*CUP, d), p.v); if (r.holed) makes.push({k, r});
+    const md = Math.hypot(r.x - PIN.x, r.z - PIN.z); if (!best || md < best.md) best = {k, r, md}; }
+  if (makes.length){ const m = makes[Math.floor(makes.length/2)]; p.mk = {r:m.r, text:`At this pace, aiming ${m.k ? cupsTxt(Math.abs(m.k)) + (m.k > 0 ? ' right' : ' left') : 'straight at the cup'} would have dropped.`}; }
+  else { const along = (best.r.x - PIN.x)*Math.sin(base) + (best.r.z - PIN.z)*Math.cos(base);
+    p.mk = {r:null, text: along > 0 ? 'Nothing drops at this pace. It needed a softer touch.' : 'Nothing drops at this pace. It needed more speed.'}; }
+  return p.mk;
+}
+function renderPuttRecap(){
+  const box = $('sumPutts'); if (!box) return;
+  const putts = puttLog.filter(p => round.shots.some(s => s.n === p.n && s.mode === 'putt' && Math.abs(s.fromD - p.fromD) < 0.02)).sort((a, b) => a.n - b.n);
+  recap = {putts, sel:0, make:false};
+  box.hidden = !putts.length; if (!putts.length) return;
+  $('prLabel').textContent = LOOP ? `Hole ${HOLE_SUB + 1} putts` : (putts.length === 1 ? 'Your putt' : 'Your putts');
+  const tabs = $('prTabs'); tabs.innerHTML = '';
+  putts.forEach((p, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = puttInfo(p).label; b.addEventListener('click', () => { recap.sel = i; updatePuttRecap(); }); tabs.appendChild(b); });
+  tabs.hidden = putts.length < 2;
+  updatePuttRecap();
+}
+function updatePuttRecap(){
+  const p = recap.putts[recap.sel]; if (!p) return; const info = puttInfo(p);
+  [...$('prTabs').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === recap.sel)));
+  $('prMakeBtn').setAttribute('aria-pressed', String(recap.make));
+  $('prAim').textContent = info.aim; $('prPace').textContent = info.pace; $('prBrk').textContent = info.brk; $('prRes').textContent = info.result;
+  $('prNote').textContent = info.note; $('prNote').hidden = !info.note;
+  const mk = recap.make ? puttMake(p) : null; $('prMake').hidden = !mk; if (mk) $('prMake').textContent = mk.text;
+  drawPuttRecap();
+}
+function drawPuttRecap(){
+  const cvR = $('prCv'), P = recap.putts; if (!P.length) return;
+  const Wc = cvR.clientWidth || 320, Hc = Math.round(Wc*0.9), dpr = Math.min(3, window.devicePixelRatio || 1);
+  cvR.style.height = Hc + 'px'; cvR.width = Math.round(Wc*dpr); cvR.height = Math.round(Hc*dpr);
+  const c = cvR.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!contours) buildContours();
+  // up the screen = the line of the first putt
+  const fy = yawTo(P[0].sx, P[0].sz), fx = Math.sin(fy), fz = Math.cos(fy), rx = Math.cos(fy), rz = -Math.sin(fy);
+  const U = (x, z) => [x*rx + z*rz, x*fx + z*fz];
+  const sel = P[recap.sel], mk = recap.make ? puttMake(sel) : null;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const grow = (x, z) => { const u = U(x, z); x0 = Math.min(x0, u[0]); x1 = Math.max(x1, u[0]); y0 = Math.min(y0, u[1]); y1 = Math.max(y1, u[1]); };
+  grow(PIN.x, PIN.z);
+  for (const p of P){ for (const q of p.pts) grow(q[0], q[1]); const L = p.pace/3; grow(p.sx + Math.sin(p.yaw)*L, p.sz + Math.cos(p.yaw)*L); }
+  if (mk && mk.r) for (const q of mk.r.pts) grow(q[0], q[1]);
+  const span = Math.max(x1 - x0, (y1 - y0)*Wc/Hc, 7) + 3, sc = Wc/span, mx = (x0 + x1)/2, my = (y0 + y1)/2;
+  const T = (x, z) => { const u = U(x, z); return [Wc/2 + (u[0] - mx)*sc, Hc/2 - (u[1] - my)*sc]; };
+  const poly = pts => { c.beginPath(); pts.forEach((q, i) => { const s = T(q[0], q[1]); if (i) c.lineTo(s[0], s[1]); else c.moveTo(s[0], s[1]); }); c.closePath(); };
+  c.fillStyle = PAL.gnear; c.fillRect(0, 0, Wc, Hc);
+  poly(fringePts); c.fillStyle = PAL.fringe; c.fill();
+  poly(greenPts); c.fillStyle = PAL.green[0]; c.fill();
+  // mower stripes, faint, so the green doesn't read as a flat fill
+  c.save(); poly(greenPts); c.clip(); c.fillStyle = 'rgba(255,255,225,.05)';
+  for (let k=-12;k<=12;k+=2){ const a = T(GR.x + k*3, GR.z - 40), b = T(GR.x + k*3 + 3, GR.z - 40), e = T(GR.x + k*3 + 3, GR.z + 40), f = T(GR.x + k*3, GR.z + 40); c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(e[0], e[1]); c.lineTo(f[0], f[1]); c.closePath(); c.fill(); }
+  c.restore();
+  const S = contours.segs; c.lineCap = 'round';
+  for (const heavy of [0, 1]){ c.beginPath();
+    for (let i=0;i<S.length;i+=7){ if (S[i+6] !== heavy) continue; const a = T(S[i], S[i+2]), b = T(S[i+3], S[i+5]); if ((a[0] < -4 && b[0] < -4) || (a[0] > Wc + 4 && b[0] > Wc + 4) || (a[1] < -4 && b[1] < -4) || (a[1] > Hc + 4 && b[1] > Hc + 4)) continue; c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); }
+    c.strokeStyle = PAL.moon ? (heavy ? 'rgba(225,236,255,.62)' : 'rgba(225,236,255,.32)') : (heavy ? 'rgba(8,28,8,.58)' : 'rgba(8,28,8,.3)'); c.lineWidth = heavy ? 1.5 : 1; c.stroke(); }
+  const cupP = T(PIN.x, PIN.z), cupR = Math.max(4, CUP*0.5*sc);
+  c.beginPath(); c.arc(cupP[0], cupP[1], cupR, 0, 7); c.fillStyle = '#0c110a'; c.fill(); c.strokeStyle = 'rgba(255,255,245,.85)'; c.lineWidth = 1.3; c.stroke();
+  const path = pts => { c.beginPath(); pts.forEach((q, i) => { const s = T(q[0], q[1]); if (i) c.lineTo(s[0], s[1]); else c.moveTo(s[0], s[1]); }); };
+  const order = P.map((_, i) => i).filter(i => i !== recap.sel).concat([recap.sel]);
+  for (const i of order){
+    const p = P[i], on = i === recap.sel, al = on ? 1 : 0.35;
+    if (on && mk && mk.r){ path(mk.r.pts); c.setLineDash([1, 5]); c.lineCap = 'round'; c.strokeStyle = 'rgba(185,216,240,.95)'; c.lineWidth = 2.5; c.stroke(); c.setLineDash([]); }
+    // aim + pace
+    const L = p.pace/3, a = T(p.sx, p.sz), e = T(p.sx + Math.sin(p.yaw)*L, p.sz + Math.cos(p.yaw)*L);
+    c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); c.setLineDash([6, 5]); c.strokeStyle = `rgba(255,251,232,${0.9*al})`; c.lineWidth = 1.6; c.stroke(); c.setLineDash([]);
+    let dx = e[0] - a[0], dy = e[1] - a[1]; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    c.beginPath(); c.moveTo(e[0] + dy*6, e[1] - dx*6); c.lineTo(e[0] - dy*6, e[1] + dx*6); c.strokeStyle = `rgba(255,251,232,${al})`; c.lineWidth = 2; c.stroke();
+    if (on){ const lab = `${Math.round(p.pace)} ft`; c.font = canvasFont(11); const tw = c.measureText(lab).width; const lx = clamp(e[0] + 9, 4, Wc - tw - 8), ly = clamp(e[1] + 4, 14, Hc - 6);
+      c.fillStyle = 'rgba(8,12,8,.72)'; c.fillRect(lx - 4, ly - 11, tw + 8, 16); c.fillStyle = '#fffbe8'; c.fillText(lab, lx, ly); }
+    // the roll
+    path(p.pts); c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = `rgba(20,14,4,${0.45*al})`; c.lineWidth = 5; c.stroke();
+    c.strokeStyle = on ? '#f2a33a' : 'rgba(242,163,58,.45)'; c.lineWidth = 3; c.stroke();
+    const end = T(...p.pts.at(-1));
+    if (p.gimme){ c.beginPath(); c.moveTo(end[0], end[1]); c.lineTo(cupP[0], cupP[1]); c.setLineDash([2, 4]); c.strokeStyle = `rgba(255,251,232,${0.6*al})`; c.lineWidth = 1.4; c.stroke(); c.setLineDash([]); }
+    c.beginPath(); c.arc(a[0], a[1], 4.5, 0, 7); c.strokeStyle = `rgba(251,251,246,${al})`; c.lineWidth = 1.5; c.stroke();
+    c.font = canvasFont(10); c.fillStyle = `rgba(251,251,246,${al})`; c.fillText(String(i + 1), a[0] - 3, a[1] + 17);
+    if (!p.holed){ c.beginPath(); c.arc(end[0], end[1], 4, 0, 7); c.fillStyle = `rgba(251,251,246,${al})`; c.fill(); }
+  }
+}
+$('prMakeBtn').addEventListener('click', () => { recap.make = !recap.make; updatePuttRecap(); });
 
 // ---------- boot ----------
 function postThumb(){
