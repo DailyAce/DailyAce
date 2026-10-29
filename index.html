@@ -198,6 +198,10 @@ a.btn{text-align:center;text-decoration:none}
 .lg-item b{font-size:.98rem;font-weight:600}
 .lg-item span{font-size:.78rem;color:var(--soft)}
 .lg-acts{display:flex;gap:14px}
+.lg-invite{box-shadow:inset 0 0 0 1.5px var(--fair)}
+.lg-invite .title{font-size:1.3rem}
+.lg-inv-btns{display:flex;gap:8px;flex-wrap:wrap}
+.lg-inv-btns .btn{flex:1 1 140px}
 .more-wide{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;border-radius:16px;padding:14px;background:var(--well);color:var(--ink);font:inherit;cursor:pointer;text-align:left}
 .more-wide b{font-size:.95rem;font-weight:600}.more-wide span{font-size:.76rem;color:var(--soft)}
 .awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -492,6 +496,8 @@ a.btn{text-align:center;text-decoration:none}
       <div class="board" id="boardList"></div>
       <div class="label" id="boardWeekLbl" hidden>This week</div>
       <div class="board" id="boardWeek"></div>
+      <div class="label" id="boardMemLbl" hidden>Members</div>
+      <div class="board" id="boardMembers"></div>
       <div class="body" id="boardNote"></div>
       <div class="btns"><button class="btn" id="boardClose">Back</button></div>
     </div>
@@ -499,6 +505,12 @@ a.btn{text-align:center;text-decoration:none}
     <div class="card" id="leagueCard" hidden>
       <div class="card-head"><div class="label">Leagues</div><div class="title">Play with your crew</div></div>
       <div class="body" id="lgNote">Start a league, share the code, and you get your own daily and weekly leaderboard.</div>
+      <div class="tagbox lg-invite" id="lgInvite" hidden>
+        <div class="label">You're invited</div>
+        <div class="title" id="lgInvName">—</div>
+        <div class="body" id="lgInvSub"></div>
+        <div class="lg-inv-btns"><button class="btn" id="lgInvJoin">Join league</button><button class="btn quiet" id="lgInvNo">Not now</button></div>
+      </div>
       <div class="lg-list" id="lgList"></div>
       <div class="tagbox"><div class="label">Start a league</div><div class="tag-row"><input id="lgName" maxlength="30" placeholder="Thursday crew" autocomplete="off" aria-label="League name"><button class="btn" id="lgCreate">Create</button></div></div>
       <div class="tagbox"><div class="label">Join with a code</div><div class="tag-row"><input id="lgCode" maxlength="6" placeholder="ABC123" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="League code"><button class="btn" id="lgJoin">Join</button></div></div>
@@ -526,7 +538,7 @@ a.btn{text-align:center;text-decoration:none}
     <div class="card" id="helpCard" hidden>
       <div class="card-head"><div class="label">How to play</div><div class="title">One hole. Every day.</div></div>
       <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100 against a Tour pro hitting from the same spot: 50 matches the Tour, above 50 beats it. Your average grade breaks ties, so a par with great shots beats a scrappy par.</p></div>
-      <div class="help-sec"><h3>Gestures</h3><p class="body"><b>Tap</b> the course to aim, or drag the yellow target. <b>Drag down and flick up</b> to swing. <b>Pinch in</b> to see the whole hole, pinch out to come back. <b>Double-tap the green</b> to read it: a grid appears with little balls rolling downhill along it. Still balls mean flat; fast red ones mean steep. Double-tap again to go back. When putting, the arrows aim your line in cups.</p></div>
+      <div class="help-sec"><h3>Gestures</h3><p class="body"><b>Tap</b> the course to aim, or drag the yellow target. <b>Drag down and flick up</b> to swing. <b>Pinch in</b> to see the whole hole, pinch out to come back. <b>Double-tap the green</b> to read it: contour lines show the slope, closer together where it's steeper, and on putts arrows at your ball and the cup point downhill with the slope in percent. Double-tap again to go back. After the hole, your card maps each putt: where you aimed and where it rolled. When putting, the arrows aim your line in cups.</p></div>
       <div class="help-sec"><h3>Weekends</h3><p class="body">Saturday and Sunday are a three-hole loop. Play them in order; your score is total strokes against par 9, then your average grade across all three.</p></div>
       <div class="help-sec"><h3>Leagues</h3><p class="body">Start a private league from the scorecard or settings, then send friends the invite. Everyone in it gets their own leaderboard for the day and the week.</p></div>
       <div class="help-sec"><h3>The week</h3><p class="body">Holes get harder through the week. Monday is the easiest, with a big green and soft slopes. Each day the hole gets longer, the green smaller and the slopes and wind stronger, up to Friday, the toughest. The weekend eases off. Today's difficulty shows under the logo.</p></div>
@@ -2151,7 +2163,7 @@ function computeRead(){
   const inch = (Hh(PIN.x, PIN.z) - Hh(ball.x, ball.z))*36, ai = Math.abs(inch), dir = inch > 0 ? 'uphill' : 'downhill';
   const slope = ai < 2 ? 'Flat' : ai < 6 ? `Slightly ${dir}` : ai < 18 ? dir[0].toUpperCase() + dir.slice(1) : `Steep ${dir}`;
   const ft = d*3, plays = paceFt < 12 ? Math.max(2, Math.round(paceFt/2)*2) : Math.round(paceFt/5)*5;
-  const feel = Math.abs(paceFt - ft) < Math.max(2, ft*0.12) ? 'plays its length' : `plays like ${paceFt < 12 ? 'about' : 'around'} ${plays} ft`;
+  const feel = Math.abs(paceFt - ft) < Math.max(2, ft*0.12) ? 'plays its length' : `plays like ${plays} ft`;
   const ac = Math.abs(bestC), way = bestC < 0 ? 'left to right' : 'right to left';
   const brk = ac < 1 ? 'Holds its line' : ac <= 2 ? `A touch ${way}` : ac <= 6 ? `Breaks ${way}` : ac <= 14 ? `Big break, ${way}` : `Huge break, ${way}`;
   caddieText = `Caddie: ${slope}, ${feel}. ${brk}.`;
@@ -3640,7 +3652,7 @@ async function openBoard(scope){
   tabs.hidden = opts.length < 2;
   for (const [id, name] of opts){ const b = document.createElement('button'); b.textContent = name; b.setAttribute('aria-pressed', String(id === scope)); b.onclick = () => openBoard(id); tabs.appendChild(b); }
   const list = $('boardList'), wk = $('boardWeek'); list.innerHTML = ''; wk.innerHTML = ''; $('boardAwards').innerHTML = ''; $('boardNote').textContent = 'Loading…';
-  $('boardTodayLbl').hidden = scope === 'all'; $('boardWeekLbl').hidden = true;
+  $('boardTodayLbl').hidden = scope === 'all'; $('boardWeekLbl').hidden = true; $('boardMemLbl').hidden = true; $('boardMembers').innerHTML = '';
   if (scope === 'all'){
     try { board = await rpc('day_board', {p_day:todayKey, p_player:pid}); } catch(e){}
     if (!board){ $('boardNote').textContent = "Couldn't load the leaderboard."; return; }
@@ -3658,6 +3670,8 @@ async function openBoard(scope){
   $('boardWeekLbl').hidden = !lb.week.length;
   const tp = v => { const r = Math.round(v*10)/10; return r === 0 ? 'E' : r > 0 ? `+${r}` : `${r}`; };
   lb.week.forEach(row => boardRow(wk, [['b-rank', `${row.rank}`], ['b-tag', row.tag], ['b-word', `${row.rounds} rd · ${tp(Number(row.to_par))}`], ['b-avg', Number(row.avg).toFixed(1)]], row.me));
+  const mem = $('boardMembers'); mem.innerHTML = ''; $('boardMemLbl').hidden = !(lb.roster && lb.roster.length);
+  (lb.roster || []).forEach(row => boardRow(mem, [['b-rank', ''], ['b-tag', row.tag + (row.owner ? ' · host' : '')], ['b-word', row.rounds ? `${row.rounds} round${row.rounds === 1 ? '' : 's'}` : 'No rounds yet'], ['b-avg', '']], row.me));
   $('boardNote').textContent = `${lb.played} of ${lb.members} played today. The week ranks by average score to par per round, then shot grade. Code ${lb.code}.`;
 }
 $('boardBtn').addEventListener('click', () => openBoard('all'));
@@ -3698,6 +3712,19 @@ async function joinLeague(code){
   } catch(e){ $('lgMsg').textContent = "Couldn't reach the leaderboard. Try again in a minute."; }
 }
 $('lgJoin').addEventListener('click', () => joinLeague($('lgCode').value));
+// an invite link opens this prompt; nothing joins until the person taps Join
+let pendingInvite = null;
+async function showInvite(code){
+  await openLeagues(phase === 'summary' ? 'summary' : null);
+  if (myLeagues.some(L => L.code === code)){ $('lgMsg').textContent = "You're already in that league."; return; }
+  pendingInvite = code; $('lgInvName').textContent = `League ${code}`; $('lgInvSub').textContent = ''; $('lgInvite').hidden = false;
+  try { const r = await rpc('league_lookup', {p_code:code});
+    if (!r || !r.ok){ $('lgInvite').hidden = true; pendingInvite = null; $('lgMsg').textContent = (r && r.reason) || "That invite didn't work."; return; }
+    $('lgInvName').textContent = r.name; $('lgInvSub').textContent = `${r.members} member${r.members === 1 ? '' : 's'} · Code ${r.code}`;
+  } catch(e){}
+}
+$('lgInvJoin').addEventListener('click', async () => { const c = pendingInvite; $('lgInvite').hidden = true; pendingInvite = null; if (c) await joinLeague(c); });
+$('lgInvNo').addEventListener('click', () => { $('lgInvite').hidden = true; pendingInvite = null; });
 $('lgCreate').addEventListener('click', async () => {
   const name = $('lgName').value.trim(); if (name.length < 2){ $('lgMsg').textContent = 'Give the league a name.'; return; }
   $('lgMsg').textContent = 'Creating…';
@@ -4038,7 +4065,7 @@ if (thumb){
 } else {
 initParts(); renderHeader();
 const joinM = /^#join=([A-Za-z0-9]{6})$/.exec(location.hash || '');
-if (joinM && online()){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} setTimeout(async () => { await openLeagues(phase === 'summary' ? 'summary' : null); $('lgCode').value = joinM[1].toUpperCase(); joinLeague(joinM[1]); }, 900); }
+if (joinM && online()){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} setTimeout(() => showInvite(joinM[1].toUpperCase()), 900); }
 if (online()) refreshLeagues();
 if (mainRound.done) { const cam0 = addressView(); Object.assign(cam, cam0); showSummary(); showYesterday(false); }
 else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openCard('helpCard'); else showYesterday(false).then(shown => { if (!shown) maybeFly(); }); }
