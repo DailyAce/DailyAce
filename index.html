@@ -1722,7 +1722,7 @@ function drawGreenComplex(){
     ctx.restore(); }
   if (near){ drawTurfGrain(); if (polyPath(greenPts, Hh)){ ctx.strokeStyle = 'rgba(8,18,6,.35)'; ctx.lineWidth = 1.5; ctx.stroke(); } drawTurfHaze(); }
   for (const b of BUNKERS){ if (polyPath(b.pts, (x,z) => Hh(x,z)-0.05)){ ctx.fillStyle = PAL.moon ? '#8f8a7a' : '#e9d3a3'; ctx.fill(); ctx.strokeStyle = b.pot ? 'rgba(40,34,18,.85)' : 'rgba(60,52,30,.55)'; ctx.lineWidth = b.pot ? 2.4 : 1.4; ctx.stroke(); } }
-  if (reading) drawGreenContours();
+  if (reading || fly || holeView){ const dg = Math.hypot(cam.x - GR.x, cam.z - GR.z); drawGreenContours(reading ? 1 : clamp(1.15 - dg/260, 0.4, 0.85)); }
   const cup = proj(PIN.x, Hh(PIN.x,PIN.z), PIN.z);
   if (cup){ const r = Math.max(1.5, 0.059*F/cup[2]*(1 + clamp((cup[2]-8)/50, 0, 1))); const ry = r*Math.max(0.25, Math.sin(cam.pitch + Math.atan2(cam.y - Hh(PIN.x,PIN.z), Math.max(1, cup[2])))); if (mode === 'putt'){ ctx.strokeStyle = 'rgba(255,255,245,.32)'; ctx.lineWidth = Math.max(1, r*0.14); ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r*1.14, ry*1.14, 0, 0, 7); ctx.stroke(); }
     ctx.fillStyle = '#4a4636'; ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r, ry, 0, 0, 7); ctx.fill();   // the far inside wall catches light
@@ -3169,11 +3169,16 @@ $('viewGreen').addEventListener('click', () => { if (phase !== 'ready') return; 
 $('holeBtn').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(!holeView); if (holeView) setHint(mode === 'putt' ? 'The whole hole. You can still putt from here.' : 'Tap or drag the target to pick your spot. Go back to Shot view to swing.'); else readyHint(); });
 const lookAt = (px, pz) => Math.atan2(GR.x - px, GR.z - pz);
 function flyKeys(){
-  // glide off the tee, orbit the green once at a calm height, then settle behind the ball
+  // glide off the tee, orbit the green once at a calm height, rise and pull back to a view of the whole hole,
+  // then settle behind the ball. The path starts and ends at rest so nothing snaps.
   const end = addressView(), k = [{x:0, y:12, z:-55, pitch:5.1*D2R, yaw:0, t:0}, {x:GR.x*0.3, y:40, z:GR.z*0.3, pitch:14*D2R, t:3.0}];
   const R = 62, Y = 42, dir = GR.x > 0 ? -1 : 1, th0 = -Math.PI/2;
   for (let i=0;i<=8;i++){ const th = th0 + dir*i*(Math.PI*1.25/8); k.push({x:GR.x + R*Math.cos(th), y:Y, z:GR.z + R*Math.sin(th), pitch:Math.atan2(Y - 2, R)*0.82, t:4.6 + i*0.8}); }
-  k.push({...end, t:k.at(-1).t + 3.2});
+  // the whole hole, from high behind the ball
+  const oy = round.shots.length ? yawTo(ball.x, ball.z) : 0, od = Math.max(20, dPin(ball.x, ball.z)), ob = 45, oh = 30 + od*0.35;
+  k.push({x:ball.x - Math.sin(oy)*ob, y:Hh(ball.x, ball.z) + oh, z:ball.z - Math.cos(oy)*ob, pitch:Math.atan2(oh, ob + od*0.62), yaw:oy, t:k.at(-1).t + 4.2, hold:true});
+  k.push({...k.at(-1), t:k.at(-1).t + 1.0});   // linger on the whole hole for a moment
+  k.push({...end, t:k.at(-1).t + 3.0});
   let prev = 0; k.forEach(q => { if (q.yaw === undefined) q.yaw = lookAt(q.x, q.z); while (q.yaw - prev > Math.PI) q.yaw -= 2*Math.PI; while (q.yaw - prev < -Math.PI) q.yaw += 2*Math.PI; prev = q.yaw; });
   return k;
 }
@@ -3184,14 +3189,20 @@ function startFlyover(){
   $('flyTag').hidden = false; $('flyName').textContent = `${holeName} · ${YARDS} yds`;
   LS.set('dailyhole:fly:' + holeNum, true);
 }
-function flyFromSummary(){ $('summary').hidden = true; fly = {keys:flyKeys().slice(0, -1), t:0, summary:true}; $('flyTag').hidden = false; $('flyName').textContent = `${holeName} · ${YARDS} yds`; }
-function endFlyover(){ if (!fly) return; const wasSum = fly.summary; fly = null; if (wasSum){ $('flyTag').hidden = true; $('summary').hidden = false; return; } $('flyTag').hidden = true; if (phase === 'ready'){ $('controls').hidden = false; $('icons').hidden = false; readyHint(); } Object.assign(cam, addressView()); }
+function flyFromSummary(){ $('summary').hidden = true; const ks = flyKeys().slice(0, -1); ks.at(-1).t += 0.6; fly = {keys:ks, t:0, summary:true}; $('flyTag').hidden = false; $('flyName').textContent = `${holeName} · ${YARDS} yds`; }
+function endFlyover(){ if (!fly) return; const wasSum = fly.summary; fly = null; if (wasSum){ $('flyTag').hidden = true; $('summary').hidden = false; return; } $('flyTag').hidden = true; if (phase === 'ready'){ $('controls').hidden = false; $('icons').hidden = false; readyHint(); } addr = addressView(); }   // the camera eases into place from wherever the flyover left it
 $('flyTag').addEventListener('click', endFlyover);
+// A smooth path through the keys that respects how long each leg takes (so a long leg after short ones
+// doesn't lurch), starting and ending at rest. Keys marked hold also pause the motion there briefly.
 function flyPose(t){
-  const K = fly.keys; let i = 0; while (i < K.length - 2 && t > K[i+1].t) i++;
-  const p0 = K[Math.max(0, i-1)], p1 = K[i], p2 = K[i+1], p3 = K[Math.min(K.length-1, i+2)], u = clamp((t - p1.t)/(p2.t - p1.t), 0, 1);
-  const cr = key => { const a = p0[key], b = p1[key], c = p2[key], d = p3[key]; return 0.5*((2*b) + (-a + c)*u + (2*a - 5*b + 4*c - d)*u*u + (-a + 3*b - 3*c + d)*u*u*u); };
-  return {x:cr('x'), y:Math.max(2, cr('y')), z:cr('z'), pitch:cr('pitch'), yaw:cr('yaw')};
+  const K = fly.keys, n = K.length; let i = 0; while (i < n - 2 && t > K[i+1].t) i++;
+  const a = K[i], b = K[i+1], h = b.t - a.t, u = clamp((t - a.t)/h, 0, 1);
+  const tan = (j, key) => { if (j === 0 || j === n - 1 || K[j].hold) return 0;
+    const h0 = K[j].t - K[j-1].t, h1 = K[j+1].t - K[j].t;   // weight each side by the other's duration
+    return ((K[j][key] - K[j-1][key])/h0*h1 + (K[j+1][key] - K[j][key])/h1*h0)/(h0 + h1); };
+  const u2 = u*u, u3 = u2*u, h00 = 2*u3 - 3*u2 + 1, h10 = u3 - 2*u2 + u, h01 = -2*u3 + 3*u2, h11 = u3 - u2;
+  const hm = key => h00*a[key] + h10*h*tan(i, key) + h01*b[key] + h11*h*tan(i + 1, key);
+  return {x:hm('x'), y:Math.max(2, hm('y')), z:hm('z'), pitch:hm('pitch'), yaw:hm('yaw')};
 }
 function readView(){
   if (mode === 'putt'){ const d = Math.max(2, dPin(ball.x, ball.z)), s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); const mx = ball.x + s*d*0.42, mz = ball.z + c*d*0.42; const back = d*0.25, hgt = Math.max(6, d*2.3); return {x:mx - s*back, y:Hh(mx, mz) + hgt, z:mz - c*back, pitch:Math.atan2(hgt, back), yaw:addr.yaw}; }
@@ -3345,7 +3356,8 @@ function frame(now){
   const hz = horizonY();
   ctx.clearRect(0, 0, W, H);
   drawSky(hz); drawRidges(hz); drawGround(hz); drawLake(hz); drawCourseNear(); drawGreenComplex(); artGreenLight(); drawRangeDots(); drawAim(); drawTurfAim(dt);
-  const vis = []; for (const t of trees){ const z = camSpace(t.x, 0, t.z)[2]; if (z > (fly ? 38 : 3)) vis.push([z, t]); } vis.sort((a,b) => b[0]-a[0]);
+  const treeCut = fly ? 3 + 35*clamp((fly.keys.at(-1).t - fly.t)/2.5, 0, 1) : 3;
+  const vis = []; for (const t of trees){ const z = camSpace(t.x, 0, t.z)[2]; if (z > treeCut) vis.push([z, t]); } vis.sort((a,b) => b[0]-a[0]);
   const dP = camSpace(PIN.x, 0, PIN.z)[2], closeCut = mode === 'full' ? 3 : 8;
   if (!reading) for (const [z, t] of vis) if (z < 400) drawTreeShadow(t);
   for (const [z, t] of vis) if (z >= dP && (!reading || z > dP + 20)) drawTree(t, false);
@@ -3874,10 +3886,10 @@ function buildContours(){
 function greenRating(){ if (!contours) buildContours(); return contours; }
 let sansFont = null;
 const canvasFont = (px, w = 600) => { if (!sansFont) sansFont = getComputedStyle(document.documentElement).getPropertyValue('--sans').trim() || 'system-ui, sans-serif'; return `${w} ${px}px ${sansFont}`; };
-function drawGreenContours(){
+function drawGreenContours(alpha = 1){
   if (!contours) buildContours();
   const S = contours.segs, lightLines = PAL.moon;
-  ctx.save(); ctx.lineCap = 'round';
+  ctx.save(); ctx.lineCap = 'round'; ctx.globalAlpha = alpha;
   for (const heavy of [0, 1]){
     ctx.beginPath();
     for (let i=0;i<S.length;i+=7){ if (S[i+6] !== heavy) continue; const a = proj(S[i], S[i+1], S[i+2]), b = proj(S[i+3], S[i+4], S[i+5]); if (!a || !b) continue; ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
@@ -3885,7 +3897,7 @@ function drawGreenContours(){
     ctx.lineWidth = heavy ? 1.6 : 1; ctx.stroke();
   }
   ctx.restore();
-  if (mode === 'putt' && phase === 'ready'){ slopeArrow(ball.x, ball.z, 10); slopeArrow(PIN.x, PIN.z, 11); }
+  if (reading && mode === 'putt' && phase === 'ready'){ slopeArrow(ball.x, ball.z, 10); slopeArrow(PIN.x, PIN.z, 11); }
 }
 // an arrow pointing downhill from a spot, longer where it's steeper, labeled with the slope
 function slopeArrow(x, z, gap){
