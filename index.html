@@ -3902,14 +3902,14 @@ function drawGreenContours(alpha = 1){
 // A staggered grid laid across your line, each spot painted with chevrons pointing downhill: one = gentle,
 // two = moderate, three = steep, warming from cream to gold to orange. Green view only; they drift slowly
 // downhill (faster where steeper). The Hole view and the flyover show just the contours.
-const CHEV_S = 0.7;   // yards between spots on the finest grid; coarser views use every 2nd, 3rd... spot
+const CHEV_S = 0.35;  // yards between spots on the finest grid; each view picks every 2nd, 3rd... spot
 const CHEV_COL = ['244,236,210', '242,193,78', '240,138,75'];
 let chev = null;
 function buildChevrons(key){
   const yaw = round.shots.length ? yawTo(ball.x, ball.z) : 0, ux = Math.sin(yaw), uz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
   const R = Math.max(GR.rx, GR.rz)*1.3, n = Math.ceil(R/CHEV_S), list = [];
   for (let r=-n; r<=n; r++) for (let c=-n-1; c<=n+1; c++){
-    const along = r*CHEV_S, lat = (c + (r & 1 ? 0.5 : 0))*CHEV_S*1.05, x = GR.x + ux*along + rx*lat, z = GR.z + uz*along + rz*lat;
+    const along = r*CHEV_S, lat = c*CHEV_S, x = GR.x + ux*along + rx*lat, z = GR.z + uz*along + rz*lat;
     if (gDist(x, z) > 0.95 || dPin(x, z) < 0.45 || Math.hypot(x - ball.x, z - ball.z) < 0.45) continue;
     const g = grad(x, z), m = Math.hypot(g[0], g[1]), pct = m*100; if (pct < 0.3) continue;
     list.push({x, z, h:Hh(x, z) + 0.03, dx:-g[0]/m, dz:-g[1]/m, pct, tier: pct < 1.5 ? 0 : pct < 3 ? 1 : 2, r:r + 1000, c:c + 1000, ph:(((r*7 + c*3) % 10) + 10) % 10/10});
@@ -3921,11 +3921,13 @@ function drawChevrons(alpha, flow){
   // fewer, bigger chevrons when the green is far away so they stay readable instead of turning to noise
   const zc = camSpace(GR.x, Hh(GR.x, GR.z), GR.z)[2]; if (zc < 1) return;
   // pick the grid step that puts spots about 35 px apart on screen, so a short putt isn't covered in giant chevrons
-  const px = CHEV_S*F/zc, k = [1, 2, 3, 4, 6].find(s => px*s >= 30) || (px*8 >= 10 ? 8 : 0); if (!k || px*k > 90) return;
-  const hs = 0.1*k, gap = 0.15*k, lw = clamp(0.06*k*F/zc, 1, 2.6), pts = [[], [], []];
+  // small chevrons, lots of them: spots about 22 px apart and each chevron about 8 px across on screen,
+  // whether you're reading from the tee, a pitch or a putt
+  const px = CHEV_S*F/zc, k = [1, 2, 3, 4, 6, 8, 10, 12, 16, 20].find(s => px*s >= 22) || 0; if (!k) return;
+  const hs = 4*zc/F, gap = hs*1.45, lw = 1.7, half = Math.floor(k/2), pts = [[], [], []];
   for (const q of chev.list){
-    if (q.r % k || q.c % k) continue;
-    const span = (q.tier)*gap, drift = flow ? (((T*(0.25 + q.pct*0.09) + q.ph) % 1) - 0.5)*0.17*k : 0;
+    if (q.r % k || (q.c - (((q.r/k) & 1) ? half : 0)) % k) continue;   // staggered rows
+    const span = (q.tier)*gap, drift = flow ? (((T*(0.25 + q.pct*0.09) + q.ph) % 1) - 0.5)*hs*1.6 : 0;
     const bx = q.x - q.dx*span/2 + q.dx*(drift + hs/2), bz = q.z - q.dz*span/2 + q.dz*(drift + hs/2), ppx = -q.dz, ppz = q.dx;
     for (let i=0;i<=q.tier;i++){
       const tx = bx + q.dx*i*gap, tz = bz + q.dz*i*gap;
@@ -3939,7 +3941,7 @@ function drawChevrons(alpha, flow){
   for (let pass=0; pass<2; pass++) for (let tr=0; tr<3; tr++){
     const P = pts[tr]; if (!P.length) continue; ctx.beginPath();
     for (let i=0;i<P.length;i+=6){ ctx.moveTo(P[i], P[i+1]); ctx.lineTo(P[i+2], P[i+3]); ctx.lineTo(P[i+4], P[i+5]); }
-    if (pass === 0){ ctx.save(); ctx.translate(0.8, 1.2); ctx.strokeStyle = 'rgba(6,18,6,.42)'; ctx.lineWidth = lw + 2.2; ctx.stroke(); ctx.restore(); }
+    if (pass === 0){ ctx.save(); ctx.translate(0.6, 0.9); ctx.strokeStyle = 'rgba(6,18,6,.4)'; ctx.lineWidth = lw + 1.6; ctx.stroke(); ctx.restore(); }
     else { ctx.strokeStyle = `rgba(${CHEV_COL[tr]},.95)`; ctx.lineWidth = lw; ctx.stroke(); }
   }
   ctx.restore();
