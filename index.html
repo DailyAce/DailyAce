@@ -538,7 +538,7 @@ a.btn{text-align:center;text-decoration:none}
     <div class="card" id="helpCard" hidden>
       <div class="card-head"><div class="label">How to play</div><div class="title">One hole. Every day.</div></div>
       <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100 against a Tour pro hitting from the same spot: 50 matches the Tour, above 50 beats it. Your average grade breaks ties, so a par with great shots beats a scrappy par.</p></div>
-      <div class="help-sec"><h3>Gestures</h3><p class="body"><b>Tap</b> the course to aim, or drag the yellow target. <b>Drag down and flick up</b> to swing. <b>Pinch in</b> to see the whole hole, pinch out to come back. <b>Double-tap the green</b> to read it: contour lines show the slope, closer together where it's steeper, and on putts arrows at your ball and the cup point downhill with the slope in percent. Double-tap again to go back. After the hole, your card maps each putt: where you aimed and where it rolled. When putting, the arrows aim your line in cups.</p></div>
+      <div class="help-sec"><h3>Gestures</h3><p class="body"><b>Tap</b> the course to aim, or drag the yellow target. <b>Drag down and flick up</b> to swing. <b>Pinch in</b> to see the whole hole, pinch out to come back. <b>Double-tap the green</b> to read it: chevrons point downhill (one is gentle, two moderate, three steep) over contour lines that bunch up where it's steeper. Double-tap again to go back. After the hole, your card maps each putt: where you aimed and where it rolled. When putting, the arrows aim your line in cups.</p></div>
       <div class="help-sec"><h3>Weekends</h3><p class="body">Saturday and Sunday are a three-hole loop. Play them in order; your score is total strokes against par 9, then your average grade across all three.</p></div>
       <div class="help-sec"><h3>Leagues</h3><p class="body">Start a private league from the scorecard or settings, then send friends the invite. Everyone in it gets their own leaderboard for the day and the week.</p></div>
       <div class="help-sec"><h3>The week</h3><p class="body">Holes get harder through the week. Monday is the easiest, with a big green and soft slopes. Each day the hole gets longer, the green smaller and the slopes and wind stronger, up to Friday, the toughest. The weekend eases off. Today's difficulty shows under the logo.</p></div>
@@ -1722,7 +1722,7 @@ function drawGreenComplex(){
     ctx.restore(); }
   if (near){ drawTurfGrain(); if (polyPath(greenPts, Hh)){ ctx.strokeStyle = 'rgba(8,18,6,.35)'; ctx.lineWidth = 1.5; ctx.stroke(); } drawTurfHaze(); }
   for (const b of BUNKERS){ if (polyPath(b.pts, (x,z) => Hh(x,z)-0.05)){ ctx.fillStyle = PAL.moon ? '#8f8a7a' : '#e9d3a3'; ctx.fill(); ctx.strokeStyle = b.pot ? 'rgba(40,34,18,.85)' : 'rgba(60,52,30,.55)'; ctx.lineWidth = b.pot ? 2.4 : 1.4; ctx.stroke(); } }
-  if (reading || fly || holeView){ const dg = Math.hypot(cam.x - GR.x, cam.z - GR.z); drawGreenContours(reading ? 1 : clamp(1.15 - dg/260, 0.4, 0.85)); }
+  if (reading || fly || holeView){ const dg = Math.hypot(cam.x - GR.x, cam.z - GR.z), ga = reading ? 1 : clamp(1.15 - dg/260, 0.4, 0.85); drawGreenContours(reading ? 0.75 : ga); if (reading) drawChevrons(1, !reduceMotion); }
   const cup = proj(PIN.x, Hh(PIN.x,PIN.z), PIN.z);
   if (cup){ const r = Math.max(1.5, 0.059*F/cup[2]*(1 + clamp((cup[2]-8)/50, 0, 1))); const ry = r*Math.max(0.25, Math.sin(cam.pitch + Math.atan2(cam.y - Hh(PIN.x,PIN.z), Math.max(1, cup[2])))); if (mode === 'putt'){ ctx.strokeStyle = 'rgba(255,255,245,.32)'; ctx.lineWidth = Math.max(1, r*0.14); ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r*1.14, ry*1.14, 0, 0, 7); ctx.stroke(); }
     ctx.fillStyle = '#4a4636'; ctx.beginPath(); ctx.ellipse(cup[0], cup[1], r, ry, 0, 0, 7); ctx.fill();   // the far inside wall catches light
@@ -3162,7 +3162,7 @@ function holeViewTarget(){
   const back = 45, hgt = 30 + d*0.35; return {x:ball.x - s*back, y:Hh(ball.x, ball.z) + hgt, z:ball.z - c*back, pitch:Math.atan2(hgt, back + d*0.62), yaw};
 }
 function setHoleView(on){ holeView = on; $('holeBtn').setAttribute('aria-pressed', String(on)); if (on && reading) setReading(false); syncViews(); }
-const READ_HINT = () => { const g = greenRating(); return mode === 'putt' ? `${g.word} green, ${g.pct.toFixed(1)}% average slope. Close lines are steep; arrows point downhill.` : `${g.word} green. Close lines are steep. Drag the target to pick your spot.`; };
+const READ_HINT = () => { const g = greenRating(); return mode === 'putt' ? `${g.word} green, ${g.pct.toFixed(1)}% average slope. Chevrons point downhill; more of them means steeper.` : `${g.word} green. Chevrons point downhill. Drag the target to pick your spot.`; };
 $('viewShot').addEventListener('click', () => { if (phase !== 'ready') return; setReading(false); setHoleView(false); readyHint(); });
 $('viewHole').addEventListener('click', () => { if (phase !== 'ready') return; setHoleView(true); setHint(mode === 'putt' ? 'The whole hole.' : 'The whole hole. Tap or drag the target.'); });
 $('viewGreen').addEventListener('click', () => { if (phase !== 'ready') return; setReading(true); setHint(READ_HINT()); });
@@ -3897,7 +3897,52 @@ function drawGreenContours(alpha = 1){
     ctx.lineWidth = heavy ? 1.6 : 1; ctx.stroke();
   }
   ctx.restore();
-  if (reading && mode === 'putt' && phase === 'ready'){ slopeArrow(ball.x, ball.z, 10); slopeArrow(PIN.x, PIN.z, 11); }
+}
+// ---------- slope chevrons over the whole green ----------
+// A staggered grid laid across your line, each spot painted with chevrons pointing downhill: one = gentle,
+// two = moderate, three = steep, warming from cream to gold to orange. Green view only; they drift slowly
+// downhill (faster where steeper). The Hole view and the flyover show just the contours.
+const CHEV_S = 0.7;   // yards between spots on the finest grid; coarser views use every 2nd, 3rd... spot
+const CHEV_COL = ['244,236,210', '242,193,78', '240,138,75'];
+let chev = null;
+function buildChevrons(key){
+  const yaw = round.shots.length ? yawTo(ball.x, ball.z) : 0, ux = Math.sin(yaw), uz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  const R = Math.max(GR.rx, GR.rz)*1.3, n = Math.ceil(R/CHEV_S), list = [];
+  for (let r=-n; r<=n; r++) for (let c=-n-1; c<=n+1; c++){
+    const along = r*CHEV_S, lat = (c + (r & 1 ? 0.5 : 0))*CHEV_S*1.05, x = GR.x + ux*along + rx*lat, z = GR.z + uz*along + rz*lat;
+    if (gDist(x, z) > 0.95 || dPin(x, z) < 0.45 || Math.hypot(x - ball.x, z - ball.z) < 0.45) continue;
+    const g = grad(x, z), m = Math.hypot(g[0], g[1]), pct = m*100; if (pct < 0.3) continue;
+    list.push({x, z, h:Hh(x, z) + 0.03, dx:-g[0]/m, dz:-g[1]/m, pct, tier: pct < 1.5 ? 0 : pct < 3 ? 1 : 2, r:r + 1000, c:c + 1000, ph:(((r*7 + c*3) % 10) + 10) % 10/10});
+  }
+  chev = {key, list};
+}
+function drawChevrons(alpha, flow){
+  const key = `${ball.x.toFixed(1)},${ball.z.toFixed(1)}`; if (!chev || chev.key !== key) buildChevrons(key);
+  // fewer, bigger chevrons when the green is far away so they stay readable instead of turning to noise
+  const zc = camSpace(GR.x, Hh(GR.x, GR.z), GR.z)[2]; if (zc < 1) return;
+  // pick the grid step that puts spots about 35 px apart on screen, so a short putt isn't covered in giant chevrons
+  const px = CHEV_S*F/zc, k = [1, 2, 3, 4, 6].find(s => px*s >= 30) || (px*8 >= 10 ? 8 : 0); if (!k || px*k > 90) return;
+  const hs = 0.1*k, gap = 0.15*k, lw = clamp(0.06*k*F/zc, 1, 2.6), pts = [[], [], []];
+  for (const q of chev.list){
+    if (q.r % k || q.c % k) continue;
+    const span = (q.tier)*gap, drift = flow ? (((T*(0.25 + q.pct*0.09) + q.ph) % 1) - 0.5)*0.17*k : 0;
+    const bx = q.x - q.dx*span/2 + q.dx*(drift + hs/2), bz = q.z - q.dz*span/2 + q.dz*(drift + hs/2), ppx = -q.dz, ppz = q.dx;
+    for (let i=0;i<=q.tier;i++){
+      const tx = bx + q.dx*i*gap, tz = bz + q.dz*i*gap;
+      const w = hs*0.78, a = proj(tx - q.dx*hs + ppx*w, q.h, tz - q.dz*hs + ppz*w), t = proj(tx, q.h, tz), b = proj(tx - q.dx*hs - ppx*w, q.h, tz - q.dz*hs - ppz*w);
+      if (!a || !t || !b) continue;
+      if (t[0] < -10 || t[0] > W + 10 || t[1] < (reading ? H*0.19 : -10) || t[1] > H + 10) continue;   // keep the hole name readable in the Green view
+      pts[q.tier].push(a[0], a[1], t[0], t[1], b[0], b[1]);
+    }
+  }
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = alpha;
+  for (let pass=0; pass<2; pass++) for (let tr=0; tr<3; tr++){
+    const P = pts[tr]; if (!P.length) continue; ctx.beginPath();
+    for (let i=0;i<P.length;i+=6){ ctx.moveTo(P[i], P[i+1]); ctx.lineTo(P[i+2], P[i+3]); ctx.lineTo(P[i+4], P[i+5]); }
+    if (pass === 0){ ctx.save(); ctx.translate(0.8, 1.2); ctx.strokeStyle = 'rgba(6,18,6,.42)'; ctx.lineWidth = lw + 2.2; ctx.stroke(); ctx.restore(); }
+    else { ctx.strokeStyle = `rgba(${CHEV_COL[tr]},.95)`; ctx.lineWidth = lw; ctx.stroke(); }
+  }
+  ctx.restore();
 }
 // an arrow pointing downhill from a spot, longer where it's steeper, labeled with the slope
 function slopeArrow(x, z, gap){
