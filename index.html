@@ -331,6 +331,9 @@ a.btn{text-align:center;text-decoration:none}
 .meter em{position:absolute;left:-5px;right:-5px;height:2px;background:var(--fair);bottom:0;border-radius:2px}
 .meter em::after{content:"Pin";position:absolute;right:16px;top:-6px;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--fair);text-shadow:0 1px 6px rgba(0,0,0,.7)}
 .meter span{position:absolute;right:16px;top:-20px;font-weight:700;font-stretch:80%;font-size:.95rem;color:var(--ink);text-shadow:0 1px 6px rgba(0,0,0,.7);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* right-handed players swipe with the right thumb, so the meter sits on the left where the thumb won't cover it */
+.meter.lefty{right:auto;left:calc(max(16px, env(safe-area-inset-left, 0px)) + 4px)}
+.meter.lefty em::after,.meter.lefty span{right:auto;left:16px}
 .face{pointer-events:none;width:min(280px,100%);border-radius:22px;padding:14px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:6px}
 .face{position:relative;pointer-events:auto}
 .face svg{width:100%;max-width:240px;height:auto}
@@ -2754,12 +2757,13 @@ $('segFeel').addEventListener('click', e => { const b = e.target.closest('button
 $('segPS').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; practiceSwing = b.dataset.v === '1'; $('psTag').hidden = !practiceSwing; renderSettings(); });
 $('segGuide').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; guides = b.dataset.v === '1'; LS.set('dailyhole:guides', guides); computeNeed(); readyHint(); renderSettings(); });
 $('segFlip').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; curveFlip = b.dataset.v === '1'; LS.set('dailyhole:flip', curveFlip); renderSettings(); });
-$('segHand').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; hand = b.dataset.v; LS.set('dailyhole:hand', hand); renderSettings(); });
+$('segHand').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; hand = b.dataset.v; LS.set('dailyhole:hand', hand); placeMeter(); renderSettings(); });
 $('segAddr').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.v === 'mine') calibrate(); else { addrCal = null; LS.set('dailyhole:addr', null); renderSettings(); } });
 $('psTag').addEventListener('click', () => { practiceSwing = false; $('psTag').hidden = true; setHint('Practice swings off. The next swing counts.'); });
 
 // ---------- swipe input ----------
 let swipe = null, liveTrail = null; const meter = $('meter'), meterFill = $('meterFill');
+const placeMeter = () => meter.classList.toggle('lefty', hand === 'R');
 const curveColor = cu => Math.abs(cu) < 0.12 ? '#a9d68e' : Math.abs(cu) < 0.35 ? '#e7c068' : '#e3825f';
 function drawSwipeTrail(){
   let pts, bx, by, cu = 0, fade = 1, done = false, back = 0, tempo = 1, putt = mode === 'putt';
@@ -2903,6 +2907,7 @@ cv.addEventListener('pointercancel', e => { turfAimRelease(); touches.delete(e.p
 const FEELS = [{n:'Easy', ref:650}, {n:'Normal', ref:1000}, {n:'Strong', ref:1400}];
 const ori = {beta:null, gamma:null, t:0};
 let addrCal = LS.get('dailyhole:addr', null), hand = LS.get('dailyhole:hand', 'R') === 'L' ? 'L' : 'R';
+placeMeter();
 const handSign = () => hand === 'R' ? 1 : -1;
 let meterTimer = 0;
 function onOrient(e){ if (e.beta === null || e.beta === undefined) return; ori.beta = e.beta; ori.gamma = e.gamma; ori.t = performance.now(); }
