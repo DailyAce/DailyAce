@@ -669,7 +669,7 @@ const nameFor = n => NAMES[(((n*17) % NAMES.length) + NAMES.length) % NAMES.leng
 function themeFor(n){
   const d = new Date(Date.UTC(2026, 9, 17) + (n - 1)*86400000), m = d.getUTCMonth(), day = d.getUTCDate();
   if (m === 9 && day >= 21) return 'halloween';
-  if (m === 10){ const first = new Date(Date.UTC(d.getUTCFullYear(), 10, 1)).getUTCDay(), thu = 1 + ((4 - first + 7) % 7) + 21; if (day >= thu - 3 && day <= thu + 3) return 'thanksgiving'; }
+  if (m === 10){ const first = new Date(Date.UTC(d.getUTCFullYear(), 10, 1)).getUTCDay(), thu = 1 + ((4 - first + 7) % 7) + 21; return day >= thu - 3 && day <= thu + 3 ? 'thanksgiving' : 'fall'; }
   if (m === 11 && day >= 18 && day <= 26) return 'christmas';
   if ((m === 11 && day === 31) || (m === 0 && day === 1)) return 'newyear';
   return null;
@@ -680,7 +680,7 @@ const THEME_NAMES = {
   thanksgiving:['Harvest Hollow','Cornucopia','Hayride Hill','Gobbler\'s Knob','Cider Mill','Pilgrim\'s Point','Maple Harvest'],
   christmas:['Evergreen','Snowdrift','Mistletoe Bend','Silver Bells','Sleigh Ride','Frosted Pines','Hearthside','Northern Star','Candy Cane Lane'],
   newyear:['Midnight Run','First Light','Auld Lang Syne'] };
-const holeNameFor = (n, sub = 0) => { const t = themeFor(n); if (!t) return sub ? NAMES[((((n*17) + sub*11) % NAMES.length) + NAMES.length) % NAMES.length] : nameFor(n); const L = THEME_NAMES[t]; return L[(((n*5 + sub*3) % L.length) + L.length) % L.length]; };
+const holeNameFor = (n, sub = 0) => { const t = themeFor(n); if (!t || !THEME_NAMES[t]) return sub ? NAMES[((((n*17) + sub*11) % NAMES.length) + NAMES.length) % NAMES.length] : nameFor(n); const L = THEME_NAMES[t]; return L[(((n*5 + sub*3) % L.length) + L.length) % L.length]; };
 R(); const holeName = holeNameFor(holeNum, HOLE_SUB);
 
 // ---------- palettes ----------
@@ -771,6 +771,9 @@ function makePick(i, q, prevTypes, last, sub){
   let landmark = marks[Math.floor(q()*marks.length)];
   // holiday dressing: the course stays random, the look follows the holiday
   if (theme === 'halloween'){ scenery = 'pine'; tod = ((i + sub) % 2 === 0 || d.getUTCDate() === 31) ? 'night' : 'dusk'; weather = tod === 'night' ? 'wisps' : 'leaves'; landmark = 'none'; if (cond === 'wet') cond = 'normal'; }
+  // fall: November outside Thanksgiving week keeps autumn trees and warm light; the course and landmarks stay random
+  if (theme === 'fall'){ scenery = 'autumn'; tod = ['golden','morning','midday','golden','dusk'][(i*3 + sub) % 5]; if (weather !== 'rain') weather = ['leaves','leaves','overcast','leaves','fog'][(i + sub*2) % 5];
+    if (!['barn','cabin','windmill','clubhouse','bridge','ruins','none'].includes(landmark)) landmark = ['barn','cabin','windmill'][(i + sub) % 3]; }
   if (theme === 'thanksgiving'){ scenery = 'autumn'; tod = q() < 0.5 ? 'golden' : 'morning'; weather = 'leaves'; landmark = 'barn'; if (cond === 'wet') cond = 'normal'; } else q();
   if (theme === 'christmas'){ scenery = 'alpine'; tod = ['dusk','night','morning'][(i + sub) % 3]; weather = 'snow'; landmark = 'cabin'; if (cond === 'wet') cond = 'normal'; }
   if (theme === 'newyear'){ scenery = 'pine'; tod = 'night'; weather = 'clear'; landmark = 'clubhouse'; if (cond === 'wet') cond = 'normal'; }
@@ -2696,7 +2699,7 @@ function openMore(){
   // keep only this week's hole pictures on the phone
   try { const keep = new Set([holeNum, holeNumFor(todayKey), ...recentKeys(todayKey).map(holeNumFor)].map(n => 'dailyhole:thumb:3:' + n)); Object.keys(localStorage).filter(k => k.startsWith('dailyhole:thumb:') && !keep.has(k)).forEach(k => localStorage.removeItem(k)); } catch(e){}
   for (const key of recentKeys(todayKey)){
-    const n = holeNumFor(key), r = rng(hash(n*7919)); r(); const name = holeNameFor(n); const pk = picksFor(n), th = themeFor(n), pal = th ? {halloween:'Halloween', thanksgiving:'Thanksgiving', christmas:'Holidays', newyear:'New Year'}[th] + (pk ? ` · ${LABELS[pk.type]}` : '') : pk ? `${LABELS[pk.scenery]} · ${LABELS[pk.type]}` : ['Golden hour','Morning mist','Autumn color'][Math.floor(r()*3)];
+    const n = holeNumFor(key), r = rng(hash(n*7919)); r(); const name = holeNameFor(n); const pk = picksFor(n), th = themeFor(n), pal = th ? {halloween:'Halloween', fall:'Fall', thanksgiving:'Thanksgiving', christmas:'Holidays', newyear:'New Year'}[th] + (pk ? ` · ${LABELS[pk.type]}` : '') : pk ? `${LABELS[pk.scenery]} · ${LABELS[pk.type]}` : ['Golden hour','Morning mist','Autumn color'][Math.floor(r()*3)];
     const res = LS.get('dailyhole:past:' + key, null);
     const b = document.createElement('button'); b.className = 'hole-card' + (res ? ' done' : '');
     const pic = document.createElement('div'); pic.className = 'pic';
