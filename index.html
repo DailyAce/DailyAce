@@ -1225,6 +1225,14 @@ const clouds = Array.from({length:PAL.nosun ? 11 : 7}, () => ({u:-0.9+fxR()*1.8,
     for (let i=0, m=0; i<120 && m<12; i++){ const x = GR.x + (q() - 0.5)*90, z = GR.z + GR.rz + 12 + q()*45; if (dry(x, z)){ add('grave', x, z, 1.0 + q()*0.5, 0.75); m++; } }
     for (const [x, z] of [[-11*SIDE, 3], [GR.x - SIDE*GR.rx*1.45, GR.z + GR.rz*0.6], [GR.x + SIDE*GR.rx*0.2, GR.z + GR.rz*1.55]]) if (dry(x, z)) add('cat', x, z, 0.85, 0.5);
   }
+  if (THEME === 'fall'){
+    // harvest dressing, decoration only: hay and a scarecrow by the tee, pumpkins round the green, leaf piles and crates about
+    // a little closer in and just ahead of the tee than the other themes, so the dressing sits in the opening view
+    const near = (k, prop, h0, hv) => { for (let i=0, m=0; i<40 && m<k; i++){ const sd = m % 2 ? 1 : -1, x = sd*(7 + q()*4), z = 2 + q()*14; if (dry(x, z)){ add(prop, x, z, h0 + q()*hv, 0.7); m++; } } };
+    near(3, 'hay', 0.9, 0.2); near(3, 'gourd', 0.45, 0.2); near(1, 'scarecrow', 2.1, 0.2); near(2, 'crate', 0.75, 0.1); near(2, 'leafpile', 0.55, 0.2);
+    ring(7, 'gourd', 0.45, 0.25); ring(5, 'leafpile', 0.55, 0.25);
+    scatter(6, 'hay', 0.9, 0.2); scatter(6, 'shock', 2.2, 0.6); scatter(10, 'leafpile', 0.6, 0.3); scatter(3, 'crate', 0.75, 0.1); scatter(2, 'scarecrow', 2.1, 0.2);
+  }
   if (THEME === 'thanksgiving'){
     teeSide(4, 'hay', 0.9, 0.2); teeSide(4, 'gourd', 0.45, 0.2); ring(8, 'gourd', 0.45, 0.25); scatter(8, 'hay', 0.9, 0.2); scatter(8, 'shock', 2.2, 0.6);
     for (let i=0;i<4;i++){ const x = (q() - 0.5)*60, z = 20 + q()*60; if (dry(x, z)) add('turkey', x, z, 0.9, 0.6, {walk:q()*6}); }
@@ -1414,6 +1422,25 @@ function drawProp(t){
   } else if (t.prop === 'shock'){
     ctx.strokeStyle = '#c9a85a'; ctx.lineWidth = Math.max(0.6, s*0.05); for (let k=-4;k<=4;k++){ ctx.beginPath(); ctx.moveTo(x + k*s*0.08, y); ctx.lineTo(x + k*s*0.015, y - s); ctx.stroke(); }
     ctx.strokeStyle = '#8a6a2a'; ctx.beginPath(); ctx.moveTo(x - s*0.2, y - s*0.45); ctx.lineTo(x + s*0.2, y - s*0.45); ctx.stroke();
+  } else if (t.prop === 'leafpile'){
+    const w = s*1.5, cols = ['#b5401f', '#d9731f', '#e3a32a', '#8f3a1c', '#c9582a'];
+    ctx.fillStyle = 'rgba(30,20,10,.25)'; ctx.beginPath(); ctx.ellipse(x, y, w*0.62, s*0.14, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#9a4a1e'; ctx.beginPath(); ctx.ellipse(x, y - s*0.22, w*0.55, s*0.3, 0, Math.PI, 0); ctx.fill();
+    if (s > 3) for (let i=0;i<9;i++){ const a = ((t.seed >> i) % 100)/100, b = ((t.seed >> (i + 3)) % 100)/100; ctx.fillStyle = cols[(i + (t.seed % 5)) % 5];
+      ctx.beginPath(); ctx.ellipse(x + (a - 0.5)*w*0.95, y - s*0.08 - b*s*0.32*(1 - Math.abs(a - 0.5)*1.4), s*0.13, s*0.08, a*3, 0, 7); ctx.fill(); }
+  } else if (t.prop === 'crate'){
+    const w = s*0.95, h = s*0.62; ctx.fillStyle = '#9b6b3a'; ctx.fillRect(x - w/2, y - h, w, h);
+    ctx.strokeStyle = 'rgba(60,36,14,.6)'; ctx.lineWidth = Math.max(0.5, s*0.04); for (const k of [0.33, 0.66]){ ctx.beginPath(); ctx.moveTo(x - w/2, y - h*k); ctx.lineTo(x + w/2, y - h*k); ctx.stroke(); }
+    if (s > 3){ ctx.fillStyle = '#b8282b'; for (const k of [-0.3, 0, 0.3, -0.15, 0.15]){ const top = k === -0.15 || k === 0.15; ctx.beginPath(); ctx.arc(x + k*w, y - h - s*(top ? 0.2 : 0.07), s*0.1, 0, 7); ctx.fill(); } }
+  } else if (t.prop === 'scarecrow'){
+    const k = s, sway = Math.sin(T*0.9 + t.seed)*k*0.03, cx = x + sway;
+    ctx.strokeStyle = '#6b4a26'; ctx.lineWidth = Math.max(0.8, k*0.05); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(cx, y - k*0.95); ctx.moveTo(cx - k*0.38, y - k*0.68); ctx.lineTo(cx + k*0.38, y - k*0.68); ctx.stroke();
+    ctx.fillStyle = '#4f6a8a'; ctx.beginPath(); ctx.moveTo(cx - k*0.2, y - k*0.74); ctx.lineTo(cx + k*0.2, y - k*0.74); ctx.lineTo(cx + k*0.16, y - k*0.36); ctx.lineTo(cx - k*0.16, y - k*0.36); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#a8442a'; ctx.fillRect(cx - k*0.36, y - k*0.72, k*0.16, k*0.08); ctx.fillRect(cx + k*0.2, y - k*0.72, k*0.16, k*0.08);
+    ctx.strokeStyle = '#e2c56a'; ctx.lineWidth = Math.max(0.5, k*0.025); ctx.beginPath(); for (const d of [-1, 1]){ ctx.moveTo(cx + d*k*0.36, y - k*0.68); ctx.lineTo(cx + d*k*0.45, y - k*0.62); } for (const d of [-0.08, 0, 0.08]){ ctx.moveTo(cx + d*k, y - k*0.36); ctx.lineTo(cx + d*k*1.3, y - k*0.28); } ctx.stroke();
+    ctx.fillStyle = '#e6d3a1'; ctx.beginPath(); ctx.arc(cx, y - k*0.85, k*0.12, 0, 7); ctx.fill();
+    ctx.fillStyle = '#8a6a2e'; ctx.beginPath(); ctx.ellipse(cx, y - k*0.95, k*0.22, k*0.05, 0, 0, 7); ctx.fill(); ctx.fillRect(cx - k*0.1, y - k*1.07, k*0.2, k*0.12);
+    if (k > 10){ ctx.fillStyle = '#2a2016'; for (const d of [-1, 1]){ ctx.beginPath(); ctx.arc(cx + d*k*0.045, y - k*0.87, k*0.017, 0, 7); ctx.fill(); } }
   } else if (t.prop === 'turkey'){
     const wx = x + Math.sin(T*0.3 + t.walk)*s*1.5, k = s*0.9;
     ctx.fillStyle = '#7a4a2a'; for (let i=0;i<7;i++){ const a = Math.PI + 0.25 + i*0.42; ctx.beginPath(); ctx.ellipse(wx + Math.cos(a)*k*0.35 - k*0.1, y - k*0.55 + Math.sin(a)*k*0.35, k*0.12, k*0.3, a + Math.PI/2, 0, 7); ctx.fill(); }
