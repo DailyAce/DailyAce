@@ -91,7 +91,7 @@ button{font-family:var(--sans)}
 
 /* cards */
 .mid{flex:1;display:grid;place-items:center;min-height:0;padding-block:8px}
-.card{pointer-events:auto;border-radius:22px;padding:20px;width:min(360px,100%);display:flex;flex-direction:column;gap:14px;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;
+.card{box-sizing:border-box;pointer-events:auto;border-radius:22px;padding:20px;width:min(360px,100%);display:flex;flex-direction:column;gap:14px;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;
   background:var(--glass-hi);border:1px solid var(--edge);backdrop-filter:blur(18px) saturate(1.1);-webkit-backdrop-filter:blur(18px) saturate(1.1);box-shadow:0 18px 50px rgba(0,0,0,.28);animation:rise .32s cubic-bezier(.2,.8,.2,1)}
 @keyframes rise{from{transform:translateY(12px);opacity:.3}to{transform:none;opacity:1}}
 .card-head{display:flex;flex-direction:column;gap:6px}
@@ -105,6 +105,68 @@ button{font-family:var(--sans)}
 .btn{font-weight:600;font-size:.9rem;line-height:1;color:var(--clubhouse);background:var(--ink);border:0;border-radius:999px;padding:13px 18px;cursor:pointer;flex:1 1 auto}
 .btn.quiet{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--edge)}
 .btn:focus-visible,.chip:focus-visible,.icon:focus-visible,.seg button:focus-visible,.tag:focus-visible{outline:2px solid var(--fair);outline-offset:2px}
+
+/* first-run: welcome choice + quick walkthrough */
+.intro{gap:16px;text-align:left}
+.intro-mark{width:44px;height:44px;color:var(--ink)}
+.intro-mark svg{width:100%;height:100%}
+.intro .card-head .title{font-size:1.75rem}
+.choices{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.choice{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:16px;padding:14px 16px;cursor:pointer;font-family:var(--sans);
+  color:var(--ink);background:var(--well);box-shadow:inset 0 0 0 1px var(--edge);transition:transform .12s ease}
+.choice:active{transform:scale(.98)}
+.choice.go{background:var(--ink);color:var(--clubhouse);box-shadow:none}
+.choice .ct{display:block;font-weight:700;font-size:1.02rem;font-stretch:92%;letter-spacing:-.005em}
+.choice .cs{display:block;font-size:.78rem;margin-top:3px;opacity:.72}
+.choice .tx{flex:1;min-width:0}
+.choice svg{width:20px;height:20px;flex:none}
+.choice:focus-visible{outline:2px solid var(--fair);outline-offset:2px}
+.tour{gap:12px}
+.tour .card-head{min-height:28px;justify-content:center}
+.tour-art{width:100%;height:auto;display:block;border-radius:14px;background:#1b3322}
+.tour-slide{display:flex;flex-direction:column;gap:12px;animation:tourIn .3s cubic-bezier(.2,.8,.2,1)}
+.tour-slide.back{animation-name:tourBack}
+@keyframes tourIn{from{transform:translateX(18px);opacity:0}to{transform:none;opacity:1}}
+@keyframes tourBack{from{transform:translateX(-18px);opacity:0}to{transform:none;opacity:1}}
+.tour-slide h3{margin:0;font-size:1.35rem;font-weight:600;font-stretch:88%;letter-spacing:-.005em}
+.tour-slide p{margin:0}
+.tour-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.dots{display:flex;gap:6px}
+.dots i{width:6px;height:6px;border-radius:6px;background:var(--edge);transition:width .25s,background .25s}
+.dots i.on{width:18px;background:var(--ink)}
+.tour .btns{flex-wrap:nowrap}
+.tour .btns .btn{flex:0 0 auto;padding:12px 18px}
+/* walkthrough art: loops are short and calm; nothing moves for reduced motion */
+.ta [class*="a-"]{transform-box:fill-box}
+.a-aim{animation:aimMove 3.2s ease-in-out infinite}
+@keyframes aimMove{0%,12%{transform:translate(-46px,14px)}40%,100%{transform:translate(0,0)}}
+.a-tap{transform-origin:center;animation:tapRing 3.2s ease-out infinite}
+@keyframes tapRing{0%,38%{opacity:0;transform:scale(.4)}42%{opacity:.9;transform:scale(.6)}62%,100%{opacity:0;transform:scale(1.6)}}
+.a-fin{animation:finAim 3.2s ease-in-out infinite}
+@keyframes finAim{0%,12%{transform:translate(-46px,40px);opacity:0}20%{opacity:.85}40%{transform:translate(0,26px);opacity:.85}58%,100%{transform:translate(0,40px);opacity:0}}
+.a-swfin{animation:swFin 2.8s cubic-bezier(.5,0,.3,1) infinite}
+@keyframes swFin{0%,8%{transform:translate(0,0);opacity:0}14%{opacity:.85}46%{transform:translate(0,44px);opacity:.85}56%{transform:translate(0,-30px);opacity:.85}64%,100%{transform:translate(0,-40px);opacity:0}}
+.a-pull{transform-origin:top;animation:swPull 2.8s cubic-bezier(.5,0,.3,1) infinite}
+@keyframes swPull{0%,8%{transform:scaleY(0);opacity:0}14%{opacity:.6}46%{transform:scaleY(1);opacity:.6}54%,100%{transform:scaleY(1);opacity:0}}
+.a-fill{transform-origin:bottom;animation:swFill 2.8s cubic-bezier(.5,0,.3,1) infinite}
+@keyframes swFill{0%,8%{transform:scaleY(0)}46%,70%{transform:scaleY(.82)}86%,100%{transform:scaleY(0)}}
+.a-ball{animation:swBall 2.8s cubic-bezier(.3,.1,.3,1) infinite}
+@keyframes swBall{0%,54%{transform:translate(0,0) scale(1);opacity:1}86%{transform:translate(14px,-96px) scale(.45);opacity:1}92%,100%{transform:translate(14px,-96px) scale(.45);opacity:0}}
+.a-flight{stroke-dasharray:130;stroke-dashoffset:130;animation:swFlight 2.8s cubic-bezier(.3,.1,.3,1) infinite}
+@keyframes swFlight{0%,54%{stroke-dashoffset:130;opacity:.7}86%{stroke-dashoffset:0;opacity:.7}100%{stroke-dashoffset:0;opacity:0}}
+.a-dt{transform-origin:center;animation:dtRing 3.4s ease-out infinite}
+.a-dt.b{animation-delay:.22s}
+@keyframes dtRing{0%{opacity:0;transform:scale(.4)}4%{opacity:.9;transform:scale(.6)}18%,100%{opacity:0;transform:scale(1.7)}}
+.a-read{animation:readIn 3.4s ease-in-out infinite}
+@keyframes readIn{0%,14%{opacity:0}30%,88%{opacity:1}100%{opacity:0}}
+.a-putt{stroke-dasharray:120;stroke-dashoffset:120;animation:puttRoll 3.4s ease-in-out infinite}
+@keyframes puttRoll{0%,40%{stroke-dashoffset:120}76%,100%{stroke-dashoffset:0}}
+.a-row{opacity:0;animation:rowIn 3.6s ease-out infinite}
+.a-row.r2{animation-delay:.18s}.a-row.r3{animation-delay:.36s}
+@keyframes rowIn{0%{opacity:0;transform:translateY(8px)}12%,88%{opacity:1;transform:none}100%{opacity:0}}
+.a-bar{transform-origin:bottom;animation:barUp 3.6s ease-out infinite}
+@keyframes barUp{0%{transform:scaleY(.1)}20%,88%{transform:scaleY(1)}100%{transform:scaleY(.1)}}
+@media (prefers-reduced-motion: reduce){.ta *{animation:none!important}.a-row,.a-read{opacity:1}.a-flight,.a-putt{stroke-dashoffset:0}.a-tap,.a-dt,.a-pull,.a-fin,.a-swfin{opacity:0}.tour-slide{animation:none}}
 
 /* shot card */
 .shot-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
@@ -538,6 +600,53 @@ a.btn{text-align:center;text-decoration:none}
       <div class="btns"><button class="btn primary" id="ydayClose">Play today's hole</button></div>
     </div>
 
+    <div class="card intro" id="introCard" hidden>
+      <div class="intro-mark"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8.3 14.6V5.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M8.9 5.4l5 2.1-5 2.1z" fill="#e4573f"/></svg></div>
+      <div class="card-head"><div class="label" id="introEd">Daily Ace</div><div class="title">One hole. Every day.</div></div>
+      <p class="body" style="margin:0">Same pin, same wind for everyone. Fewest strokes wins.</p>
+      <div class="choices">
+        <button class="choice go" id="introPlay"><span class="tx"><span class="ct">Jump right in</span><span class="cs">Tee off on today’s hole</span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 5.5L15.5 10 11 14.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="choice" id="introLearn"><span class="tx"><span class="ct">Learn to play</span><span class="cs">4 quick steps · about 30 seconds</span></span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.4 7.2l4.4 2.8-4.4 2.8z" fill="currentColor"/></svg></button>
+      </div>
+    </div>
+
+    <div class="card tour" id="tourCard" hidden>
+      <div class="card-head"><div class="label" id="tourCount">1 of 4</div></div>
+      <div id="tourSlides"><div class="tour-slide" data-i="0"><svg class="tour-art ta" viewBox="0 0 280 150" aria-hidden="true"><rect width="280" height="150" fill="#1b3322"/><path d="M98 150L126 34h28l28 116z" fill="#2c5233"/><ellipse cx="140" cy="40" rx="40" ry="13" fill="#4f8b48"/><ellipse cx="140" cy="40" rx="40" ry="13" fill="none" stroke="#6aa65d" stroke-width="1"/><path d="M146 41V19" stroke="#f4eee2" stroke-width="1.4" stroke-linecap="round"/><path d="M146.6 19.4l9 3.8-9 3.8z" fill="#e4573f"/><ellipse cx="146" cy="41.5" rx="2.4" ry=".9" fill="#0e1611"/>
+<line x1="140" y1="132" x2="140" y2="52" stroke="#e7c068" stroke-opacity=".35" stroke-width="1.2" stroke-dasharray="3 4"/>
+<circle cx="140" cy="134" r="3.4" fill="#fff"/>
+<g class="a-aim"><g transform="translate(140 46)"><circle r="9" fill="none" stroke="#e7c068" stroke-width="2"/><circle r="1.8" fill="#e7c068"/></g></g>
+<g class="a-aim"><circle class="a-tap" cx="140" cy="46" r="14" fill="none" stroke="#f4eee2" stroke-width="1.5"/></g>
+<g class="a-fin"><circle cx="140" cy="46" r="11" fill="#f4eee2" fill-opacity=".85"/></g>
+</svg><h3>Aim</h3><p class="body"><b>Tap</b> the course to aim, or drag the yellow target. <b>Pinch</b> to see the whole hole.</p></div><div class="tour-slide" data-i="1" hidden><svg class="tour-art ta" viewBox="0 0 280 150" aria-hidden="true"><rect width="280" height="150" fill="#1b3322"/><path d="M98 150L126 34h28l28 116z" fill="#2c5233"/><ellipse cx="140" cy="40" rx="40" ry="13" fill="#4f8b48"/><ellipse cx="140" cy="40" rx="40" ry="13" fill="none" stroke="#6aa65d" stroke-width="1"/><path d="M146 41V19" stroke="#f4eee2" stroke-width="1.4" stroke-linecap="round"/><path d="M146.6 19.4l9 3.8-9 3.8z" fill="#e4573f"/><ellipse cx="146" cy="41.5" rx="2.4" ry=".9" fill="#0e1611"/>
+<rect x="32" y="40" width="7" height="72" rx="3.5" fill="#f4eee2" fill-opacity=".18"/>
+<rect class="a-fill" x="32" y="40" width="7" height="72" rx="3.5" fill="#f4eee2"/>
+<path class="a-flight" d="M140 100Q143 40 154 6" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="130"/>
+<rect class="a-pull" x="139" y="104" width="2" height="44" rx="1" fill="#f4eee2"/>
+<g class="a-ball"><circle cx="140" cy="100" r="4" fill="#fff"/></g>
+<g class="a-swfin"><circle cx="140" cy="104" r="11" fill="#f4eee2" fill-opacity=".85"/></g>
+<text x="230" y="80" fill="#f4eee2" fill-opacity=".55" font-size="9" font-weight="600" letter-spacing="1.4" text-anchor="middle">PULL BACK</text>
+<path d="M230 88v14m-4-4l4 4 4-4" fill="none" stroke="#f4eee2" stroke-opacity=".55" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="230" y="124" fill="#f4eee2" fill-opacity=".55" font-size="9" font-weight="600" letter-spacing="1.4" text-anchor="middle">FLICK UP</text>
+<path d="M230 112v-14" fill="none" stroke="none"/>
+</svg><h3>Swing</h3><p class="body"><b>Drag down</b> to take it back, then <b>flick straight up</b>. Farther back hits it harder. Drift right to slice, left to hook.</p></div><div class="tour-slide" data-i="2" hidden><svg class="tour-art ta" viewBox="0 0 280 150" aria-hidden="true"><rect width="280" height="150" fill="#1b3322"/>
+<ellipse cx="148" cy="78" rx="112" ry="60" fill="#4f8b48"/>
+<g fill="none" stroke="#2e5a2e" stroke-opacity=".75" stroke-width="1"><ellipse cx="124" cy="66" rx="80" ry="42"/><ellipse cx="110" cy="58" rx="62" ry="31"/><ellipse cx="102" cy="53" rx="38" ry="19"/><ellipse cx="96" cy="50" rx="16" ry="8"/></g>
+<g class="a-read"><path d="M92 55l4 4 4-4" transform="rotate(-28 96 58)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M122 49l4 4 4-4" transform="rotate(-28 126 52)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M152 47l4 4 4-4" transform="rotate(-28 156 50)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M182 53l4 4 4-4" transform="rotate(-28 186 56)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M104 77l4 4 4-4" transform="rotate(-28 108 80)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M136 73l4 4 4-4" transform="rotate(-28 140 76)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M168 75l4 4 4-4" transform="rotate(-28 172 78)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M200 81l4 4 4-4" transform="rotate(-28 204 84)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M118 99l4 4 4-4" transform="rotate(-28 122 102)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M152 97l4 4 4-4" transform="rotate(-28 156 100)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M186 101l4 4 4-4" transform="rotate(-28 190 104)" fill="none" stroke="#f4eee2" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+<path class="a-putt" d="M88 116Q150 120 192 62" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+<circle cx="88" cy="116" r="3.4" fill="#fff"/>
+<ellipse cx="192" cy="62" rx="4" ry="2.4" fill="#0e1611"/><path d="M192 62V36" stroke="#f4eee2" stroke-width="1.3"/><path d="M192.6 36.4l9 3.6-9 3.6z" fill="#e4573f"/>
+<circle class="a-dt" cx="150" cy="84" r="14" fill="none" stroke="#f4eee2" stroke-width="1.5"/><circle class="a-dt b" cx="150" cy="84" r="14" fill="none" stroke="#f4eee2" stroke-width="1.5"/>
+</svg><h3>Read the green</h3><p class="body"><b>Double-tap</b> the green. Chevrons point downhill, and more of them means steeper. On putts, pull back to the <b>feet</b> you want it to roll.</p></div><div class="tour-slide" data-i="3" hidden><svg class="tour-art ta" viewBox="0 0 280 150" aria-hidden="true"><rect width="280" height="150" fill="#1b3322"/>
+<text x="20" y="20" fill="#b9bba9" font-size="8" font-weight="600" letter-spacing="1.6">TODAY'S BOARD</text><g class="a-row r1"><rect x="20" y="30" width="150" height="24" rx="8" fill="#f4eee2" fill-opacity=".06"/><text x="32" y="46" fill="#b9bba9" font-size="10" font-weight="600">1</text><text x="50" y="46" fill="#f4eee2" font-size="11" font-weight="500">birdieBri</text><text x="160" y="46" fill="#a9d68e" font-size="11" font-weight="700" text-anchor="end">−1</text></g><g class="a-row r2"><rect x="20" y="60" width="150" height="24" rx="8" fill="#f4eee2" fill-opacity=".16"/><text x="32" y="76" fill="#b9bba9" font-size="10" font-weight="600">2</text><text x="50" y="76" fill="#f4eee2" font-size="11" font-weight="700">you</text><text x="160" y="76" fill="#f4eee2" font-size="11" font-weight="700" text-anchor="end">E</text></g><g class="a-row r3"><rect x="20" y="90" width="150" height="24" rx="8" fill="#f4eee2" fill-opacity=".06"/><text x="32" y="106" fill="#b9bba9" font-size="10" font-weight="600">3</text><text x="50" y="106" fill="#f4eee2" font-size="11" font-weight="500">sandyK</text><text x="160" y="106" fill="#f4eee2" font-size="11" font-weight="700" text-anchor="end">+1</text></g>
+<text x="192" y="20" fill="#b9bba9" font-size="8" font-weight="600" letter-spacing="1.6">THE WEEK</text><rect class="a-bar" style="animation-delay:0.00s" x="192" y="88" width="7" height="18" rx="2" fill="#e7c068" fill-opacity="0.55"/><text x="195.5" y="120" fill="#b9bba9" font-size="8" font-weight="600" text-anchor="middle">M</text><rect class="a-bar" style="animation-delay:0.06s" x="203" y="80" width="7" height="26" rx="2" fill="#e7c068" fill-opacity="0.55"/><text x="206.5" y="120" fill="#b9bba9" font-size="8" font-weight="600" text-anchor="middle">T</text><rect class="a-bar" style="animation-delay:0.12s" x="214" y="72" width="7" height="34" rx="2" fill="#e7c068" fill-opacity="0.55"/><text x="217.5" y="120" fill="#b9bba9" font-size="8" font-weight="600" text-anchor="middle">W</text><rect class="a-bar" style="animation-delay:0.18s" x="225" y="62" width="7" height="44" rx="2" fill="#e7c068" fill-opacity="0.55"/><text x="228.5" y="120" fill="#b9bba9" font-size="8" font-weight="600" text-anchor="middle">T</text><rect class="a-bar" style="animation-delay:0.24s" x="236" y="50" width="7" height="56" rx="2" fill="#e4573f" fill-opacity="1"/><text x="239.5" y="120" fill="#b9bba9" font-size="8" font-weight="600" text-anchor="middle">F</text><rect class="a-bar" style="animation-delay:0.30s" x="247" y="72" width="7" height="34" rx="2" fill="#e7c068" fill-opacity="0.55"/><text x="250.5" y="120" fill="#b9bba9" font-size="8" font-weight="600" text-anchor="middle">S</text><rect class="a-bar" style="animation-delay:0.36s" x="258" y="80" width="7" height="26" rx="2" fill="#e7c068" fill-opacity="0.55"/><text x="261.5" y="120" fill="#b9bba9" font-size="8" font-weight="600" text-anchor="middle">S</text>
+<text x="20" y="136" fill="#f4eee2" fill-opacity=".55" font-size="9" font-weight="600" letter-spacing="1.2">NEW HOLE EVERY DAY</text>
+</svg><h3>Post your score</h3><p class="body">Everyone plays the same hole. <b>Fewest strokes wins</b>, and there’s a new one tomorrow. Holes toughen toward Friday; weekends are a 3-hole loop.</p></div></div>
+      <div class="tour-foot"><div class="dots" id="tourDots"><i class="on"></i><i></i><i></i><i></i></div>
+        <div class="btns"><button class="btn quiet" id="tourBack" hidden>Back</button><button class="btn" id="tourNext">Next</button></div></div>
+      <button id="tourClose" hidden></button>
+    </div>
+
     <div class="card" id="helpCard" hidden>
       <div class="card-head"><div class="label">How to play</div><div class="title">One hole. Every day.</div></div>
       <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100 against a Tour pro hitting from the same spot: 50 matches the Tour, above 50 beats it. Your average grade breaks ties, so a par with great shots beats a scrappy par.</p></div>
@@ -545,13 +654,13 @@ a.btn{text-align:center;text-decoration:none}
       <div class="help-sec"><h3>Weekends</h3><p class="body">Saturday and Sunday are a three-hole loop. Play them in order; your score is total strokes against par 9, then your average grade across all three.</p></div>
       <div class="help-sec"><h3>Leagues</h3><p class="body">Start a private league from the scorecard or settings, then send friends the invite. Everyone in it gets their own leaderboard for the day and the week.</p></div>
       <div class="help-sec"><h3>The week</h3><p class="body">Holes get harder through the week. Monday is the easiest, with a big green and soft slopes. Each day the hole gets longer, the green smaller and the slopes and wind stronger, up to Friday, the toughest. The weekend eases off. Today's difficulty shows under the logo.</p></div>
-      <div class="help-sec"><h3>Power</h3><p class="body"><b>100%</b> is a full swing with the club or shot shown. A meter on the right fills as you swing. In your first few rounds and in practice, a <b>Pin</b> mark shows the power that reaches the flag with no wind.</p></div>
+      <div class="help-sec"><h3>Power</h3><p class="body"><b>100%</b> is a full swing with the club or shot shown. A meter on the side away from your swiping thumb fills as you swing. In your first few rounds and in practice, a <b>Pin</b> mark shows the power that reaches the flag with no wind.</p></div>
       <div class="help-sec"><h3>Swiping</h3><p class="body">Drag down on the course to take it back, then flick straight up. Farther back means more power, and a slow flick loses some. Drift <b>right</b> and the ball curves right (slice). Drift <b>left</b> and it curves left (hook). Putts only care how far you pull back.</p></div>
       <div class="help-sec"><h3>Swinging your phone</h3><p class="body">Take your stance with the phone in your dominant hand like the grip: <b>screen up, top pointing down at the ball</b>, the screen sitting on the swing plane. The game only arms when you're set up this way and still. Then swing through. <b>Speed</b> sets power, and the <b>club face</b> at impact sets curve: open goes right, closed goes left (for a right-hander). Look down at the face gauge to square it up before you swing. Waving the phone around doesn't count.</p></div>
       <div class="help-sec"><h3>Shots</h3><p class="body"><b>Full</b> is a normal swing. <b>Punch</b> flies low and runs. Around the green, <b>Chip</b> runs out, <b>Pitch</b> lands soft, and <b>Flop</b> goes straight up and stops. <b>Sand</b> gets you out of a bunker. From the fringe you can <b>Putt</b>.</p></div>
       <div class="help-sec"><h3>More golf</h3><p class="body">Tap the target icon for the driving range and the holes from the last five days. None of it counts. After each phone swing you'll see a chart of what your club face did from takeaway to impact.</p></div>
       <div class="help-sec"><h3>On the green</h3><p class="body">Pace is in <b>feet</b>: pull back to the distance you want the ball to roll on a flat green. Your caddie gives you the <b>pace</b> to pull back to (uphill and downhill already worked in) and how many <b>cups</b> to aim left or right. <b>Read green</b> zooms in on your line. Anything inside <b>3 feet</b> is a gimme.</p></div>
-      <div class="btns"><button class="btn" id="helpClose">Let's play</button></div>
+      <div class="btns"><button class="btn quiet" id="helpTour">Quick walkthrough</button><button class="btn" id="helpClose">Let's play</button></div>
     </div>
 
     <div class="card" id="setCard" hidden>
@@ -2442,7 +2551,7 @@ function drawTrace(t){
 }
 function enterRange(){
   rangeMode = true; practice = false; round = freshRound();
-  ['summary','badgeCard','shotCard','helpCard','setCard'].forEach(id => $(id).hidden = true);
+  ['summary','badgeCard','shotCard','helpCard','setCard','introCard','tourCard'].forEach(id => $(id).hidden = true);
   setupLie(); $('rangeBtn').setAttribute('aria-pressed', 'true'); $('rangeBtn').setAttribute('aria-label', 'Leave the driving range'); setHint('Driving range. Hit as many as you like.');
 }
 function exitRange(){
@@ -2739,7 +2848,7 @@ function openMore(){
     list.appendChild(b);
     getThumb(n).then(url => { if (url){ img.onload = () => img.classList.add('on'); img.src = url; } });
   }
-  ['summary','badgeCard','helpCard','setCard','shareCard'].forEach(id => $(id).hidden = true); $('controls').hidden = true;
+  ['summary','badgeCard','helpCard','setCard','shareCard','introCard','tourCard'].forEach(id => $(id).hidden = true); $('controls').hidden = true;
   $('moreCard').hidden = false; $('moreCard').scrollTop = 0;
 }
 $('moreSumBtn').addEventListener('click', openMore);
@@ -2772,6 +2881,29 @@ function showBadges(){
 $('badgesBtn').addEventListener('click', showBadges);
 $('badgeClose').addEventListener('click', () => { $('badgeCard').hidden = true; $('summary').hidden = false; });
 
+// ---------- first run: pick "jump right in" or a 4-step walkthrough ----------
+function openIntro(){ $('introEd').textContent = $('edition').textContent || 'Daily Ace'; openCard('introCard'); }
+function startPlay(id){ LS.set('dailyhole:seenHelp', true); closeCard(id); maybeFly(); }
+let tourI = 0;
+function tourGo(i){
+  const n = 4, back = i < tourI; tourI = Math.max(0, Math.min(n - 1, i));
+  $('tourSlides').querySelectorAll('.tour-slide').forEach(el => { const on = +el.dataset.i === tourI; el.hidden = !on; if (on){ el.classList.toggle('back', back); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; el.querySelectorAll('*').forEach(c => { if (c.getAnimations) c.getAnimations().forEach(a => { a.currentTime = 0; }); }); } });
+  $('tourDots').querySelectorAll('i').forEach((d, k) => d.classList.toggle('on', k === tourI));
+  $('tourCount').textContent = `${tourI + 1} of ${n}`;
+  $('tourBack').hidden = tourI === 0;
+  $('tourNext').textContent = tourI === n - 1 ? 'Tee it up' : 'Next';
+}
+function openTour(){ tourI = 0; tourGo(0); openCard('tourCard'); }
+$('introPlay').addEventListener('click', () => startPlay('introCard'));
+$('introLearn').addEventListener('click', () => { $('introCard').hidden = true; openTour(); });
+$('tourNext').addEventListener('click', () => { if (tourI >= 3) startPlay('tourCard'); else tourGo(tourI + 1); });
+$('tourBack').addEventListener('click', () => tourGo(tourI - 1));
+$('tourClose').addEventListener('click', () => startPlay('tourCard'));
+$('helpTour').addEventListener('click', () => { $('helpCard').hidden = true; openTour(); });
+{ let sx = null, sy = 0; const tc = $('tourCard');
+  tc.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; sx = e.clientX; sy = e.clientY; });
+  tc.addEventListener('pointerup', e => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)*1.4) tourGo(tourI + (dx < 0 ? 1 : -1)); });
+  tc.addEventListener('pointercancel', () => { sx = null; }); }
 // ---------- help + settings ----------
 function openCard(id){ $(id).hidden = false; $(id).scrollTop = 0; $('controls').hidden = true; }
 function closeCard(id){ $(id).hidden = true; if (phase === 'ready') $('controls').hidden = false; readyHint(); }
@@ -2949,7 +3081,7 @@ function poseOK(){
 function faceNow(){ if (ori.gamma === null) return 0; return (ori.gamma - (addrCal ? addrCal.gamma : 0))*handSign()*(curveFlip ? -1 : 1); } // + = open
 function motionMeter(frac, label){ clearTimeout(meterTimer); meter.classList.add('show'); meterFill.style.height = `${clamp(frac/1.12*100, 0, 100)}%`; $('meterPct').textContent = label; }
 function hideMeterSoon(){ clearTimeout(meterTimer); meterTimer = setTimeout(() => meter.classList.remove('show'), 1400); }
-function cardOpen(){ return !$('leagueCard').hidden || !$('boardCard').hidden || !$('loopCard').hidden || !$('shareCard').hidden || !$('moreCard').hidden || !$('shotCard').hidden || !$('summary').hidden || !$('helpCard').hidden || !$('setCard').hidden || !$('badgeCard').hidden; }
+function cardOpen(){ return !$('leagueCard').hidden || !$('boardCard').hidden || !$('loopCard').hidden || !$('shareCard').hidden || !$('moreCard').hidden || !$('shotCard').hidden || !$('summary').hidden || !$('helpCard').hidden || !$('introCard').hidden || !$('tourCard').hidden || !$('setCard').hidden || !$('badgeCard').hidden; }
 let faceShown = null, lastPuttHint = '';
 const faceMini = Object.assign({full:false, short:true}, LS.get('dailyhole:faceMini', {}));
 $('faceToggle').addEventListener('click', e => { e.stopPropagation(); faceMini[mode] = true; LS.set('dailyhole:faceMini', faceMini); });
@@ -3785,7 +3917,7 @@ $('setLeagues').addEventListener('click', () => { $('setCard').hidden = true; op
 $('boardClose').addEventListener('click', () => { $('boardCard').hidden = true; if (phase === 'summary') $('summary').hidden = false; else if (phase === 'ready'){ $('controls').hidden = false; readyHint(); } });
 
 // Pop-up pages: an X in the top right, and a tap anywhere outside the card closes it. Both just press the card's own close button.
-const DISMISS = {moreCard:'moreClose', boardCard:'boardClose', leagueCard:'lgClose', ydayCard:'ydayClose', helpCard:'helpClose', setCard:'setClose', shareCard:'shareClose', badgeCard:'badgeClose'};
+const DISMISS = {moreCard:'moreClose', boardCard:'boardClose', leagueCard:'lgClose', ydayCard:'ydayClose', helpCard:'helpClose', tourCard:'tourClose', setCard:'setClose', shareCard:'shareClose', badgeCard:'badgeClose'};
 for (const [card, btn] of Object.entries(DISMISS)){
   const c = $(card), b = $(btn); if (!c || !b) continue;
   const x = document.createElement('button'); x.className = 'cx'; x.type = 'button'; x.setAttribute('aria-label', 'Close');
@@ -4162,7 +4294,7 @@ const joinM = /^#join=([A-Za-z0-9]{6})$/.exec(location.hash || '');
 if (joinM && online()){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} setTimeout(() => showInvite(joinM[1].toUpperCase()), 900); }
 if (online()) refreshLeagues();
 if (mainRound.done) { const cam0 = addressView(); Object.assign(cam, cam0); showSummary(); showYesterday(false); }
-else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openCard('helpCard'); else showYesterday(false).then(shown => { if (!shown) maybeFly(); }); }
+else { setupLie(); Object.assign(cam, addr); if (!LS.get('dailyhole:seenHelp', false)) openIntro(); else showYesterday(false).then(shown => { if (!shown) maybeFly(); }); }
 cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
 // The address framing depends on the screen height and where the dock sits. Those can still change after load
 // (Safari toolbars, fonts, a preview sheet opening), so reframe when they settle; otherwise the view only
