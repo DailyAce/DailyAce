@@ -2800,12 +2800,16 @@ function myHistory(){
 }
 const beats = (a, b) => better({strokes:a.toPar, avg:a.sc.avg}, {strokes:b.toPar, avg:b.sc.avg});
 function bestOf(list){ let b = null; for (const e of list) if (!b || beats(e, b)) b = e; return b; }
-// did this round set a new best (strictly fewer strokes to par than every earlier round of its kind)?
+// did this round beat every earlier round of its kind? Ranked like the leaderboard: strokes to par, then average grade.
+// rank: where it sits among every round of its kind up to that day (1 = best)
 function pbState(e, hist){
-  const prior = hist.filter(x => x.loop === e.loop && x.day < e.day); if (!prior.length) return {state:'first'};
+  const same = hist.filter(x => x.loop === e.loop && x.day <= e.day), prior = same.filter(x => x.day < e.day);
+  const rank = 1 + prior.filter(x => beats(x, e)).length, of = same.length;
+  if (!prior.length) return {state:'first', rank, of};
   const best = bestOf(prior);
-  return {state: e.toPar < best.toPar ? 'new' : e.toPar === best.toPar ? 'tie' : null, prev:best};
+  return {state: beats(e, best) ? 'new' : null, prev:best, rank, of};
 }
+const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th','st','nd','rd'][n % 10] || 'th');
 const toParWord = t => t === 0 ? 'E' : t > 0 ? '+' + t : '−' + (-t);
 const synFt = yd => { const ft = yd*3; return ft >= 90 ? `${Math.round(yd)} yds` : ft >= 1 ? `${Math.round(ft)} ft` : `${Math.max(1, Math.round(ft*12))} in`; };
 // a one-line story of the round, written from the shots
@@ -2871,10 +2875,11 @@ function showSummary(){
   $('sumWord').firstChild.textContent = sc.word;
   $('sumStrokes').textContent = L3 ? `${sc.strokes} strokes · par 9` : round.pickedUp ? `Picked up after ${MAX_STROKES}` : `${round.strokes} stroke${round.strokes === 1 ? '' : 's'}`;
   $('sumSyn').textContent = synopsis(R0);
-  { const st = todayPB && todayPB.state, show = st === 'new' || st === 'tie'; $('sumPB').hidden = !show; $('sumPB').classList.toggle('tie', st === 'tie');
-    if (show){ const pv = todayPB.prev, kind = L3 ? 'weekend loop' : 'par 3';
-      $('sumPBHead').textContent = st === 'new' ? 'New personal best' : 'Ties your best ever';
-      $('sumPBSub').textContent = st === 'new' ? `Your best ${kind} before today: ${pv.loop ? toParWord(pv.toPar) : pv.sc.word} on ${dayLabel(pv.day)}` : `You also went ${pv.loop ? toParWord(pv.toPar) : pv.sc.word.toLowerCase()} on ${dayLabel(pv.day)}`; } }
+  { const t = todayPB, isNew = !!(t && t.state === 'new'), near = !!(t && !isNew && t.state !== 'first' && t.rank <= 3 && t.of >= 4);
+    $('sumPB').hidden = !(isNew || near); $('sumPB').classList.toggle('tie', near);
+    const kind = L3 ? 'weekend loop' : 'par 3', fmt = e => `${e.loop ? toParWord(e.toPar) : e.sc.word} · ${Math.round(e.sc.avg)} on ${dayLabel(e.day)}`;
+    if (isNew){ $('sumPBHead').textContent = 'New personal best'; $('sumPBSub').textContent = `Beats your best ${kind}: ${fmt(t.prev)}`; }
+    else if (near){ $('sumPBHead').textContent = `Your ${ordinal(t.rank)}-best ${kind} of ${t.of}`; $('sumPBSub').textContent = `Best ever: ${fmt(t.prev)}`; } }
   const card = $('scorecard'); card.innerHTML = ''; let lastHole = -1;
   for (const s of R0.shots){
     if (L3 && s.hole !== lastHole){ lastHole = s.hole; const hd = document.createElement('div'); hd.className = 'sc-hole'; hd.textContent = `Hole ${s.hole + 1} · ${holeNameFor(holeNum, s.hole)} · ${sc.per[s.hole].word}`; card.appendChild(hd); }
