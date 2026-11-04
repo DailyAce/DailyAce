@@ -330,6 +330,42 @@ a.btn{text-align:center;text-decoration:none}
 .seg button{flex:1;border:0;background:transparent;color:var(--ink);font-size:.82rem;font-weight:600;padding:9px 8px;border-radius:999px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
 
+/* profile */
+.pstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pstats .stat{padding:10px 8px;gap:4px}
+.pstats .num{font-size:1.3rem;white-space:nowrap}
+.pstats .label{font-size:.5rem;letter-spacing:.1em}
+.hole-card .syn-l{padding:0 14px 13px;font-size:.84rem;line-height:1.4;color:var(--ink)}
+.hole-card .info .res small{color:var(--soft);font-weight:500;margin-left:6px}
+.hole-card .now.pb{background:var(--fair);color:#1b1b14}
+.precs{display:flex;flex-direction:column;border-radius:16px;background:var(--well);padding:2px 14px}
+.prec{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 0;font-size:.84rem}
+.prec + .prec{border-top:1px solid var(--edge)}
+.prec span{color:var(--soft)}.prec b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.prec b small{display:block;font-size:.7rem;color:var(--soft);font-weight:500;margin-top:2px}
+.plist{display:flex;flex-direction:column;gap:2px}
+.prow{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:11px;align-items:center;padding:8px 0;border-top:1px solid var(--edge)}
+.prow .pt{position:relative;width:96px;aspect-ratio:16/10;border-radius:10px;overflow:hidden;background:linear-gradient(160deg,#3b4a5a,#3d5a3a 55%,#22361f)}
+.prow .pt img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s}
+.prow .pt img.on{opacity:1}
+.prow .pm{min-width:0}
+.prow .pm .label{font-size:.56rem}
+.prow .pm b{display:block;font-size:.9rem;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .pm span{display:block;font-size:.74rem;line-height:1.35;color:var(--soft);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.prow .pr{text-align:right;font-variant-numeric:tabular-nums}
+.prow .pr b{display:block;font-size:.9rem;font-weight:700;white-space:nowrap}
+.prow .pr span{display:block;font-size:.68rem;color:var(--soft);margin-top:3px}
+.prow .pr i{display:inline-block;font-style:normal;font-size:.56rem;font-weight:700;letter-spacing:.1em;background:var(--fair);color:#1b1b14;border-radius:999px;padding:3px 6px;margin-top:5px}
+#boardCard .b-tag,#ydayCard .b-tag,#leagueCard .b-tag{cursor:pointer;text-decoration:underline dotted rgba(244,238,226,.35);text-underline-offset:3px}
+/* round summary: personal best + synopsis */
+.pbline{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;background:var(--fair);color:#1b1b14}
+.pbline .pb-ic{font-size:1.5rem;line-height:1}
+.pbline b{display:block;font-size:1rem;font-weight:700}
+.pbline span{display:block;font-size:.78rem;margin-top:2px;opacity:.8}
+.pbline.tie{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--fair)}
+.pbline.tie span{color:var(--soft);opacity:1}
+.syn{font-size:.92rem;line-height:1.45;color:var(--ink)}
+.syn:empty{display:none}
 /* badges */
 .badge-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .badge{display:flex;gap:9px;align-items:flex-start;padding:10px;border-radius:14px;background:var(--well);min-width:0}
@@ -493,6 +529,8 @@ a.btn{text-align:center;text-decoration:none}
     <div class="card" id="summary" hidden>
       <div class="label" id="sumLabel">Today</div>
       <div class="sum-score"><div><div class="num" id="sumScore">—</div><div class="label sum-sub">Avg shot grade</div></div><div class="sum-word title" id="sumWord">—<small id="sumStrokes"></small></div></div>
+      <div class="pbline" id="sumPB" hidden><span class="pb-ic">📈</span><div><b id="sumPBHead"></b><span id="sumPBSub"></span></div></div>
+      <div class="syn" id="sumSyn"></div>
       <div class="body" id="sumExplain"></div>
       <div class="sc" id="scorecard"></div>
       <div class="precap" id="sumPutts" hidden>
@@ -541,8 +579,26 @@ a.btn{text-align:center;text-decoration:none}
       </div>
       <div class="style" hidden><div class="label">Today you played it like a</div><div class="title" id="styleName">—</div><div class="body" id="styleWhy"></div></div>
       <div class="share" id="shareText" hidden></div>
-      <div class="btns"><button class="btn" id="againBtn" hidden>Play again</button><button class="btn" id="shareImgBtn">Share scorecard</button><button class="btn quiet" id="copyBtn" hidden>Copy result</button><button class="btn quiet" id="moreSumBtn">More golf</button><button class="btn quiet" id="badgesBtn">Badges</button></div>
+      <div class="btns"><button class="btn" id="againBtn" hidden>Play again</button><button class="btn" id="shareImgBtn">Share scorecard</button><button class="btn quiet" id="copyBtn" hidden>Copy result</button><button class="btn quiet" id="moreSumBtn">More golf</button><button class="btn quiet" id="profSumBtn">Profile</button></div>
       <div class="foot" id="countdown"></div>
+    </div>
+
+    <div class="card wide" id="profCard" hidden>
+      <div class="card-head"><div class="label" id="profLabel">Your profile</div><div class="title" id="profTitle">You</div><div class="body" id="profSince"></div></div>
+      <div class="pstats">
+        <div class="stat"><span class="num" id="pfRounds">0</span><span class="label">Rounds</span></div>
+        <div class="stat"><span class="num" id="pfStreak">0</span><span class="label">Streak</span></div>
+        <div class="stat"><span class="num" id="pfBest">—</span><span class="label">Best par 3</span></div>
+        <div class="stat"><span class="num" id="pfAvg">—</span><span class="label">Avg to par</span></div>
+      </div>
+      <div class="label" id="pfBestLbl">Personal bests</div>
+      <div class="hole-cards" id="pfBests"></div>
+      <div class="precs" id="pfRecs"></div>
+      <button class="more-wide" id="pfBadges"><div><b>Badges</b><br><span id="pfBadgeSub">Your locker</span></div><span>›</span></button>
+      <div class="label" id="pfAllLbl">Every round</div>
+      <div class="plist" id="pfList"></div>
+      <div class="body" id="pfEmpty" hidden>Finish today's hole and it shows up here. Every daily round you play on this phone is kept.</div>
+      <div class="btns"><button class="btn quiet" id="profClose">Close</button></div>
     </div>
 
     <div class="card wide" id="moreCard" hidden>
@@ -747,7 +803,7 @@ let holeNum = Math.round((Date.parse(todayKey + 'T00:00:00Z') - EPOCH)/86400000)
 let preview = false;
 const hm = /^#h(\d{1,4})(?:s([0-2]))?$/.exec(location.hash || '');
 if (hm){ holeNum = Math.max(1, +hm[1]); preview = true; }
-const tm = /^#t(-?\d{1,4})$/.exec(location.hash || ''), thumb = !!tm;
+const tm = /^#t(-?\d{1,4})(?:s([0-2]))?(?:~([A-Za-z0-9.,-]+))?$/.exec(location.hash || ''), thumb = !!tm;
 if (thumb){ holeNum = +tm[1]; preview = true; document.documentElement.classList.add('thumb'); }
 // the five days before today, oldest first: each day yesterday's hole joins and the oldest drops off
 function recentKeys(key){ const t = Date.parse(key + 'T12:00:00Z'); return [5,4,3,2,1].map(i => new Date(t - i*86400000).toISOString().slice(0, 10)); }
@@ -761,6 +817,7 @@ const LOOP_FROM = 8;
 const loopDay = n => n >= LOOP_FROM && ((((n - 1 + 5) % 7) + 7) % 7) >= 5;
 let SUB = 0;
 if (hm && hm[2]) SUB = +hm[2];
+else if (tm && tm[2]) SUB = +tm[2];
 else if (loopDay(holeNum) && !preview && !thumb){ for (SUB = 0; SUB < 2; SUB++){ const r = LS.get('dailyhole:r:' + todayKey + (SUB ? ':' + SUB : ''), null); if (!(r && r.done)) break; } }
 const LOOP = loopDay(holeNum) && !pastKey;
 function hash(n){ let h = 2166136261 ^ n; for (let i=0;i<6;i++){ h = Math.imul(h ^ (h >>> 13), 0x5bd1e995); h ^= h >>> 15; } return h >>> 0; }
@@ -2642,6 +2699,7 @@ const BADGES = [
   {id:'sandy', ic:'🏝️', name:'Sand save', desc:'Up and down from a bunker', tier:'rare', t:c => c.sandSave},
   {id:'chipin', ic:'🪄', name:'Chip-in', desc:'Hole out from off the green', tier:'rare', t:c => c.chipIn},
   {id:'calm', ic:'🍃', name:'Still air', desc:'Play a hole with no wind', tier:'rare', t:c => WIND.mph === 0},
+  {id:'pb', ic:'📈', name:'Personal best', desc:'Beat your best score on a daily par 3 or weekend loop', tier:'rare', t:c => !!c.pb},
   {id:'redeem', ic:'🔁', name:'Redemption', desc:'Find the water and still make par', tier:'rare', t:c => c.wet >= 1 && c.holed && c.strokes <= 3},
   {id:'fish', ic:'🐟', name:'Fish food', desc:'Find the water twice', tier:'rare', t:c => c.wet >= 2},
   {id:'links', ic:'🌬️', name:'Links golf', desc:'Punch onto the green, then par or better', tier:'rare', t:c => c.tee.type === 'punch' && c.gir && c.holed && c.strokes <= 3},
@@ -2692,6 +2750,102 @@ function playStyle(c){
   return ['Steady hand', 'No heroics, no big mistakes.'];
 }
 const dayLabel = key => new Date(Date.parse(key + 'T12:00:00Z')).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', timeZone:'UTC'});
+
+// ---------- your history: every finished daily round saved on this phone ----------
+// Weekday par 3s and weekend loops (par 9) are ranked separately: fewest strokes to par, then the better average grade.
+function makeEntry(day, n, r, sc, extra){
+  const loop = loopDay(n), par = loop ? 9 : 3, e = {day, n, loop, r, sc, par, toPar:sc.strokes - par, name: loop ? 'Weekend loop' : holeNameFor(n), teeFt:null, longPutt:null};
+  if (r){ const holes = loop ? r.holes : [r];
+    const tees = holes.map(h => h.shots[0]).filter(Boolean).map(t => t.wet ? null : t.holed ? 0 : t.endD*3).filter(v => v !== null);
+    const made = r.shots.filter(x => x.mode === 'putt' && x.holed && !x.gimme).map(x => x.fromD*3);
+    e.teeFt = tees.length ? Math.min(...tees) : null; e.longPutt = made.length ? Math.max(...made) : null; }
+  return Object.assign(e, extra || {});
+}
+function historyEntry(day){
+  const n = holeNumFor(day), loop = loopDay(n);
+  let r = null;
+  if (loop) r = loopRound(day);
+  else r = day === todayKey && !preview && !pastKey && mainRound.done ? mainRound : LS.get('dailyhole:r:' + day, null);
+  if (!(r && r.done && Array.isArray(r.shots) && r.shots.length)) return null;
+  return makeEntry(day, n, r, scoreOf(r));
+}
+// a round as the leaderboard server stores it (shot rows) turned back into the game's shot records
+function roundFromRows(rows, strokes){
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const shots = rows.map((x, i) => ({n:i + 1, mode:x[0], type:x[1], club:x[2], fromLie:x[3], fromD:+x[4], endLie:x[5], endD:+x[6], grade:x[7], sg:0,
+    sw: typeof x[8] === 'number' ? {p:x[8], cu:x[9]} : null, aim:x[10], gimme:x[12] === 1 || x[1] === 'gimme', holed:x[5] === 'holed', wet:x[13] === 1, penalty:x[13] === 1 ? 1 : 0}));
+  const holed = shots[shots.length - 1].holed;
+  // older rounds didn't send the water flag: a penalty stroke is almost always the tee shot
+  if (rows[0].length < 14 && strokes && holed){ const pen = strokes - shots.length; if (pen > 0 && !shots[0].holed && shots[0].endLie !== 'green'){ shots[0].wet = true; shots[0].penalty = 1; } }
+  return {shots, strokes: holed ? shots.length + shots.reduce((a, x) => a + (x.penalty || 0), 0) : 7, done:true, pickedUp:!holed};
+}
+function serverEntry(rd){
+  const n = rd.hole, loop = loopDay(n), sc = {strokes:rd.strokes, word:rd.word, avg:+rd.avg || 0};
+  let r = null;
+  try {
+    if (loop && Array.isArray(rd.shots) && rd.shots.length === 3){
+      const holes = rd.shots.map(h => roundFromRows(h.shots));
+      if (holes.every(Boolean)) r = {loop:true, holes, shots:[].concat(...holes.map((h, k) => h.shots.map(x => ({...x, hole:k})))), strokes:rd.strokes, done:true, pickedUp:false};
+    } else if (!loop) r = roundFromRows(rd.shots, rd.strokes);
+  } catch(e){ r = null; }
+  return makeEntry(rd.day, n, r, sc, {teeFt: rd.tee_ft === null ? null : +rd.tee_ft, longPutt: rd.long_putt === null ? null : +rd.long_putt});
+}
+// your rounds: the ones saved on this phone, plus any the leaderboard has from your other devices
+function myHistory(){
+  const days = [...new Set(LS.get('dailyhole:days', []))].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= todayKey);
+  const byDay = new Map(), cached = LS.get('dailyhole:profme', null);
+  if (cached && Array.isArray(cached.rounds)) cached.rounds.forEach(rd => { if (rd && rd.day && rd.day <= todayKey){ const e = serverEntry(rd); if (e) byDay.set(rd.day, e); } });
+  days.forEach(d => { const e = historyEntry(d); if (e) byDay.set(d, e); });
+  return [...byDay.values()].sort((a, b) => a.day < b.day ? -1 : 1);
+}
+const beats = (a, b) => better({strokes:a.toPar, avg:a.sc.avg}, {strokes:b.toPar, avg:b.sc.avg});
+function bestOf(list){ let b = null; for (const e of list) if (!b || beats(e, b)) b = e; return b; }
+// did this round set a new best (strictly fewer strokes to par than every earlier round of its kind)?
+function pbState(e, hist){
+  const prior = hist.filter(x => x.loop === e.loop && x.day < e.day); if (!prior.length) return {state:'first'};
+  const best = bestOf(prior);
+  return {state: e.toPar < best.toPar ? 'new' : e.toPar === best.toPar ? 'tie' : null, prev:best};
+}
+const toParWord = t => t === 0 ? 'E' : t > 0 ? '+' + t : '−' + (-t);
+const synFt = yd => { const ft = yd*3; return ft >= 90 ? `${Math.round(yd)} yds` : ft >= 1 ? `${Math.round(ft)} ft` : `${Math.max(1, Math.round(ft*12))} in`; };
+// a one-line story of the round, written from the shots
+function synopsis(r){
+  if (!r) return "Shots show here tomorrow, so nobody can copy today's swing.";
+  if (r.loop){
+    const per = r.holes.map(h => scoreOf(h).word.toLowerCase()), ts = teeShotOf({loop:true, r});
+    const txt = per.join(', ');
+    return txt[0].toUpperCase() + txt.slice(1) + (ts && ts.ft < 1e9 ? `. Best tee shot ${ts.ft === 0 ? 'went in' : synFt(ts.ft/3)} on hole ${ts.k + 1}.` : '.');
+  }
+  const s = r.shots; if (!s.length) return '';
+  const lie = x => LIE_NAME[x.endLie] ? LIE_NAME[x.endLie].toLowerCase() : x.endLie;
+  const far = (yd, l) => (l === 'green' || l === 'fringe' || yd < 25) ? synFt(yd) : `${Math.round(yd)} yds`;
+  const where = x => x.endLie === 'green' ? far(x.endD, 'green') : x.endLie === 'fringe' ? `the fringe, ${far(x.endD, 'fringe')} out` : `the ${lie(x)}, ${far(x.endD, x.endLie)} out`;
+  const club = x => { const n = clubName(x); return n.replace(', punch', ' punch'); };
+  const t = s[0];
+  if (t.holed) return `Holed the ${club(t).toLowerCase()} off the tee. An ace.`;
+  const parts = [t.wet ? `${club(t)} into the water` : `${club(t)} to ${where(t)}`];
+  const SHORT_VERB = {sand:'blasted out', chip:'chipped', pitch:'pitched', flop:'flopped it'}, SHORT_IN = {sand:'holed it from the bunker', chip:'chipped in', pitch:'pitched in', flop:'flopped it in'};
+  const NUM = ['', 'one', 'two', 'three', 'four', 'five'];
+  let i = 1;
+  while (i < s.length){
+    const x = s[i];
+    if (x.mode === 'putt'){
+      const run = []; while (i < s.length && s[i].mode === 'putt'){ run.push(s[i]); i++; }
+      const last = run[run.length - 1], realMade = last.holed && !last.gimme, n = run.length;
+      if (n === 1) parts.push(last.gimme ? 'tapped in' : realMade ? (last.fromD*3 >= 4 ? `made the ${Math.round(last.fromD*3)}-footer` : 'knocked it in') : `putted to ${synFt(last.endD)}`);
+      else if (realMade && last.fromD*3 >= 6) parts.push(`${NUM[n] || n} putts, the last from ${Math.round(last.fromD*3)} ft`);
+      else parts.push(`${NUM[n] || n} putts`);
+      continue;
+    }
+    if (x.mode === 'short') parts.push(x.holed ? `${SHORT_IN[x.type] || 'chipped in'} from ${far(x.fromD, x.fromLie)}` : x.wet ? 'into the water' : `${SHORT_VERB[x.type] || 'chipped'} to ${where(x)}`);
+    else parts.push(x.holed ? `holed the ${club(x).toLowerCase()}` : x.wet ? `${club(x).toLowerCase()} into the water` : `${club(x).toLowerCase()} to ${where(x)}`);
+    i++;
+  }
+  const word = scoreOf(r).word;
+  const tail = r.pickedUp ? ', then picked up.' : ` for ${word.toLowerCase()}.`;
+  const txt = (parts.length > 4 ? [parts[0], '…', ...parts.slice(-2)] : parts).join(', ').replace(', …,', ' …');
+  return txt + tail;
+}
 function showSummary(){
   phase = 'summary'; practice = false; round = mainRound; setReading(false); flightFollow = null;
   addr = {x:GR.x*0.4, y:24, z:GR.z - 120, pitch:6*D2R, yaw:Math.atan2(GR.x*0.6, 120)};
@@ -2699,7 +2853,12 @@ function showSummary(){
   const L3 = LOOP ? loopRound() : null;
   if (LOOP && !L3 && HOLE_SUB < 2){ showLoopCard(); return; }
   const R0 = L3 || round;
-  const c0 = roundCtx(round), sc = scoreOf(R0), ev = pastKey ? {fresh:[], ups:[], counts:{}} : evaluateDay(c0); lastEval = ev;
+  const c0 = roundCtx(round), sc = scoreOf(R0);
+  // personal best: only the real daily round counts, and only once a weekend loop is complete
+  todayPB = null;
+  if (!pastKey && !preview && (L3 || !LOOP)){ const e = historyEntry(todayKey); if (e){ todayPB = pbState(e, myHistory()); todayPB.entry = e; } }
+  c0.pb = !!(todayPB && todayPB.state === 'new');
+  const ev = pastKey ? {fresh:[], ups:[], counts:{}} : evaluateDay(c0); lastEval = ev;
   let fresh = ev.fresh;
   if (L3){ const more = [0, 1].flatMap(k => LS.get('dailyhole:new:' + todayKey + (k ? ':' + k : ''), []) || []), moreUp = [0, 1].flatMap(k => LS.get('dailyhole:up:' + todayKey + (k ? ':' + k : ''), []) || []);
     fresh = [...new Set([...more, ...(fresh || [])])]; ev.ups = [...new Set([...moreUp, ...(ev.ups || [])])]; lastEval = {...ev, fresh}; }
@@ -2711,6 +2870,11 @@ function showSummary(){
   $('sumExplain').textContent = `Each shot is graded 0 to 100 against a Tour pro hitting from the same spot. 50 matches the Tour; above 50 beats it. Fewer strokes always ranks first.`;
   $('sumWord').firstChild.textContent = sc.word;
   $('sumStrokes').textContent = L3 ? `${sc.strokes} strokes · par 9` : round.pickedUp ? `Picked up after ${MAX_STROKES}` : `${round.strokes} stroke${round.strokes === 1 ? '' : 's'}`;
+  $('sumSyn').textContent = synopsis(R0);
+  { const st = todayPB && todayPB.state, show = st === 'new' || st === 'tie'; $('sumPB').hidden = !show; $('sumPB').classList.toggle('tie', st === 'tie');
+    if (show){ const pv = todayPB.prev, kind = L3 ? 'weekend loop' : 'par 3';
+      $('sumPBHead').textContent = st === 'new' ? 'New personal best' : 'Ties your best ever';
+      $('sumPBSub').textContent = st === 'new' ? `Your best ${kind} before today: ${pv.loop ? toParWord(pv.toPar) : pv.sc.word} on ${dayLabel(pv.day)}` : `You also went ${pv.loop ? toParWord(pv.toPar) : pv.sc.word.toLowerCase()} on ${dayLabel(pv.day)}`; } }
   const card = $('scorecard'); card.innerHTML = ''; let lastHole = -1;
   for (const s of R0.shots){
     if (L3 && s.hole !== lastHole){ lastHole = s.hole; const hd = document.createElement('div'); hd.className = 'sc-hole'; hd.textContent = `Hole ${s.hole + 1} · ${holeNameFor(holeNum, s.hole)} · ${sc.per[s.hole].word}`; card.appendChild(hd); }
@@ -2793,14 +2957,35 @@ function getThumb(n){
   const key = 'dailyhole:thumb:3:' + n, c = LS.get(key, null); if (c) return Promise.resolve(c);
   return new Promise(res => { thumbQ.push({n, key, res}); pumpThumbs(); });
 }
+// the same still with a round's tee shot drawn on it (weekend loops: the sub-hole with the closest tee shot)
+const SHOT_THUMB_KEEP = 24;
+function teeShotOf(e){
+  if (!e.r) return null;
+  const holes = e.loop ? e.r.holes : [e.r]; let best = null;
+  holes.forEach((h, k) => { const t = h.shots && h.shots[0]; if (!t || !t.sw || typeof t.sw.p !== 'number') return; const ft = t.wet ? 1e9 : t.holed ? 0 : t.endD*3; if (!best || ft < best.ft) best = {t, k, ft}; });
+  return best;
+}
+function getShotThumb(e, urgent){
+  const ts = teeShotOf(e); if (!ts) return getThumb(e.n);
+  const t = ts.t, hash = '#t' + e.n + (ts.k ? 's' + ts.k : '') + '~' + [t.club, t.type, +t.sw.p.toFixed(3), +t.sw.cu.toFixed(3), +(+t.aim || 0).toFixed(2)].join(',');
+  const key = 'dailyhole:shot:2:' + hash.slice(2), c = LS.get(key, null); if (c){ touchShotThumb(key); return Promise.resolve(c); }
+  touchShotThumb(key);
+  return new Promise(res => { const job = {n:e.n, key, hash, res, shot:true}; if (urgent) thumbQ.unshift(job); else thumbQ.push(job); pumpThumbs(); });
+}
+// least recently shown stills are dropped first, so the phone keeps about two dozen (~50 KB each)
+function touchShotThumb(key){
+  const idx = LS.get('dailyhole:shotidx', []).filter(k => k !== key); idx.push(key);
+  while (idx.length > SHOT_THUMB_KEEP){ try { localStorage.removeItem(idx.shift()); } catch(e){} }
+  LS.set('dailyhole:shotidx', idx);
+}
 function pumpThumbs(){
   if (thumbBusy || !thumbQ.length) return; thumbBusy = true; const job = thumbQ.shift();
   const fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1;
   fr.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;border:0;opacity:0;pointer-events:none;z-index:-1';
-  let done = false; const on = e => { if (e.data && e.data.dhThumb === job.n) end(e.data.url); };
+  let done = false; const on = e => { if (e.data && e.data.dhThumb === job.n && (!job.hash || e.data.dhHash === job.hash)) end(e.data.url); };
   const end = url => { if (done) return; done = true; window.removeEventListener('message', on); fr.remove(); if (url){ try { localStorage.setItem(job.key, JSON.stringify(url)); } catch(e){ /* storage full: just don't cache */ } } job.res(url); thumbBusy = false; pumpThumbs(); };
   window.addEventListener('message', on); setTimeout(() => end(null), 10000);
-  try { fr.src = location.href.split('#')[0] + '#t' + job.n; document.body.appendChild(fr); } catch(e){ end(null); }
+  try { fr.src = location.href.split('#')[0] + (job.hash || '#t' + job.n); document.body.appendChild(fr); } catch(e){ end(null); }
 }
 function moreItem(title, sub, cls){ const b = document.createElement('button'); b.className = 'more-item' + (cls ? ' ' + cls : ''); const t = document.createElement('b'); t.textContent = title; const u = document.createElement('span'); u.textContent = sub; b.append(t, u); return b; }
 function goHash(h){ try { if (h) location.hash = h; else history.replaceState(null, '', location.pathname + location.search); location.reload(); } catch(e){ setHint("Couldn't switch holes here."); } }
@@ -2830,6 +3015,8 @@ function openMore(){
   top.appendChild(tile('range', 'Driving range', pastKey ? "Unlimited balls at this green" : "Unlimited balls at today's green", () => { close(); enterRange(); }));
   top.appendChild(tile('trophy', 'Scores', "Yesterday's winner and awards", () => { close(); showYesterday(true); }, !(online() && !preview)));
   { const ex = $('moreLeagues'); if (ex) ex.remove(); }
+  { const ex = $('moreProfile'); if (ex) ex.remove(); }
+  { const pb = document.createElement('button'); pb.className = 'more-wide'; pb.id = 'moreProfile'; pb.innerHTML = '<div><b>Your profile</b><br><span>Personal bests and every round you\'ve played</span></div><span>›</span>'; pb.onclick = () => openProfile(phase === 'summary' ? 'summary' : null); top.after(pb); }
   if (online() && !preview){ const lb = document.createElement('button'); lb.className = 'more-wide'; lb.innerHTML = '<div><b>Leagues</b><br><span>Private leaderboards with your friends</span></div><span>›</span>'; lb.onclick = () => { $('moreCard').hidden = true; openLeagues(phase === 'summary' ? 'summary' : null); }; top.after(lb); lb.id = 'moreLeagues'; }
   const list = $('pastList'); list.innerHTML = '';
   // keep only this week's hole pictures on the phone
@@ -2878,8 +3065,102 @@ function showBadges(){
   }
   $('summary').hidden = true; $('badgeCard').hidden = false; $('badgeCard').scrollTop = 0;
 }
-$('badgesBtn').addEventListener('click', showBadges);
-$('badgeClose').addEventListener('click', () => { $('badgeCard').hidden = true; $('summary').hidden = false; });
+let badgesFrom = null;
+$('badgeClose').addEventListener('click', () => { $('badgeCard').hidden = true; if (badgesFrom === 'profile'){ badgesFrom = null; $('profCard').hidden = false; } else if (phase === 'summary') $('summary').hidden = false; else if (phase === 'ready') $('controls').hidden = false; });
+
+// ---------- profile: bests, records and every round played (yours, or anyone's from a leaderboard) ----------
+let profFrom = null, profObs = null, profReq = 0;
+function profThumb(img, e){
+  const go = () => getShotThumb(e).then(url => { if (url){ img.onload = () => img.classList.add('on'); img.src = url; } });
+  if (profObs){ img._go = go; profObs.observe(img); } else go();
+}
+function bestCard(e, tag, mine){
+  const b = document.createElement('button'); b.className = 'hole-card done';
+  const pic = document.createElement('div'); pic.className = 'pic'; const img = document.createElement('img'); img.alt = ''; pic.appendChild(img);
+  const cap = document.createElement('div'); cap.className = 'cap'; const l = document.createElement('div'); l.className = 'label'; l.textContent = `${dayLabel(e.day)} · No. ${e.n}`;
+  const t = document.createElement('b'); t.textContent = e.name; cap.append(l, t); pic.appendChild(cap);
+  const nw = document.createElement('span'); nw.className = 'now pb'; nw.textContent = tag; pic.appendChild(nw);
+  const info = document.createElement('div'); info.className = 'info'; const a1 = document.createElement('span'); a1.textContent = e.loop ? `Par 9 · ${e.sc.strokes} strokes` : `Par 3 · ${e.sc.strokes} stroke${e.sc.strokes === 1 ? '' : 's'}`;
+  const a2 = document.createElement('span'); a2.className = 'res'; a2.textContent = resWord(e); const g = document.createElement('small'); g.textContent = `${Math.round(e.sc.avg)} avg`; a2.appendChild(g); info.append(a1, a2);
+  const syn = document.createElement('div'); syn.className = 'syn-l'; syn.textContent = synopsis(e.r);
+  b.append(pic, info, syn);
+  if (mine && recentKeys(todayKey).includes(e.day)) b.onclick = () => goHash('d' + e.day); else b.style.cursor = 'default';
+  getShotThumb(e, true).then(url => { if (url){ img.onload = () => img.classList.add('on'); img.src = url; } });
+  return b;
+}
+const resWord = e => e.loop ? toParWord(e.toPar) : e.sc.strokes === 1 ? 'Ace' : e.sc.word.length <= 6 ? e.sc.word : toParWord(e.toPar);
+// the streak still counts if today's hole hasn't been played yet
+function streakOf(days){ const set = new Set(days); let k = set.has(todayKey) ? todayKey : prevDay(todayKey), n = 0; while (set.has(k)){ n++; k = prevDay(k); } return n; }
+function renderProfile(hist, who){
+  const mine = who.me, p3 = hist.filter(e => !e.loop), wk = hist.filter(e => e.loop);
+  $('profLabel').textContent = mine ? 'Your profile' : 'Player';
+  $('profTitle').textContent = who.tag || 'You';
+  $('profSince').textContent = hist.length ? `Playing since ${dayLabel(hist[0].day)} · No. ${hist[0].n}` : who.loading ? 'Loading rounds…' : who.error || '';
+  $('pfRounds').textContent = hist.length;
+  $('pfStreak').textContent = streakOf(mine ? LS.get('dailyhole:days', []).concat(hist.map(e => e.day)) : hist.map(e => e.day));
+  const b3 = bestOf(p3), bw = bestOf(wk);
+  $('pfBest').textContent = b3 ? (b3.sc.strokes === 1 ? 'Ace' : toParWord(b3.toPar)) : '—';
+  $('pfAvg').textContent = p3.length ? (a => (a > 0 ? '+' : a < 0 ? '−' : '') + Math.abs(a).toFixed(1))(p3.reduce((s, e) => s + e.toPar, 0)/p3.length) : '—';
+  const bests = $('pfBests'); bests.innerHTML = '';
+  if (b3) bests.appendChild(bestCard(b3, 'Best par 3', mine));
+  if (bw) bests.appendChild(bestCard(bw, 'Best weekend', mine));
+  $('pfBestLbl').hidden = !hist.length;
+  const recs = $('pfRecs'); recs.innerHTML = '';
+  const rec = (label, val, e) => { const d = document.createElement('div'); d.className = 'prec'; const l = document.createElement('span'); l.textContent = label; const b = document.createElement('b'); b.textContent = val;
+    if (e){ const sm = document.createElement('small'); sm.textContent = `${dayLabel(e.day)} · ${e.name}`; b.appendChild(sm); } d.append(l, b); recs.appendChild(d); };
+  const pick = (f, cmp) => hist.filter(e => f(e) !== null && f(e) !== undefined).sort((a, b) => cmp(f(a), f(b)) || (a.day < b.day ? -1 : 1))[0];
+  const ct = pick(e => e.teeFt, (a, b) => a - b); if (ct) rec('Closest tee shot', ct.teeFt === 0 ? 'In the cup' : fmtDist(ct.teeFt/3), ct);
+  const lp = pick(e => e.longPutt, (a, b) => b - a); if (lp) rec('Longest putt made', fmtDist(lp.longPutt/3), lp);
+  const bg = pick(e => e.sc.avg, (a, b) => b - a); if (bg) rec('Best shot grade', `${Math.round(bg.sc.avg)} avg`, bg);
+  const pbs = hist.filter(e => pbState(e, hist).state === 'new').length; if (pbs) rec('Personal bests set', String(pbs));
+  recs.hidden = !recs.children.length;
+  $('pfBadges').hidden = !mine;
+  if (mine){ const owned = LS.get('dailyhole:badges', {}); $('pfBadgeSub').textContent = `${BADGES.filter(b => owned[b.id]).length} of ${BADGES.length} earned`; }
+  if (profObs) profObs.disconnect();
+  profObs = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(x => { if (x.isIntersecting && x.target._go){ const go = x.target._go; x.target._go = null; profObs.unobserve(x.target); go(); } }), {root:$('profCard'), rootMargin:'200px'}) : null;
+  const list = $('pfList'); list.innerHTML = '';
+  [...hist].reverse().forEach(e => {
+    const row = document.createElement('div'); row.className = 'prow';
+    const pt = document.createElement('div'); pt.className = 'pt'; const img = document.createElement('img'); img.alt = ''; pt.appendChild(img);
+    const pm = document.createElement('div'); pm.className = 'pm'; const l = document.createElement('div'); l.className = 'label'; l.textContent = `${dayLabel(e.day)} · No. ${e.n}`;
+    const nm = document.createElement('b'); nm.textContent = e.name; const sy = document.createElement('span'); sy.textContent = synopsis(e.r); pm.append(l, nm, sy);
+    const pr = document.createElement('div'); pr.className = 'pr'; const w = document.createElement('b'); w.textContent = resWord(e); const g = document.createElement('span'); g.textContent = `${Math.round(e.sc.avg)} avg`; pr.append(w, g);
+    if (pbState(e, hist).state === 'new'){ const i = document.createElement('i'); i.textContent = 'PB'; pr.appendChild(i); }
+    row.append(pt, pm, pr); list.appendChild(row); profThumb(img, e);
+  });
+  $('pfAllLbl').hidden = !hist.length;
+  $('pfEmpty').hidden = !!hist.length || !!who.loading || !!who.error;
+  $('pfEmpty').textContent = mine ? "Finish today's hole and it shows up here. Every daily round you play is kept." : 'No rounds yet.';
+}
+// opts.tag: someone else's profile, as named on a leaderboard. from: the card to go back to on close.
+function openProfile(from, opts = {}){
+  const req = ++profReq, other = !!opts.tag && opts.tag !== myTag;
+  profFrom = from || (phase === 'summary' ? 'summary' : null);
+  ['summary','moreCard','badgeCard','boardCard','ydayCard','leagueCard'].forEach(id => $(id).hidden = true);
+  if (other) renderProfile([], {tag:opts.tag, me:false, loading:true});
+  else renderProfile(myHistory(), {tag:myTag, me:true});
+  openCard('profCard');
+  if (!online() || preview) return;
+  rpc('player_profile', other ? {p_tag:opts.tag} : {p_player:pid}).then(res => {
+    if (req !== profReq || $('profCard').hidden) return;
+    if (other){ if (!res){ renderProfile([], {tag:opts.tag, me:false, error:"Couldn't find that player."}); return; }
+      renderProfile((res.rounds || []).map(serverEntry).filter(Boolean), {tag:res.tag, me:false}); return; }
+    if (res && Array.isArray(res.rounds)){ LS.set('dailyhole:profme', {rounds:res.rounds}); renderProfile(myHistory(), {tag:myTag || res.tag, me:true}); }
+  }).catch(() => { if (other && req === profReq) renderProfile([], {tag:opts.tag, me:false, error:"Couldn't load this player right now."}); });
+}
+$('profSumBtn').addEventListener('click', () => openProfile('summary'));
+$('pfBadges').addEventListener('click', () => { badgesFrom = 'profile'; $('profCard').hidden = true; showBadges(); });
+$('profClose').addEventListener('click', () => { closeCard('profCard'); const back = profFrom; profFrom = null;
+  if (back === 'summary'){ if (phase === 'summary') $('summary').hidden = false; }
+  else if (back && $(back)){ $(back).hidden = false; $('controls').hidden = true; } });
+// tap a name on any leaderboard to see that player's profile
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('.b-tag'); if (!t) return;
+  const card = t.closest('#boardCard, #ydayCard, #leagueCard'); if (!card) return;
+  const row = t.closest('.b-row'), name = t.textContent.replace(/ · host$/, '').trim();
+  if (!name || /^Nobody/.test(name) || !/^[A-Za-z0-9_ ]{3,16}$/.test(name)) return;
+  openProfile(card.id, row && row.classList.contains('me') ? {} : {tag:name});
+});
 
 // ---------- first run: pick "jump right in" or a 4-step walkthrough ----------
 function openIntro(){ $('introEd').textContent = $('edition').textContent || 'Daily Ace'; openCard('introCard'); }
@@ -3081,7 +3362,7 @@ function poseOK(){
 function faceNow(){ if (ori.gamma === null) return 0; return (ori.gamma - (addrCal ? addrCal.gamma : 0))*handSign()*(curveFlip ? -1 : 1); } // + = open
 function motionMeter(frac, label){ clearTimeout(meterTimer); meter.classList.add('show'); meterFill.style.height = `${clamp(frac/1.12*100, 0, 100)}%`; $('meterPct').textContent = label; }
 function hideMeterSoon(){ clearTimeout(meterTimer); meterTimer = setTimeout(() => meter.classList.remove('show'), 1400); }
-function cardOpen(){ return !$('leagueCard').hidden || !$('boardCard').hidden || !$('loopCard').hidden || !$('shareCard').hidden || !$('moreCard').hidden || !$('shotCard').hidden || !$('summary').hidden || !$('helpCard').hidden || !$('introCard').hidden || !$('tourCard').hidden || !$('setCard').hidden || !$('badgeCard').hidden; }
+function cardOpen(){ return !$('leagueCard').hidden || !$('boardCard').hidden || !$('loopCard').hidden || !$('shareCard').hidden || !$('moreCard').hidden || !$('shotCard').hidden || !$('summary').hidden || !$('helpCard').hidden || !$('introCard').hidden || !$('tourCard').hidden || !$('setCard').hidden || !$('badgeCard').hidden || !$('profCard').hidden; }
 let faceShown = null, lastPuttHint = '';
 const faceMini = Object.assign({full:false, short:true}, LS.get('dailyhole:faceMini', {}));
 $('faceToggle').addEventListener('click', e => { e.stopPropagation(); faceMini[mode] = true; LS.set('dailyhole:faceMini', faceMini); });
@@ -3543,7 +3824,7 @@ function frame(now){
 // A seeded set of computer-played rounds on this exact hole: real ball physics off the tee, a statistical short game
 // and putting model after that. Same for every player today. Always labeled as simulated.
 const FIELD_N = 600, FIELD_VER = 2;
-let field = null, fieldBusy = false, shareBase = '', lastEval = null;
+let field = null, fieldBusy = false, shareBase = '', lastEval = null, todayPB = null;
 // ---------- share image: a 9:16 scorecard that fits one phone screen ----------
 let shareFile = null, shareURL = null, shareVer = 0, shareTimer = 0;
 function scheduleShare(){ clearTimeout(shareTimer); shareTimer = setTimeout(buildShareImage, 350); }
@@ -3555,7 +3836,8 @@ async function buildShareImage(){
   if (phase !== 'summary') return; const ver = ++shareVer;
   const SW = 1080, SH = 1920, c = document.createElement('canvas'); c.width = SW; c.height = SH; const g = c.getContext('2d');
   try { await Promise.all([document.fonts.load('700 90px "Instrument Sans"'), document.fonts.load('500 36px "Instrument Sans"'), document.fonts.load('600 36px "Instrument Sans"')]); } catch(e){}
-  const url = await getThumb(holeNum); let img = null;
+  const te = !pastKey && !preview ? historyEntry(todayKey) : null;
+  const url = await (te ? getShotThumb(te, true) : getThumb(holeNum)); let img = null;
   if (url){ img = new Image(); await new Promise(r => { img.onload = r; img.onerror = () => { img = null; r(); }; img.src = url; }); }
   if (ver !== shareVer) return;
   const L3 = LOOP ? loopRound() : null, r0 = L3 || round, sc = scoreOf(r0), cx = roundCtx(r0), FONT = '"Instrument Sans", system-ui, sans-serif';
@@ -3575,27 +3857,38 @@ async function buildShareImage(){
   g.fillStyle = INK; font(700, 46); g.textAlign = 'left'; g.fillText('daily ace', 108, 108);
   font(600, 32); g.textAlign = 'right'; g.fillStyle = INK;
   g.fillText(pastKey ? `${dayLabel(pastKey)} · replay` : `No. ${holeNum} · ${dayLabel(todayKey)}`, SW - 64, 104);
+  // personal best ribbon
+  if (todayPB && todayPB.state === 'new' && !pastKey){
+    const txt = 'NEW PERSONAL BEST'; font(700, 30); const tw = g.measureText(txt).width, px = 64, py = 150, ph = 56;
+    g.fillStyle = '#e7c068'; g.beginPath(); g.roundRect ? g.roundRect(px, py, tw + 92, ph, 28) : g.rect(px, py, tw + 92, ph); g.fill();
+    g.fillStyle = '#1b1b14'; g.textAlign = 'left'; g.fillText('📈', px + 20, py + 39); g.fillText(txt, px + 66, py + 39);
+  }
   // hole name
   g.textAlign = 'left'; g.fillStyle = INK; const ttl = L3 ? 'Weekend loop' : holeName; fit(ttl, 700, 104, SW - 128); g.fillText(ttl, 64, 770);
   font(500, 36); g.fillStyle = SOFT; g.fillText(L3 ? `3 holes · par 9${DIFF_WORD ? ' · ' + DIFF_WORD : ''}` : `Par 3 · ${YARDS} yds · ${pinDesc()}${DIFF_WORD ? ' · ' + DIFF_WORD : ''}`, 64, 828);
   // score
   g.fillStyle = INK; fit(sc.word, 700, 132, 640); g.fillText(sc.word, 64, 1010);
   font(500, 38); g.fillStyle = SOFT; g.fillText(L3 ? `${sc.strokes} strokes` : r0.pickedUp ? `Picked up after ${MAX_STROKES}` : `${r0.strokes} stroke${r0.strokes === 1 ? '' : 's'}`, 66, 1068);
+  { const syn = synopsis(r0); if (syn){ // up to two lines, left of the grade ring
+      g.fillStyle = INK; g.textAlign = 'left'; font(500, 31); const maxW = 640, words = syn.split(' '), lines = ['']; 
+      for (const w of words){ const tryL = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + w : w; if (g.measureText(tryL).width > maxW && lines[lines.length - 1]) lines.push(w); else lines[lines.length - 1] = tryL; }
+      if (lines.length > 2){ lines[1] = lines.slice(1).join(' '); lines.length = 2; while (g.measureText(lines[1] + '…').width > maxW && lines[1].length) lines[1] = lines[1].slice(0, -1); lines[1] += '…'; }
+      lines.forEach((l, k) => g.fillText(l, 64, 1118 + k*38)); } }
   const avg = Math.round(sc.avg), rx = SW - 170, ry = 982, rr = 96;
   g.lineWidth = 16; g.strokeStyle = 'rgba(244,238,226,.12)'; g.beginPath(); g.arc(rx, ry, rr, 0, 7); g.stroke();
   g.strokeStyle = gc(avg); g.lineCap = 'round'; g.beginPath(); g.arc(rx, ry, rr, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(avg/100, 0.01, 1)); g.stroke();
   g.fillStyle = INK; g.textAlign = 'center'; font(700, 84); g.fillText(String(avg), rx, ry + 30);
   font(600, 22); g.fillStyle = SOFT; g.fillText('AVG SHOT GRADE', rx, ry + rr + 52);
   // shots
-  g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1150, SW - 128, 2);
+  g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1176, SW - 128, 2);
   if (L3){
-    sc.per.forEach((p2, k) => { const y = 1190 + k*150, col = gc(Math.round(p2.avg));
+    sc.per.forEach((p2, k) => { const y = 1196 + k*148, col = gc(Math.round(p2.avg));
       g.fillStyle = col; g.beginPath(); g.arc(80, y + 50, 10, 0, 7); g.fill();
       g.textAlign = 'left'; g.fillStyle = INK; font(600, 40); g.fillText(`Hole ${k + 1} · ${holeNameFor(holeNum, k)}`, 112, y + 62);
       g.fillStyle = SOFT; font(500, 32); g.fillText(`${p2.word} · ${p2.strokes} stroke${p2.strokes === 1 ? '' : 's'}`, 112, y + 106);
       g.textAlign = 'right'; g.fillStyle = col; font(700, 54); g.fillText(String(Math.round(p2.avg)), SW - 64, y + 70); });
   }
-  const shots = L3 ? [] : r0.shots, room = 450, rowH = Math.min(112, room/Math.max(1, shots.length)), top = 1190 + (room - rowH*shots.length)/2;
+  const shots = L3 ? [] : r0.shots, room = 440, rowH = Math.min(112, room/Math.max(1, shots.length)), top = 1200 + (room - rowH*shots.length)/2;
   shots.forEach((s2, i) => {
     const y = top + i*rowH, gr = shotGrade(s2), col = s2.wet ? '#8ec4e8' : gc(gr);
     g.fillStyle = col; g.beginPath(); g.arc(80, y + rowH*0.42, 10, 0, 7); g.fill();
@@ -3722,12 +4015,12 @@ async function rpc(fn, args){
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json();
 }
-const shotRows = shots => shots.map(x => [x.mode, x.type, x.club, x.fromLie, +(+x.fromD).toFixed(2), x.endLie, +(+x.endD).toFixed(2), shotGrade(x), x.sw ? x.sw.p : null, x.sw ? x.sw.cu : null, x.aim, x.sw && x.sw.range !== undefined ? x.sw.range : null, x.gimme ? 1 : 0]);
+const shotRows = shots => shots.map(x => [x.mode, x.type, x.club, x.fromLie, +(+x.fromD).toFixed(2), x.endLie, +(+x.endD).toFixed(2), shotGrade(x), x.sw ? x.sw.p : null, x.sw ? x.sw.cu : null, x.aim, x.sw && x.sw.range !== undefined ? x.sw.range : null, x.gimme ? 1 : 0, x.wet ? 1 : 0]);
 function payloadFor(r, day, hole){
   const sc = scoreOf(r), ins = new Set(r.shots.filter(x => x.sw).map(x => x.sw.input));
   if (r.loop) return {player:pid, day, hole, input: ins.size > 1 ? 'mixed' : ins.has('motion') ? 'motion' : 'swipe', claim:{strokes:sc.strokes, avg:sc.avg}, holes:r.holes.map((h, k) => ({sub:k, shots:shotRows(h.shots)}))};
   return {player:pid, day, hole, input: ins.size > 1 ? 'mixed' : ins.has('motion') ? 'motion' : 'swipe', claim:{strokes:sc.strokes, avg:sc.avg},
-    shots: r.shots.map(x => [x.mode, x.type, x.club, x.fromLie, +(+x.fromD).toFixed(2), x.endLie, +(+x.endD).toFixed(2), shotGrade(x), x.sw ? x.sw.p : null, x.sw ? x.sw.cu : null, x.aim, x.sw && x.sw.range !== undefined ? x.sw.range : null, x.gimme ? 1 : 0])};
+    shots: shotRows(r.shots)};
 }
 // Rounds go to a server function that replays every shot with the same physics before it counts.
 async function submitRound(r, day, hole){
@@ -3917,7 +4210,7 @@ $('setLeagues').addEventListener('click', () => { $('setCard').hidden = true; op
 $('boardClose').addEventListener('click', () => { $('boardCard').hidden = true; if (phase === 'summary') $('summary').hidden = false; else if (phase === 'ready'){ $('controls').hidden = false; readyHint(); } });
 
 // Pop-up pages: an X in the top right, and a tap anywhere outside the card closes it. Both just press the card's own close button.
-const DISMISS = {moreCard:'moreClose', boardCard:'boardClose', leagueCard:'lgClose', ydayCard:'ydayClose', helpCard:'helpClose', tourCard:'tourClose', setCard:'setClose', shareCard:'shareClose', badgeCard:'badgeClose'};
+const DISMISS = {moreCard:'moreClose', boardCard:'boardClose', leagueCard:'lgClose', ydayCard:'ydayClose', helpCard:'helpClose', tourCard:'tourClose', setCard:'setClose', shareCard:'shareClose', badgeCard:'badgeClose', profCard:'profClose'};
 for (const [card, btn] of Object.entries(DISMISS)){
   const c = $(card), b = $(btn); if (!c || !b) continue;
   const x = document.createElement('button'); x.className = 'cx'; x.type = 'button'; x.setAttribute('aria-label', 'Close');
@@ -3976,6 +4269,7 @@ function replay(shots){
     }
     stopped = false; let i = 0;
     while (!stopped && i < 240*60){ stepBall(1/240, b, false); i++; }
+    if (replay.track) replay.track.push({lx:b.landX === undefined ? b.x : b.landX, lz:b.landZ === undefined ? b.z : b.landZ, x:b.x, z:b.z, wet:!!b.wet});
     // finish(), as in the game
     const holed = b.state === 'holed', wet = !!b.wet; let endLie, endD, Ea, penalty = 0, drop = null;
     if (holed){ endLie = 'holed'; endD = 0; Ea = 0; }
@@ -4279,15 +4573,53 @@ function drawPuttRecap(){
 $('prMakeBtn').addEventListener('click', () => { recap.make = !recap.make; updatePuttRecap(); });
 
 // ---------- boot ----------
-function postThumb(){
-  const c = document.createElement('canvas'); c.width = 720; c.height = Math.round(720*H/W); c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height);
-  try { parent.postMessage({dhThumb:holeNum, url:c.toDataURL('image/jpeg', 0.76)}, '*'); } catch(e){}
+let stopped = false;   // the shot replay below stops on this, as it does on the server
+function postThumb(w = 720, q = 0.76){
+  const c = document.createElement('canvas'); c.width = w; c.height = Math.round(w*H/W); c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height);
+  try { parent.postMessage({dhThumb:holeNum, dhHash:location.hash, url:c.toDataURL('image/jpeg', q)}, '*'); } catch(e){}
+}
+// a tee shot drawn on the hole still: dotted flight from the tee to where it landed, then its roll to where it stopped
+function drawTeeShot(t){
+  const P = (x, z, h = 0) => proj(x, Hh(x, z) + 0.05 + h, z), land = P(t.lx, t.lz), end = P(t.x, t.z);
+  if (!land || !end) return;
+  ctx.save(); ctx.lineCap = 'round';
+  // the flight: a parabola from the tee to where it landed, projected so it reads in perspective
+  const carry = Math.hypot(t.lx, t.lz), apex = Math.max(8, carry*0.16), pts = [];
+  for (let k = 0; k <= 40; k++){ const u = k/40, x = t.lx*u, z = t.lz*u, h = 4*apex*u*(1 - u) + (Hh(0, 0) - Hh(x, z))*(1 - u); const q = proj(x, Hh(x, z) + h, z); if (q) pts.push(q); }
+  if (pts.length > 1){ ctx.setLineDash([2, 7]); ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,251,232,.92)'; ctx.beginPath(); pts.forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke(); ctx.setLineDash([]); }
+  if (t.wet){
+    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2;
+    [7, 13].forEach(r => { ctx.beginPath(); ctx.ellipse(end[0], end[1], r, r*0.42, 0, 0, 7); ctx.stroke(); });
+  } else {
+    if (Math.hypot(end[0] - land[0], end[1] - land[1]) > 3){ ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,251,232,.75)'; ctx.beginPath(); ctx.moveTo(land[0], land[1]); ctx.lineTo(end[0], end[1]); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(end[0], end[1] + 2, 7, 2.6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1b1b14'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(end[0], end[1] - 3, 5, 0, 7); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
 }
 if (thumb){
   // a still of the hole for the More golf cards and the share image: high behind the tee, lake and green in frame, hills behind
   setupLie(); const bx = GR.x*0.2, bz = -58, by = 34, dist = Math.hypot(GR.x - bx, GR.z - bz);
   thumbPose = {x:bx, y:by, z:bz, yaw:lookAt(bx, bz), pitch:Math.atan2(by - Hh(GR.x, GR.z), dist)*0.62};
-  T = 2; frame(performance.now()); frame(performance.now() + 16); postThumb();
+  T = 2; frame(performance.now()); frame(performance.now() + 16);
+  let shot = null;
+  if (tm[3]){
+    // run the server's replay with the game's physics; while it runs, the end of a shot just stops the replay
+    // instead of scoring it (the same stand-ins the leaderboard server uses)
+    const f0 = finish, s0 = splash;
+    finish = () => { stopped = true; }; splash = b => { b.wet = true; b.state = 'stopped'; stopped = true; };
+    try { const [club, type, p, cu, aim] = tm[3].split(','); ffMute = true; replay.track = []; replay([['full', type, club, 'tee', 0, '', 0, 0, +p, +cu, +aim, null, 0]]); shot = replay.track[0] || null; } catch(e){ shot = null; }
+    replay.track = null; finish = f0; splash = s0; ffMute = false;
+  }
+  // replaying moved the ball and changed the lie: put the scene back before the final frames
+  setupLie();
+  if (shot){ // closer in: from partway down the hole, looking at the green and where the ball finished
+    const fx = (GR.x + shot.x)/2, fz = (GR.z + shot.z)/2, cx = fx*0.35, cz = fz*0.45, cy = 22, d2 = Math.hypot(fx - cx, fz - cz);
+    thumbPose = {x:cx, y:cy, z:cz, yaw:Math.atan2(fx - cx, fz - cz), pitch:Math.atan2(cy - Hh(fx, fz), d2)*0.8};
+  }
+  frame(performance.now() + 32);
+  if (shot) drawTeeShot(shot);
+  postThumb(720, shot ? 0.7 : 0.76);
 } else {
 initParts(); renderHeader();
 const joinM = /^#join=([A-Za-z0-9]{6})$/.exec(location.hash || '');
