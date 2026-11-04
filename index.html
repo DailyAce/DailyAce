@@ -588,7 +588,7 @@ a.btn{text-align:center;text-decoration:none}
       <div class="pstats">
         <div class="stat"><span class="num" id="pfRounds">0</span><span class="label">Rounds</span></div>
         <div class="stat"><span class="num" id="pfStreak">0</span><span class="label">Streak</span></div>
-        <div class="stat"><span class="num" id="pfBest">—</span><span class="label">Best par 3</span></div>
+        <div class="stat"><span class="num" id="pfBest">—</span><span class="label">Best grade</span></div>
         <div class="stat"><span class="num" id="pfAvg">—</span><span class="label">Avg to par</span></div>
       </div>
       <div class="label" id="pfBestLbl">Personal bests</div>
@@ -2699,7 +2699,8 @@ const BADGES = [
   {id:'sandy', ic:'🏝️', name:'Sand save', desc:'Up and down from a bunker', tier:'rare', t:c => c.sandSave},
   {id:'chipin', ic:'🪄', name:'Chip-in', desc:'Hole out from off the green', tier:'rare', t:c => c.chipIn},
   {id:'calm', ic:'🍃', name:'Still air', desc:'Play a hole with no wind', tier:'rare', t:c => WIND.mph === 0},
-  {id:'pb', ic:'📈', name:'Personal best', desc:'Beat your best score on a daily par 3 or weekend loop', tier:'rare', t:c => !!c.pb},
+  {id:'pb', ic:'📈', name:'Personal best', desc:'Beat your best-ever average shot grade', tier:'rare', t:c => !!c.pb},
+  {id:'form', ic:'⚡', name:'In form', desc:'Your best shot grade of your last 10 rounds', tier:'uncommon', t:c => !!c.form},
   {id:'redeem', ic:'🔁', name:'Redemption', desc:'Find the water and still make par', tier:'rare', t:c => c.wet >= 1 && c.holed && c.strokes <= 3},
   {id:'fish', ic:'🐟', name:'Fish food', desc:'Find the water twice', tier:'rare', t:c => c.wet >= 2},
   {id:'links', ic:'🌬️', name:'Links golf', desc:'Punch onto the green, then par or better', tier:'rare', t:c => c.tee.type === 'punch' && c.gir && c.holed && c.strokes <= 3},
@@ -2713,7 +2714,7 @@ const BADGES = [
 ];
 const TIER_RANK = {legendary:0, epic:1, rare:2, uncommon:3, common:4};
 // badges you can earn again level up: Bronze, Silver, Gold, Platinum. Rarer badges need fewer repeats.
-const ONCE = new Set(['first','golden','mist','autumn','s3','s7','s30','h10','h50','h100','seasons']);
+const ONCE = new Set(['pb','first','golden','mist','autumn','s3','s7','s30','h10','h50','h100','seasons']);
 const METALS = ['Bronze','Silver','Gold','Platinum'], METAL_C = ['#c98b55','#d3d7dc','#e7c068','#b9e6e8'];
 const STEPS = {common:[1,10,25,50], uncommon:[1,5,15,30], rare:[1,3,8,15], epic:[1,2,4,8], legendary:[1,2,3,5]};
 function metalIdx(b, n){ if (ONCE.has(b.id) || !n) return -1; let i = -1; STEPS[b.tier].forEach((v, k) => { if (n >= v) i = k; }); return i; }
@@ -2798,16 +2799,16 @@ function myHistory(){
   days.forEach(d => { const e = historyEntry(d); if (e) byDay.set(d, e); });
   return [...byDay.values()].sort((a, b) => a.day < b.day ? -1 : 1);
 }
-const beats = (a, b) => better({strokes:a.toPar, avg:a.sc.avg}, {strokes:b.toPar, avg:b.sc.avg});
+// personal bests are by average shot grade (par 3s and weekend loops on one list)
+const beats = (a, b) => a.sc.avg > b.sc.avg;
 function bestOf(list){ let b = null; for (const e of list) if (!b || beats(e, b)) b = e; return b; }
-// did this round beat every earlier round of its kind? Ranked like the leaderboard: strokes to par, then average grade.
-// rank: where it sits among every round of its kind up to that day (1 = best)
+// rank: where this round's grade sits among every round up to that day (1 = best)
+// form: the best grade of your last 10 rounds (needs at least 5 before it), so there's always one to chase
 function pbState(e, hist){
-  const same = hist.filter(x => x.loop === e.loop && x.day <= e.day), prior = same.filter(x => x.day < e.day);
-  const rank = 1 + prior.filter(x => beats(x, e)).length, of = same.length;
+  const prior = hist.filter(x => x.day < e.day), rank = 1 + prior.filter(x => beats(x, e)).length, of = prior.length + 1;
   if (!prior.length) return {state:'first', rank, of};
-  const best = bestOf(prior);
-  return {state: beats(e, best) ? 'new' : null, prev:best, rank, of};
+  const best = bestOf(prior), last = prior.slice(-10), form = prior.length >= 5 && last.every(x => beats(e, x));
+  return {state: beats(e, best) ? 'new' : null, prev:best, rank, of, form};
 }
 const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th','st','nd','rd'][n % 10] || 'th');
 const toParWord = t => t === 0 ? 'E' : t > 0 ? '+' + t : '−' + (-t);
@@ -2861,7 +2862,7 @@ function showSummary(){
   // personal best: only the real daily round counts, and only once a weekend loop is complete
   todayPB = null;
   if (!pastKey && !preview && (L3 || !LOOP)){ const e = historyEntry(todayKey); if (e){ todayPB = pbState(e, myHistory()); todayPB.entry = e; } }
-  c0.pb = !!(todayPB && todayPB.state === 'new');
+  c0.pb = !!(todayPB && todayPB.state === 'new'); c0.form = !!(todayPB && todayPB.form);
   const ev = pastKey ? {fresh:[], ups:[], counts:{}} : evaluateDay(c0); lastEval = ev;
   let fresh = ev.fresh;
   if (L3){ const more = [0, 1].flatMap(k => LS.get('dailyhole:new:' + todayKey + (k ? ':' + k : ''), []) || []), moreUp = [0, 1].flatMap(k => LS.get('dailyhole:up:' + todayKey + (k ? ':' + k : ''), []) || []);
@@ -2877,9 +2878,9 @@ function showSummary(){
   $('sumSyn').textContent = synopsis(R0);
   { const t = todayPB, isNew = !!(t && t.state === 'new'), near = !!(t && !isNew && t.state !== 'first' && t.rank <= 3 && t.of >= 4);
     $('sumPB').hidden = !(isNew || near); $('sumPB').classList.toggle('tie', near);
-    const kind = L3 ? 'weekend loop' : 'par 3', fmt = e => `${e.loop ? toParWord(e.toPar) : e.sc.word} · ${Math.round(e.sc.avg)} on ${dayLabel(e.day)}`;
-    if (isNew){ $('sumPBHead').textContent = 'New personal best'; $('sumPBSub').textContent = `Beats your best ${kind}: ${fmt(t.prev)}`; }
-    else if (near){ $('sumPBHead').textContent = `Your ${ordinal(t.rank)}-best ${kind} of ${t.of}`; $('sumPBSub').textContent = `Best ever: ${fmt(t.prev)}`; } }
+    const fmt = e => `${e.sc.avg.toFixed(1)} avg grade · ${e.loop ? 'weekend loop ' + toParWord(e.toPar) : e.sc.word.toLowerCase()} on ${dayLabel(e.day)}`;
+    if (isNew){ $('sumPBHead').textContent = 'New personal best'; $('sumPBSub').textContent = `Old best: ${fmt(t.prev)}`; }
+    else if (near){ $('sumPBHead').textContent = `Your ${ordinal(t.rank)}-best round of ${t.of}`; $('sumPBSub').textContent = `Best ever: ${fmt(t.prev)}`; } }
   const card = $('scorecard'); card.innerHTML = ''; let lastHole = -1;
   for (const s of R0.shots){
     if (L3 && s.hole !== lastHole){ lastHole = s.hole; const hd = document.createElement('div'); hd.className = 'sc-hole'; hd.textContent = `Hole ${s.hole + 1} · ${holeNameFor(holeNum, s.hole)} · ${sc.per[s.hole].word}`; card.appendChild(hd); }
@@ -3104,7 +3105,7 @@ function renderProfile(hist, who){
   $('pfRounds').textContent = hist.length;
   $('pfStreak').textContent = streakOf(mine ? LS.get('dailyhole:days', []).concat(hist.map(e => e.day)) : hist.map(e => e.day));
   const b3 = bestOf(p3), bw = bestOf(wk);
-  $('pfBest').textContent = b3 ? (b3.sc.strokes === 1 ? 'Ace' : toParWord(b3.toPar)) : '—';
+  const ball = bestOf(hist); $('pfBest').textContent = ball ? Math.round(ball.sc.avg) : '—';
   $('pfAvg').textContent = p3.length ? (a => (a > 0 ? '+' : a < 0 ? '−' : '') + Math.abs(a).toFixed(1))(p3.reduce((s, e) => s + e.toPar, 0)/p3.length) : '—';
   const bests = $('pfBests'); bests.innerHTML = '';
   if (b3) bests.appendChild(bestCard(b3, 'Best par 3', mine));
@@ -3116,7 +3117,6 @@ function renderProfile(hist, who){
   const pick = (f, cmp) => hist.filter(e => f(e) !== null && f(e) !== undefined).sort((a, b) => cmp(f(a), f(b)) || (a.day < b.day ? -1 : 1))[0];
   const ct = pick(e => e.teeFt, (a, b) => a - b); if (ct) rec('Closest tee shot', ct.teeFt === 0 ? 'In the cup' : fmtDist(ct.teeFt/3), ct);
   const lp = pick(e => e.longPutt, (a, b) => b - a); if (lp) rec('Longest putt made', fmtDist(lp.longPutt/3), lp);
-  const bg = pick(e => e.sc.avg, (a, b) => b - a); if (bg) rec('Best shot grade', `${Math.round(bg.sc.avg)} avg`, bg);
   const pbs = hist.filter(e => pbState(e, hist).state === 'new').length; if (pbs) rec('Personal bests set', String(pbs));
   recs.hidden = !recs.children.length;
   $('pfBadges').hidden = !mine;
