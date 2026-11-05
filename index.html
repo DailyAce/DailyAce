@@ -528,7 +528,7 @@ a.btn{text-align:center;text-decoration:none}
 
     <div class="card" id="summary" hidden>
       <div class="label" id="sumLabel">Today</div>
-      <div class="sum-score"><div><div class="num" id="sumScore">—</div><div class="label sum-sub">Avg shot grade</div></div><div class="sum-word title" id="sumWord">—<small id="sumStrokes"></small></div></div>
+      <div class="sum-score"><div><div class="num" id="sumScore">—</div><div class="label sum-sub">Grade</div></div><div class="sum-word title" id="sumWord">—<small id="sumStrokes"></small></div></div>
       <div class="pbline" id="sumPB" hidden><span class="pb-ic">📈</span><div><b id="sumPBHead"></b><span id="sumPBSub"></span></div></div>
       <div class="syn" id="sumSyn"></div>
       <div class="body" id="sumExplain"></div>
@@ -705,9 +705,9 @@ a.btn{text-align:center;text-decoration:none}
 
     <div class="card" id="helpCard" hidden>
       <div class="card-head"><div class="label">How to play</div><div class="title">One hole. Every day.</div></div>
-      <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100. Tee shots and chips are graded on how close they finish for the distance: inside 10 feet is great, a dart to 2 feet is about 98. Putts are graded on how hard they were, counting length, break and downhill speed, and a miss is graded on what it leaves you. Tap-ins inside 3 feet are free and don't count. Your average grade breaks ties, so a par with great shots beats a scrappy par.</p></div>
+      <div class="help-sec"><h3>The round</h3><p class="body">Everyone plays the same par 3 with the same pin and wind. Tee off, chip if you miss the green, and putt out. Fewer strokes wins. Every shot also gets a grade from 0 to 100. Tee shots and chips are graded on how close they finish for the distance: inside 10 feet is great, a dart to 2 feet is about 98. Putts are graded on how hard they were, counting length, break and downhill speed, and a miss is graded on what it leaves you. Tap-ins inside 3 feet are free and don't count. Your round grade adds up the points every shot gives away, so extra strokes always cost you, and it breaks ties: a par with great shots beats a scrappy par.</p></div>
       <div class="help-sec"><h3>Gestures</h3><p class="body"><b>Tap</b> the course to aim, or drag the yellow target. <b>Drag down and flick up</b> to swing. <b>Pinch in</b> to see the whole hole, pinch out to come back. <b>Double-tap the green</b> to read it: chevrons point downhill (one is gentle, two moderate, three steep) over contour lines that bunch up where it's steeper. Double-tap again to go back. After the hole, your card maps each putt: where you aimed and where it rolled. When putting, the arrows aim your line in cups.</p></div>
-      <div class="help-sec"><h3>Weekends</h3><p class="body">Saturday and Sunday are a three-hole loop. Play them in order; your score is total strokes against par 9, then your average grade across all three.</p></div>
+      <div class="help-sec"><h3>Weekends</h3><p class="body">Saturday and Sunday are a three-hole loop. Play them in order; your score is total strokes against par 9, then your grade for all three.</p></div>
       <div class="help-sec"><h3>Leagues</h3><p class="body">Start a private league from the scorecard or settings, then send friends the invite. Everyone in it gets their own leaderboard for the day and the week.</p></div>
       <div class="help-sec"><h3>The week</h3><p class="body">Holes get harder through the week. Monday is the easiest, with a big green and soft slopes. Each day the hole gets longer, the green smaller and the slopes and wind stronger, up to Friday, the toughest. The weekend eases off. Today's difficulty shows under the logo.</p></div>
       <div class="help-sec"><h3>Power</h3><p class="body"><b>100%</b> is a full swing with the club or shot shown. A meter on the side away from your swiping thumb fills as you swing. In your first few rounds and in practice, a <b>Pin</b> mark shows the power that reaches the flag with no wind.</p></div>
@@ -2138,10 +2138,17 @@ function gradeShot(o){   // o: {mode, fromLie, fromD, endLie, endD, holed, wet, 
   }
   if (o.holed) return 100;
   if (o.wet) return 5;
-  const pen = {green:0, fringe:4, fairway:12, rough:25, sand:35, deep:50}[o.endLie];
-  const rel = (o.endD*3 + (pen === undefined ? 30 : pen))*clamp(Math.pow(150/Math.max(1, o.fromD), 0.6), 0.75, 2.5);
-  return Math.round(clamp(interp(G_PROX, rel), 0, 100));
+  const pen = {green:0, fringe:4, fairway:12, rough:25, sand:35, deep:50}[o.endLie], left = o.endD*3 + (pen === undefined ? 30 : pen);
+  // chips, pitches and bunker shots: leaving the usual distance for that lie and length grades 60, like a 30 ft tee shot
+  if (o.mode === 'short'){ const yd = o.fromD, ex = SHORT_EXP[o.fromLie] || SHORT_EXP.fairway; return Math.round(clamp(interp(G_PROX, left*30/(ex[0] + ex[1]*yd)), 0, 100)); }
+  return Math.round(clamp(interp(G_PROX, left*clamp(Math.pow(150/Math.max(1, o.fromD), 0.6), 0.75, 2.5)), 0, 100));
 }
+// usual leave (ft) for a short shot: a + b × yards
+const SHORT_EXP = {fringe:[4, 0.25], fairway:[4, 0.25], rough:[6, 0.3], sand:[8, 0.3], deep:[10, 0.4]};
+// The hole's grade: every shot gives up points from 100 (gimmes give up none), and the total lost is spread over two shots.
+// So extra strokes can only lower it, and a two-shot hole grades the same as its shots' average.
+// Below 20 it tails off gently instead of hitting zero, so a double bogey still beats a triple.
+const holeGrade = gs => { const L = gs.reduce((a, g) => a + (100 - g), 0); return +clamp(L <= 160 ? 100 - L/2 : 20*Math.exp(-(L - 160)/120), 0, 100).toFixed(2); };
 
 // ---------- state ----------
 let rangeMode = false, rangeHist = [], lastTrace = null;
@@ -2663,12 +2670,10 @@ $('backBtn').addEventListener('click', () => { $('shotCard').hidden = true; if (
 const WORDS = {1:'Ace', 2:'Birdie', 3:'Par', 4:'Bogey', 5:'Double bogey', 6:'Triple bogey'};
 function scoreOf(r){
   if (r.loop){
-    const per = r.holes.map(h => scoreOf(h)), strokes = per.reduce((a, p) => a + p.strokes, 0); let gs = 0, gn = 0;
-    r.holes.forEach(h => h.shots.forEach(s => { const g = shotGrade(s); if (g !== null){ gs += g; gn++; } }));
-    const tp = strokes - 9; return {strokes, word:`${tp === 0 ? 'E' : tp > 0 ? '+' + tp : '-' + (-tp)} (${strokes})`, avg:+(gn ? gs/gn : 0).toFixed(2), per};
+    const per = r.holes.map(h => scoreOf(h)), strokes = per.reduce((a, p) => a + p.strokes, 0);
+    const tp = strokes - 9; return {strokes, word:`${tp === 0 ? 'E' : tp > 0 ? '+' + tp : '-' + (-tp)} (${strokes})`, avg:+(per.reduce((a, p) => a + p.avg, 0)/3).toFixed(2), per};
   }
-  const g = r.shots.map(shotGrade).filter(x => x !== null);
-  const avg = g.length ? g.reduce((a, b) => a + b, 0)/g.length : 0;
+  const avg = holeGrade(r.shots.map(shotGrade).filter(x => x !== null));
   return {strokes: r.pickedUp ? 7 : r.strokes, word: r.pickedUp ? 'Picked up' : (WORDS[r.strokes] || `${r.strokes} strokes`), avg:+avg.toFixed(2)};
 }
 // the weekend loop's three holes as one round (null until all three are finished)
@@ -2734,8 +2739,8 @@ const BADGES = [
   {id:'sandy', ic:'🏝️', name:'Sand save', desc:'Up and down from a bunker', tier:'rare', t:c => c.sandSave},
   {id:'chipin', ic:'🪄', name:'Chip-in', desc:'Hole out from off the green', tier:'rare', t:c => c.chipIn},
   {id:'calm', ic:'🍃', name:'Still air', desc:'Play a hole with no wind', tier:'rare', t:c => WIND.mph === 0},
-  {id:'pb', ic:'📈', name:'Personal best', desc:'Beat your best-ever average shot grade', tier:'rare', t:c => !!c.pb},
-  {id:'form', ic:'⚡', name:'In form', desc:'Your best shot grade of your last 10 rounds', tier:'uncommon', t:c => !!c.form},
+  {id:'pb', ic:'📈', name:'Personal best', desc:'Beat your best-ever round grade', tier:'rare', t:c => !!c.pb},
+  {id:'form', ic:'⚡', name:'In form', desc:'Your best round grade of your last 10 rounds', tier:'uncommon', t:c => !!c.form},
   {id:'redeem', ic:'🔁', name:'Redemption', desc:'Find the water and still make par', tier:'rare', t:c => c.wet >= 1 && c.holed && c.strokes <= 3},
   {id:'fish', ic:'🐟', name:'Fish food', desc:'Find the water twice', tier:'rare', t:c => c.wet >= 2},
   {id:'links', ic:'🌬️', name:'Links golf', desc:'Punch onto the green, then par or better', tier:'rare', t:c => c.tee.type === 'punch' && c.gir && c.holed && c.strokes <= 3},
@@ -2914,7 +2919,7 @@ function showSummary(){
   $('sumSyn').textContent = synopsis(R0);
   { const t = todayPB, isNew = !!(t && t.state === 'new'), near = !!(t && !isNew && t.state !== 'first' && t.rank <= 3 && t.of >= 4);
     $('sumPB').hidden = !(isNew || near); $('sumPB').classList.toggle('tie', near);
-    const fmt = e => `${e.sc.avg.toFixed(1)} avg grade · ${e.loop ? 'weekend loop ' + toParWord(e.toPar) : e.sc.word.toLowerCase()} on ${dayLabel(e.day)}`;
+    const fmt = e => `${e.sc.avg.toFixed(1)} grade · ${e.loop ? 'weekend loop ' + toParWord(e.toPar) : e.sc.word.toLowerCase()} on ${dayLabel(e.day)}`;
     if (isNew){ $('sumPBHead').textContent = 'New personal best'; $('sumPBSub').textContent = `Old best: ${fmt(t.prev)}`; }
     else if (near){ $('sumPBHead').textContent = `Your ${ordinal(t.rank)}-best round of ${t.of}`; $('sumPBSub').textContent = `Best ever: ${fmt(t.prev)}`; } }
   const card = $('scorecard'); card.innerHTML = ''; let lastHole = -1;
@@ -2966,7 +2971,7 @@ function showLoopCard(){
   const c = roundCtx(round), sc = scoreOf(round), ev = evaluateDay(c);
   $('loopLabel').textContent = `Weekend loop · Hole ${HOLE_SUB + 1} of 3`;
   $('loopTitle').textContent = holeName;
-  $('loopResult').textContent = `${sc.word} · ${round.pickedUp ? 'picked up' : round.strokes + ' stroke' + (round.strokes === 1 ? '' : 's')} · ${Math.round(sc.avg)} avg grade`;
+  $('loopResult').textContent = `${sc.word} · ${round.pickedUp ? 'picked up' : round.strokes + ' stroke' + (round.strokes === 1 ? '' : 's')} · ${Math.round(sc.avg)} grade`;
   const list = $('loopList'); list.innerHTML = '';
   for (let k=0;k<3;k++){
     const r = k === HOLE_SUB ? round : LS.get(loopKey(k), null), d = document.createElement('div'); d.className = 'b-row' + (k === HOLE_SUB ? ' me' : '');
@@ -3123,7 +3128,7 @@ function bestCard(e, tag, mine){
   const t = document.createElement('b'); t.textContent = e.name; cap.append(l, t); pic.appendChild(cap);
   const nw = document.createElement('span'); nw.className = 'now pb'; nw.textContent = tag; pic.appendChild(nw);
   const info = document.createElement('div'); info.className = 'info'; const a1 = document.createElement('span'); a1.textContent = e.loop ? `Par 9 · ${e.sc.strokes} strokes` : `Par 3 · ${e.sc.strokes} stroke${e.sc.strokes === 1 ? '' : 's'}`;
-  const a2 = document.createElement('span'); a2.className = 'res'; a2.textContent = resWord(e); const g = document.createElement('small'); g.textContent = `${Math.round(e.sc.avg)} avg`; a2.appendChild(g); info.append(a1, a2);
+  const a2 = document.createElement('span'); a2.className = 'res'; a2.textContent = resWord(e); const g = document.createElement('small'); g.textContent = `${Math.round(e.sc.avg)} grade`; a2.appendChild(g); info.append(a1, a2);
   const syn = document.createElement('div'); syn.className = 'syn-l'; syn.textContent = synopsis(e.r);
   b.append(pic, info, syn);
   if (mine && recentKeys(todayKey).includes(e.day)) b.onclick = () => goHash('d' + e.day); else b.style.cursor = 'default';
@@ -3165,7 +3170,7 @@ function renderProfile(hist, who){
     const pt = document.createElement('div'); pt.className = 'pt'; const img = document.createElement('img'); img.alt = ''; pt.appendChild(img);
     const pm = document.createElement('div'); pm.className = 'pm'; const l = document.createElement('div'); l.className = 'label'; l.textContent = `${dayLabel(e.day)} · No. ${e.n}`;
     const nm = document.createElement('b'); nm.textContent = e.name; const sy = document.createElement('span'); sy.textContent = synopsis(e.r); pm.append(l, nm, sy);
-    const pr = document.createElement('div'); pr.className = 'pr'; const w = document.createElement('b'); w.textContent = resWord(e); const g = document.createElement('span'); g.textContent = `${Math.round(e.sc.avg)} avg`; pr.append(w, g);
+    const pr = document.createElement('div'); pr.className = 'pr'; const w = document.createElement('b'); w.textContent = resWord(e); const g = document.createElement('span'); g.textContent = `${Math.round(e.sc.avg)} grade`; pr.append(w, g);
     if (pbState(e, hist).state === 'new'){ const i = document.createElement('i'); i.textContent = 'PB'; pr.appendChild(i); }
     row.append(pt, pm, pr); list.appendChild(row); profThumb(img, e);
   });
@@ -3867,7 +3872,7 @@ function frame(now){
 // ---------- simulated field ----------
 // A seeded set of computer-played rounds on this exact hole: real ball physics off the tee, a statistical short game
 // and putting model after that. Same for every player today. Always labeled as simulated.
-const FIELD_N = 600, FIELD_VER = 3;
+const FIELD_N = 600, FIELD_VER = 4;
 let field = null, fieldBusy = false, shareBase = '', lastEval = null, todayPB = null;
 // ---------- share image: a 9:16 scorecard that fits one phone screen ----------
 let shareFile = null, shareURL = null, shareVer = 0, shareTimer = 0;
@@ -3922,7 +3927,7 @@ async function buildShareImage(){
   g.lineWidth = 16; g.strokeStyle = 'rgba(244,238,226,.12)'; g.beginPath(); g.arc(rx, ry, rr, 0, 7); g.stroke();
   g.strokeStyle = gc(avg); g.lineCap = 'round'; g.beginPath(); g.arc(rx, ry, rr, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(avg/100, 0.01, 1)); g.stroke();
   g.fillStyle = INK; g.textAlign = 'center'; font(700, 84); g.fillText(String(avg), rx, ry + 30);
-  font(600, 22); g.fillStyle = SOFT; g.fillText('AVG SHOT GRADE', rx, ry + rr + 52);
+  font(600, 22); g.fillStyle = SOFT; g.fillText('GRADE', rx, ry + rr + 52);
   // shots
   g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1176, SW - 128, 2);
   if (L3){
@@ -4008,7 +4013,7 @@ function botRound(r, skill){
   const grades = []; let strokes = 1, lie, d;
   // the bots only track distance after the tee shot; put them on the line back toward the tee for slope reads
   const tx = -PIN.x, tz = -PIN.z, tl = Math.hypot(tx, tz) || 1, at = dd => [PIN.x + tx/tl*dd, PIN.z + tz/tl*dd];
-  if (res.holed){ grades.push(100); return {strokes:1, avg:100}; }
+  if (res.holed) return {strokes:1, avg:100};
   if (res.wet){ strokes++; const dr = findDrop(res.x, res.z); lie = surfaceAt(dr.x, dr.z); d = dPin(dr.x, dr.z); grades.push(5); }
   else { lie = surfaceAt(res.x, res.z); d = dPin(res.x, res.z); grades.push(gradeShot({mode:'full', fromLie:'tee', fromD:d0, endLie:lie, endD:d, holed:false, wet:false})); }
   let holed = false;
@@ -4031,8 +4036,7 @@ function botRound(r, skill){
       grades.push(gradeShot({mode: putt ? 'putt' : 'short', fromLie:lie, fromD:d, endLie:nLie, endD:nd, holed:false, wet:false, bx:px, bz:pz})); }
     lie = nLie; d = nd;
   }
-  const avg = grades.reduce((a, b) => a + b, 0)/grades.length;
-  return {strokes: holed ? strokes : 7, avg};
+  return {strokes: holed ? strokes : 7, avg:holeGrade(grades)};
 }
 function runField(){
   if (field || fieldBusy) return;
@@ -4102,7 +4106,7 @@ function fillAwards(el, bd){
   if (bd.closest) award('Closest to the pin', bd.closest.tag, bd.closest.ft === 0 ? 'Ace' : fmtDist(bd.closest.ft/3));
   if (bd.longest) award('Longest putt made', bd.longest.tag, fmtDist(bd.longest.ft/3));
   if (bd.updown) award('Best up and down', bd.updown.tag, `from ${fmtDist(bd.updown.ft/3)}`);
-  if (bd.striker) award('Best ball striker', bd.striker.tag, `${Number(bd.striker.avg).toFixed(1)} avg grade`);
+  if (bd.striker) award('Best ball striker', bd.striker.tag, `${Number(bd.striker.avg).toFixed(1)} grade`);
 }
 async function showYesterday(force){
   if (!online() || preview) return false;
@@ -4118,7 +4122,7 @@ async function showYesterday(force){
   if (bd && bd.total){
     const w = (bd.top || [])[0];
     $('ydayWinner').hidden = !w;
-    if (w){ $('ydayWinTag').textContent = w.tag; $('ydayWinScore').textContent = `${w.word} · ${Number(w.avg).toFixed(1)} avg grade`; }
+    if (w){ $('ydayWinTag').textContent = w.tag; $('ydayWinScore').textContent = `${w.word} · ${Number(w.avg).toFixed(1)} grade`; }
     fillAwards($('ydayAwards'), bd);
     const me = bd.me;
     $('ydayMe').textContent = me && me.flagged ? "Your round didn't pass the shot replay check, so it isn't ranked." : me && me.rank ? `You finished #${me.rank} of ${bd.total}.` : `${bd.total} player${bd.total === 1 ? '' : 's'}. You didn't play this one.`;
@@ -4178,7 +4182,7 @@ async function openBoard(scope){
     $('boardLabel').textContent = "Today's leaderboard"; $('boardTitle').textContent = `${board.total} player${board.total === 1 ? '' : 's'} · ${LOOP ? 'Weekend loop' : holeName}`;
     fillAwards($('boardAwards'), board);
     (board.top || []).forEach(row => boardRow(list, [['b-rank', `${row.rank}`], ['b-tag', row.tag], ['b-word', row.word], ['b-avg', Number(row.avg).toFixed(1)]], row.me));
-    $('boardNote').textContent = board.me && board.me.rank > (board.top || []).length ? `You're #${board.me.rank}.` : 'Ranked by strokes, then average shot grade.';
+    $('boardNote').textContent = board.me && board.me.rank > (board.top || []).length ? `You're #${board.me.rank}.` : 'Ranked by strokes, then grade.';
     return;
   }
   let lb = null; try { lb = await rpc('league_board', {p_league:scope, p_player:pid, p_day:todayKey}); } catch(e){}
@@ -4335,7 +4339,7 @@ function replay(shots){
   if (!done) return bad('The round never finished.');
   replay.lastRecs = recs;   // read only by the regrading script
   const grades = recs.filter(r => r.grade !== null).map(r => r.grade);
-  const avg = grades.length ? grades.reduce((a, c) => a + c, 0)/grades.length : 0;
+  const avg = holeGrade(grades);
   const WORDS = {1:'Ace', 2:'Birdie', 3:'Par', 4:'Bogey', 5:'Double bogey', 6:'Triple bogey'};
   const tee = recs[0], putts = recs.filter(r => r.mode === 'putt'), made = putts.filter(r => r.holed && !r.gimme);
   let updown = null;
@@ -4355,7 +4359,7 @@ function replayDay(body, makeHole){
   for (let k=0;k<3;k++){
     const h = body.holes[k]; if (!h || h.sub !== k) return {ok:false, reason:'Holes out of order.'};
     const r = makeHole(n + k*100000).replay(h.shots); if (!r.ok) return {ok:false, reason:`Hole ${k + 1}: ${r.reason}`};
-    strokes += r.strokes; gs += r.avg*(r.graded || 0); gn += r.graded || 0; if (!flag && r.flag) flag = `Hole ${k + 1}: ${r.flag}`;
+    strokes += r.strokes; gs += r.avg; gn += 1; if (!flag && r.flag) flag = `Hole ${k + 1}: ${r.flag}`;
     if (r.teeFt !== null) teeFt = teeFt === null ? r.teeFt : Math.min(teeFt, r.teeFt);
     putts += r.putts; if (r.longPutt !== null) longPutt = Math.max(longPutt || 0, r.longPutt); if (r.updown !== null) updown = Math.max(updown || 0, r.updown);
   }
