@@ -274,7 +274,7 @@ a.btn{text-align:center;text-decoration:none}
 .field-links{display:flex;gap:18px;flex-wrap:wrap}
 .board-tabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -4px;padding:0 4px}
 .board-tabs::-webkit-scrollbar{display:none}
-.board-tabs button{flex:none;font:600 .8rem var(--sans);color:var(--ink);background:var(--well);border:0;border-radius:999px;padding:8px 13px;cursor:pointer;white-space:nowrap}
+.board-tabs button{flex:none;display:inline-flex;align-items:center;justify-content:center;font:600 .8rem/1 var(--sans);color:var(--ink);background:var(--well);border:0;border-radius:999px;padding:0 14px;min-height:34px;cursor:pointer;white-space:nowrap}
 .board-tabs button[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
 .lg-list{display:flex;flex-direction:column;gap:8px}
 .lg-item{display:flex;flex-direction:column;gap:8px;padding:13px 14px;border-radius:14px;background:var(--well)}
@@ -288,9 +288,13 @@ a.btn{text-align:center;text-decoration:none}
 .more-wide{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;border-radius:16px;padding:14px;background:var(--well);color:var(--ink);font:inherit;cursor:pointer;text-align:left}
 .more-wide b{font-size:.95rem;font-weight:600}.more-wide span{font-size:.76rem;color:var(--soft)}
 .awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.award{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:14px;background:var(--well);min-width:0}
-.award b{font-size:.9rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.award span{font-size:.78rem;color:var(--soft);font-variant-numeric:tabular-nums}
+.award{display:flex;flex-direction:column;align-items:center;gap:5px;padding:13px 10px;border-radius:14px;background:var(--well);min-width:0;text-align:center}
+.award .label{line-height:1.45}
+.aw-v{font-size:1.75rem;font-weight:700;font-stretch:78%;font-variant-numeric:tabular-nums;line-height:1;color:#e7c068;margin-top:3px}
+.award b{font-size:.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.award span{font-size:.72rem;color:var(--soft)}
+.award.none .aw-v{color:var(--faint)}
+.award.none b{font-weight:500;color:var(--soft)}
 .board{display:flex;flex-direction:column}
 .b-row{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto 3.2em;gap:8px;align-items:center;padding:9px 6px;border-top:1px solid var(--edge);font-variant-numeric:tabular-nums}
 .b-row:first-child{border-top:0}
@@ -4163,11 +4167,18 @@ async function loadYesterday(){
 }
 function fillAwards(el, bd){
   el.innerHTML = '';
-  const award = (label, who, val) => { const d = document.createElement('div'); d.className = 'award'; const l = document.createElement('div'); l.className = 'label'; l.textContent = label; const b = document.createElement('b'); b.textContent = who; const v = document.createElement('span'); v.textContent = val; d.append(l, b, v); el.appendChild(d); };
-  if (bd.closest) award('Closest to the pin', bd.closest.tag, bd.closest.ft === 0 ? 'Ace' : fmtDist(bd.closest.ft/3));
-  if (bd.longest) award('Longest putt made', bd.longest.tag, fmtDist(bd.longest.ft/3));
-  if (bd.updown) award('Best up and down', bd.updown.tag, `from ${fmtDist(bd.updown.ft/3)}`);
-  if (bd.striker) award('Best ball striker', bd.striker.tag, `${Number(bd.striker.avg).toFixed(1)} grade`);
+  const award = (l1, l2, who, val, sub) => { const d = document.createElement('div'); d.className = 'award' + (who ? '' : ' none');
+    const l = document.createElement('div'); l.className = 'label'; l.append(l1, document.createElement('br'), l2);
+    const v = document.createElement('div'); v.className = 'aw-v'; v.textContent = who ? val : '—';
+    const t = document.createElement('b'); t.textContent = who || 'Nobody yet'; d.append(l, t, v);
+    if (who && sub){ const sp = document.createElement('span'); sp.textContent = sub; d.appendChild(sp); }
+    el.appendChild(d); };
+  const c = bd.closest, lp = bd.longest, ud = bd.updown, sh = bd.shot;
+  award('Closest', 'to the pin', c && c.tag, c ? (Number(c.ft) === 0 ? 'Ace' : fmtDist(c.ft/3)) : '');
+  award('Longest', 'putt made', lp && lp.tag, lp ? fmtDist(lp.ft/3) : '');
+  award('Best', 'up & down', ud && ud.tag, ud ? fmtDist(ud.ft/3) : '');
+  const kind = !sh ? '' : Number(sh.n) === 1 ? `Tee shot · ${clubName({mode:'full', club:sh.club})}` : sh.mode === 'putt' ? 'Putt' : sh.mode === 'short' ? ((SHORT[sh.type] || {}).name || 'Short game') : clubName({mode:'full', club:sh.club});
+  award('Shot', 'of the day', sh && sh.tag, sh ? String(Math.round(sh.grade)) : '', kind);
 }
 async function showYesterday(force){
   if (!online() || preview) return false;
