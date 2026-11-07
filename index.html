@@ -307,6 +307,7 @@ a.btn{text-align:center;text-decoration:none}
 .pr-stats b{font-size:.88rem;font-weight:600}
 .pr-stats .pr-brk{color:#f2a33a}
 .pr-mk{color:#b9d8f0}
+#prNote,.pr-mk,.streak,#countdown{text-align:center;text-wrap:balance}
 .sc-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--edge)}
 .sc-row:first-child{border-top:0}
 .sc-row i{width:9px;height:9px;border-radius:50%}
@@ -574,7 +575,7 @@ a.btn{text-align:center;text-decoration:none}
       <div class="precap" id="sumPutts" hidden>
         <div class="pr-head"><div class="label" id="prLabel">Your putts</div><button type="button" class="pr-make" id="prMakeBtn" aria-pressed="false">Make line</button></div>
         <canvas id="prCv" role="img" aria-label="Contour map of the green with each putt drawn: a dashed line for where you aimed and how hard, a solid line for where it rolled."></canvas>
-        <div class="pr-key"><span><svg width="22" height="4" aria-hidden="true"><line x1="1" y1="2" x2="21" y2="2" stroke="#fffbe8" stroke-width="2" stroke-dasharray="4 3"/></svg>Aim + pace</span><span><svg width="22" height="4" aria-hidden="true"><line x1="1" y1="2" x2="21" y2="2" stroke="#f2a33a" stroke-width="3" stroke-linecap="round"/></svg>Where it rolled</span></div>
+        <div class="pr-key"><span><svg width="22" height="4" aria-hidden="true"><line x1="1" y1="2" x2="21" y2="2" stroke="#fffbe8" stroke-width="2" stroke-dasharray="4 3"/></svg>Aim + pace</span><span><svg width="22" height="4" aria-hidden="true"><line x1="1" y1="2" x2="21" y2="2" stroke="#f2a33a" stroke-width="3" stroke-linecap="round"/></svg>Where it rolled</span><span id="prMkKey" hidden><svg width="22" height="4" aria-hidden="true"><line x1="1" y1="2" x2="21" y2="2" stroke="#b9d8f0" stroke-width="2" stroke-dasharray="4 3"/></svg>Make line</span></div>
         <div class="board-tabs" id="prTabs"></div>
         <div class="pr-stats">
           <div><span class="label">Aimed</span><b id="prAim">—</b></div>
@@ -2967,7 +2968,7 @@ function showSummary(){
   $('vsYou').textContent = c.teeFt === null ? 'In the water' : c.teeFt === 0 ? 'In the cup' : fmtDist(c.teeFt/3);
   $('vsBucket').textContent = TOUR_BUCKET; $('vsTour').textContent = `about ${TOUR_FT} ft`;
   $('vsLadder').textContent = c.teeFt === null ? '—' : c.teeFt === 0 ? 'Beyond Tour' : ladderLabel(c.teeFt);
-  $('sumStreak').textContent = pastKey ? "A past hole. It doesn't count toward your streak." : preview ? 'Preview hole. Streaks count on the real daily.' : '';
+  $('sumStreak').textContent = pastKey ? "Replay · doesn't count toward your streak" : preview ? 'Preview hole. Streaks count on the real daily.' : '';
   const nb = (fresh || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean).sort((a,b) => TIER_RANK[a.tier] - TIER_RANK[b.tier]);
   const ub = (ev.ups || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean);
   const items = [...nb.map(b => ({b, tag:'New'})), ...ub.map(b => ({b, tag:METALS[metalIdx(b, ev.counts[b.id])]}))];
@@ -4568,7 +4569,7 @@ function puttMake(p){
   const d = Math.hypot(PIN.x - p.sx, PIN.z - p.sz), base = yawTo(p.sx, p.sz), makes = []; let best = null;
   for (let k=-40;k<=40;k++){ const r = rollTrace(p.sx, p.sz, base + Math.atan2(k*CUP, d), p.v); if (r.holed) makes.push({k, r});
     const md = Math.hypot(r.x - PIN.x, r.z - PIN.z); if (!best || md < best.md) best = {k, r, md}; }
-  if (makes.length){ const m = makes[Math.floor(makes.length/2)]; p.mk = {r:m.r, text:`At this pace, aiming ${m.k ? cupsTxt(Math.abs(m.k)) + (m.k > 0 ? ' right' : ' left') : 'straight at the cup'} would have dropped.`}; }
+  if (makes.length){ const m = makes[Math.floor(makes.length/2)]; p.mk = {r:m.r, yaw:base + Math.atan2(m.k*CUP, d), text:`At this pace, aiming ${m.k ? cupsTxt(Math.abs(m.k)) + (m.k > 0 ? ' right' : ' left') : 'straight at the cup'} would have dropped.`}; }
   else { const along = (best.r.x - PIN.x)*Math.sin(base) + (best.r.z - PIN.z)*Math.cos(base);
     p.mk = {r:null, text: along > 0 ? 'Nothing drops at this pace. It needed a softer touch.' : 'Nothing drops at this pace. It needed more speed.'}; }
   return p.mk;
@@ -4590,7 +4591,7 @@ function updatePuttRecap(){
   $('prMakeBtn').setAttribute('aria-pressed', String(recap.make));
   $('prAim').textContent = info.aim; $('prPace').textContent = info.pace; $('prBrk').textContent = info.brk; $('prRes').textContent = info.result;
   $('prNote').textContent = info.note; $('prNote').hidden = !info.note;
-  const mk = recap.make ? puttMake(p) : null; $('prMake').hidden = !mk; if (mk) $('prMake').textContent = mk.text;
+  const mk = recap.make ? puttMake(p) : null; $('prMake').hidden = !mk; if (mk) $('prMake').textContent = mk.text; $('prMkKey').hidden = !(mk && mk.r);
   drawPuttRecap();
 }
 function drawPuttRecap(){
@@ -4607,7 +4608,7 @@ function drawPuttRecap(){
   const grow = (x, z) => { const u = U(x, z); x0 = Math.min(x0, u[0]); x1 = Math.max(x1, u[0]); y0 = Math.min(y0, u[1]); y1 = Math.max(y1, u[1]); };
   grow(PIN.x, PIN.z);
   for (const p of P){ for (const q of p.pts) grow(q[0], q[1]); const L = p.pace/3; grow(p.sx + Math.sin(p.yaw)*L, p.sz + Math.cos(p.yaw)*L); }
-  if (mk && mk.r) for (const q of mk.r.pts) grow(q[0], q[1]);
+  if (mk && mk.r){ for (const q of mk.r.pts) grow(q[0], q[1]); const L = sel.pace/3; grow(sel.sx + Math.sin(mk.yaw)*L, sel.sz + Math.cos(mk.yaw)*L); }
   const span = Math.max(x1 - x0, (y1 - y0)*Wc/Hc, 7) + 3, sc = Wc/span, mx = (x0 + x1)/2, my = (y0 + y1)/2;
   const T = (x, z) => { const u = U(x, z); return [Wc/2 + (u[0] - mx)*sc, Hc/2 - (u[1] - my)*sc]; };
   const poly = pts => { c.beginPath(); pts.forEach((q, i) => { const s = T(q[0], q[1]); if (i) c.lineTo(s[0], s[1]); else c.moveTo(s[0], s[1]); }); c.closePath(); };
@@ -4628,7 +4629,12 @@ function drawPuttRecap(){
   const order = P.map((_, i) => i).filter(i => i !== recap.sel).concat([recap.sel]);
   for (const i of order){
     const p = P[i], on = i === recap.sel, al = on ? 1 : 0.35;
-    if (on && mk && mk.r){ path(mk.r.pts); c.setLineDash([1, 5]); c.lineCap = 'round'; c.strokeStyle = 'rgba(185,216,240,.95)'; c.lineWidth = 2.5; c.stroke(); c.setLineDash([]); }
+    if (on && mk && mk.r){ path(mk.r.pts); c.setLineDash([1, 5]); c.lineCap = 'round'; c.strokeStyle = 'rgba(185,216,240,.95)'; c.lineWidth = 2.5; c.stroke(); c.setLineDash([]);
+      // the aim + pace that would have dropped it
+      const L = p.pace/3, a = T(p.sx, p.sz), e = T(p.sx + Math.sin(mk.yaw)*L, p.sz + Math.cos(mk.yaw)*L);
+      c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); c.setLineDash([6, 5]); c.lineCap = 'butt'; c.strokeStyle = 'rgba(185,216,240,.95)'; c.lineWidth = 1.8; c.stroke(); c.setLineDash([]);
+      let dx = e[0] - a[0], dy = e[1] - a[1]; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+      c.beginPath(); c.moveTo(e[0] + dy*6, e[1] - dx*6); c.lineTo(e[0] - dy*6, e[1] + dx*6); c.strokeStyle = '#b9d8f0'; c.lineWidth = 2; c.stroke(); c.lineCap = 'round'; }
     // aim + pace
     const L = p.pace/3, a = T(p.sx, p.sz), e = T(p.sx + Math.sin(p.yaw)*L, p.sz + Math.cos(p.yaw)*L);
     c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(e[0], e[1]); c.setLineDash([6, 5]); c.strokeStyle = `rgba(255,251,232,${0.9*al})`; c.lineWidth = 1.6; c.stroke(); c.setLineDash([]);
