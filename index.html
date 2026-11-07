@@ -4779,7 +4779,9 @@ $('chalBtn').addEventListener('click', async () => {
   if (!chalMine) return;
   const tag = (myTag || '').slice(0, 20), base = location.origin + location.pathname.replace(/[^/]*$/, '');
   const url = `${base}challenge.html#c=${todayKey}.${chalMine.strokes}.${chalMine.grade}${tag ? '.' + encodeURIComponent(tag) : ''}`;
-  const text = `Daily Ace No. ${holeNum}: I shot ${chalArt(todayKey, chalMine.strokes)}, grade ${chalMine.grade}. Same hole for everyone. Beat me.`;
+  const loop = loopDay(holeNumFor(todayKey)), toPar = (t => t === 0 ? 'E' : t > 0 ? '+' + t : '' + t)(chalMine.strokes - 9);
+  const text = loop ? `Daily Ace · Weekend Loop: I shot ${toPar}. Average shot grade of ${chalMine.grade}. Same three holes for everyone, let's see what you've got.`
+    : `Daily Ace · ${holeName}: I shot ${chalArt(todayKey, chalMine.strokes)}. Average shot grade of ${chalMine.grade}. Same hole for everyone, let's see what you've got.`;
   try { if (navigator.share){ await navigator.share({text, url}); return; } } catch(e){ if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(`${text}\n${url}`); $('chalBtn').textContent = 'Link copied'; setTimeout(() => $('chalBtn').textContent = 'Challenge a friend', 2000); } catch(e){}
 });
