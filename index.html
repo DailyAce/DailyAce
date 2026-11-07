@@ -299,6 +299,8 @@ a.btn{text-align:center;text-decoration:none}
 .b-row{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto 3.2em;gap:8px;align-items:center;padding:9px 6px;border-top:1px solid var(--edge);font-variant-numeric:tabular-nums}
 .b-row:first-child{border-top:0}
 .b-row.me{background:rgba(231,192,104,.12);border-radius:10px}
+.b-row.gap{padding:2px 6px;color:var(--faint)}
+.b-row.gap + .b-row{border-top:0}
 .b-rank{font-weight:700;font-stretch:82%;color:var(--soft)}
 .b-tag{font-weight:600;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .b-word{font-size:.8rem;color:var(--soft)}
@@ -4254,7 +4256,10 @@ async function openBoard(scope){
     $('boardLabel').textContent = "Today's leaderboard"; $('boardTitle').textContent = `${board.total} player${board.total === 1 ? '' : 's'} · ${LOOP ? 'Weekend loop' : holeName}`;
     fillAwards($('boardAwards'), board);
     (board.top || []).forEach(row => boardRow(list, [['b-rank', `${row.rank}`], ['b-tag', row.tag], ['b-word', row.word], ['b-avg', Number(row.avg).toFixed(1)]], row.me));
-    $('boardNote').textContent = board.me && board.me.rank > (board.top || []).length ? `You're #${board.me.rank}.` : 'Ranked by strokes, then grade.';
+    const me = board.me, below = me && me.rank && !(board.top || []).some(t => t.me);
+    if (below){ boardRow(list, [['b-rank', '⋮'], ['b-tag', ''], ['b-word', ''], ['b-avg', '']]); list.lastChild.classList.add('gap');
+      boardRow(list, [['b-rank', `${me.rank}`], ['b-tag', me.tag || myTag || 'You'], ['b-word', me.word || ''], ['b-avg', me.avg == null ? '' : Number(me.avg).toFixed(1)]], true); }
+    $('boardNote').textContent = 'Ranked by strokes, then grade.';
     return;
   }
   let lb = null; try { lb = await rpc('league_board', {p_league:scope, p_player:pid, p_day:todayKey}); } catch(e){}
