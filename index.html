@@ -3921,67 +3921,93 @@ async function buildShareImage(){
   g.fillStyle = BG; g.fillRect(0, 0, SW, SH);
   // hero picture
   const HH = 880;
-  if (img){ const k = Math.max(SW/img.width, HH/img.height), iw = img.width*k, ih = img.height*k; g.drawImage(img, (SW - iw)/2, (HH - ih)/2, iw, ih); }
+  if (img){ g.save(); g.beginPath(); g.rect(0, 0, SW, HH); g.clip(); const Z = 1.22, k = Math.max(SW/img.width, HH/img.height)*Z, iw = img.width*k, ih = img.height*k, fx = SW/2, fy = HH*0.52; // zoomed toward the green
+    g.drawImage(img, fx - (fx - (SW - iw/Z)/2)*Z, fy - (fy - (HH - ih/Z)/2)*Z, iw, ih); g.restore(); }
   else { const sky = g.createLinearGradient(0, 0, 0, HH); [['#272a57',0],['#d77f7c',.45],['#3d5a3a',.62],['#1f331d',1]].forEach(([col, st]) => sky.addColorStop(st, col)); g.fillStyle = sky; g.fillRect(0, 0, SW, HH); }
   const fade = g.createLinearGradient(0, HH*0.35, 0, HH); fade.addColorStop(0, 'rgba(14,22,17,0)'); fade.addColorStop(1, BG); g.fillStyle = fade; g.fillRect(0, 0, SW, HH);
   const topShade = g.createLinearGradient(0, 0, 0, 200); topShade.addColorStop(0, 'rgba(14,22,17,.55)'); topShade.addColorStop(1, 'rgba(14,22,17,0)'); g.fillStyle = topShade; g.fillRect(0, 0, SW, 200);
-  // brand row
+  // brand row: the same flag-in-a-circle mark as the header
   g.textBaseline = 'alphabetic';
-  g.fillStyle = '#e4573f'; g.beginPath(); g.arc(82, 92, 13, 0, 7); g.fill();
-  g.fillStyle = INK; font(700, 46); g.textAlign = 'left'; g.fillText('daily ace', 108, 108);
+  { const lx = 88, ly = 92, k = 2.3; g.save(); g.translate(lx - 10*k, ly - 10*k); g.scale(k, k);
+    g.strokeStyle = INK; g.lineWidth = 1.4; g.beginPath(); g.arc(10, 10, 8.6, 0, 7); g.stroke();
+    g.lineCap = 'round'; g.beginPath(); g.moveTo(8.3, 14.6); g.lineTo(8.3, 5.2); g.stroke();
+    g.fillStyle = '#e4573f'; g.beginPath(); g.moveTo(8.9, 5.4); g.lineTo(13.9, 7.5); g.lineTo(8.9, 9.6); g.closePath(); g.fill(); g.restore(); }
+  g.fillStyle = INK; font(700, 46); g.textAlign = 'left'; g.fillText('daily ace', 126, 108);
   font(600, 32); g.textAlign = 'right'; g.fillStyle = INK;
   g.fillText(pastKey ? `${dayLabel(pastKey)} · replay` : `No. ${holeNum} · ${dayLabel(todayKey)}`, SW - 64, 104);
+  const rrect = (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); };
   // personal best ribbon
   if (todayPB && todayPB.state === 'new' && !pastKey){
-    const txt = 'NEW PERSONAL BEST'; font(700, 30); const tw = g.measureText(txt).width, px = 64, py = 150, ph = 56;
-    g.fillStyle = '#e7c068'; g.beginPath(); g.roundRect ? g.roundRect(px, py, tw + 92, ph, 28) : g.rect(px, py, tw + 92, ph); g.fill();
+    const txt = 'NEW PERSONAL BEST'; font(700, 30); const tw = g.measureText(txt).width, pw = tw + 92, px = (SW - pw)/2, py = 150, ph = 56;
+    g.fillStyle = '#e7c068'; rrect(px, py, pw, ph, 28); g.fill();
     g.fillStyle = '#1b1b14'; g.textAlign = 'left'; g.fillText('📈', px + 20, py + 39); g.fillText(txt, px + 66, py + 39);
   }
-  // hole name
-  g.textAlign = 'left'; g.fillStyle = INK; const ttl = L3 ? 'Weekend loop' : holeName; fit(ttl, 700, 104, SW - 128); g.fillText(ttl, 64, 770);
-  font(500, 36); g.fillStyle = SOFT; g.fillText(L3 ? `3 holes · par 9${DIFF_WORD ? ' · ' + DIFF_WORD : ''}` : `Par 3 · ${YARDS} yds · ${pinDesc()}${DIFF_WORD ? ' · ' + DIFF_WORD : ''}`, 64, 828);
-  // score
-  g.fillStyle = INK; fit(sc.word, 700, 132, 640); g.fillText(sc.word, 64, 1010);
-  font(500, 38); g.fillStyle = SOFT; g.fillText(L3 ? `${sc.strokes} strokes` : r0.pickedUp ? `Picked up after ${MAX_STROKES}` : `${r0.strokes} stroke${r0.strokes === 1 ? '' : 's'}`, 66, 1068);
-  { const syn = synopsis(r0); if (syn){ // up to two lines, left of the grade ring
-      g.fillStyle = INK; g.textAlign = 'left'; font(500, 31); const maxW = 640, words = syn.split(' '), lines = ['']; 
-      for (const w of words){ const tryL = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + w : w; if (g.measureText(tryL).width > maxW && lines[lines.length - 1]) lines.push(w); else lines[lines.length - 1] = tryL; }
-      if (lines.length > 2){ lines[1] = lines.slice(1).join(' '); lines.length = 2; while (g.measureText(lines[1] + '…').width > maxW && lines[1].length) lines[1] = lines[1].slice(0, -1); lines[1] += '…'; }
-      lines.forEach((l, k) => g.fillText(l, 64, 1118 + k*38)); } }
-  const avg = Math.round(sc.avg), rx = SW - 170, ry = 982, rr = 96;
-  g.lineWidth = 16; g.strokeStyle = 'rgba(244,238,226,.12)'; g.beginPath(); g.arc(rx, ry, rr, 0, 7); g.stroke();
-  g.strokeStyle = gc(avg); g.lineCap = 'round'; g.beginPath(); g.arc(rx, ry, rr, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(avg/100, 0.01, 1)); g.stroke();
-  g.fillStyle = INK; g.textAlign = 'center'; font(700, 84); g.fillText(String(avg), rx, ry + 30);
-  font(600, 22); g.fillStyle = SOFT; g.fillText('GRADE', rx, ry + rr + 52);
-  // shots
-  g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1176, SW - 128, 2);
-  if (L3){
-    sc.per.forEach((p2, k) => { const y = 1196 + k*148, col = gc(Math.round(p2.avg));
-      g.fillStyle = col; g.beginPath(); g.arc(80, y + 50, 10, 0, 7); g.fill();
-      g.textAlign = 'left'; g.fillStyle = INK; font(600, 40); g.fillText(`Hole ${k + 1} · ${holeNameFor(holeNum, k)}`, 112, y + 62);
-      g.fillStyle = SOFT; font(500, 32); g.fillText(`${p2.word} · ${p2.strokes} stroke${p2.strokes === 1 ? '' : 's'}`, 112, y + 106);
-      g.textAlign = 'right'; g.fillStyle = col; font(700, 54); g.fillText(String(Math.round(p2.avg)), SW - 64, y + 70); });
-  }
-  const shots = L3 ? [] : r0.shots, room = 440, rowH = Math.min(112, room/Math.max(1, shots.length)), top = 1200 + (room - rowH*shots.length)/2;
-  shots.forEach((s2, i) => {
-    const y = top + i*rowH, gr = shotGrade(s2), col = s2.wet ? '#8ec4e8' : gc(gr);
-    g.fillStyle = col; g.beginPath(); g.arc(80, y + rowH*0.42, 10, 0, 7); g.fill();
-    g.textAlign = 'left'; g.fillStyle = INK; font(600, Math.min(38, rowH*0.38));
-    g.fillText(s2.mode === 'full' ? `${shotName(s2)} · ${clubName(s2)}` : shotName(s2), 112, y + rowH*0.42 + 12);
+  // hole name, centered
+  g.textAlign = 'center'; g.fillStyle = INK; const ttl = L3 ? 'Weekend loop' : holeName; fit(ttl, 700, 104, SW - 128); g.fillText(ttl, SW/2, 760);
+  font(500, 36); g.fillStyle = SOFT; const stl = L3 ? `3 holes · par 9${DIFF_WORD ? ' · ' + DIFF_WORD : ''}` : `Par 3 · ${YARDS} yds · ${pinDesc()}${DIFF_WORD ? ' · ' + DIFF_WORD : ''}`; fit(stl, 500, 36, SW - 128); g.fillText(stl, SW/2, 818);
+  // score: strokes | grade, two equal columns, each centered
+  const LX = SW/4, RX = SW*3/4, ry = 978, rr = 92;
+  g.fillStyle = 'rgba(244,238,226,.14)'; g.fillRect(SW/2 - 1, 885, 2, 210);
+  const nStr = L3 ? String(sc.strokes) : r0.pickedUp ? `${MAX_STROKES}+` : String(r0.strokes);
+  g.textAlign = 'center'; g.fillStyle = INK; font(700, 200); g.fillText(nStr, LX, ry + 72);
+  const wStr = (r0.pickedUp && !L3 ? 'Picked up' : sc.word).toUpperCase(); g.fillStyle = INK; fit(wStr, 600, 30, SW/2 - 80);
+  if (g.letterSpacing !== undefined) g.letterSpacing = '5px'; g.fillText(wStr, LX, 1112);
+  const avg = Math.round(sc.avg);
+  g.lineWidth = 16; g.strokeStyle = 'rgba(244,238,226,.12)'; g.beginPath(); g.arc(RX, ry, rr, 0, 7); g.stroke();
+  g.strokeStyle = gc(avg); g.lineCap = 'round'; g.beginPath(); g.arc(RX, ry, rr, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(avg/100, 0.01, 1)); g.stroke();
+  if (g.letterSpacing !== undefined) g.letterSpacing = '0px';
+  g.fillStyle = INK; font(700, 92); g.fillText(String(avg), RX, ry + 33);
+  font(600, 30); g.fillStyle = SOFT; if (g.letterSpacing !== undefined) g.letterSpacing = '5px'; g.fillText('GRADE', RX, 1112); if (g.letterSpacing !== undefined) g.letterSpacing = '0px';
+  // shots, with 90+ shots lit up
+  g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1146, SW - 128, 2);
+  const rowsN = L3 ? sc.per.length : r0.shots.length, room = 376, rowH = Math.min(112, room/Math.max(1, rowsN)), top = 1162 + (room - rowH*rowsN)/2;
+  const row = (i, col, name, sub, val, hot) => {
+    const y = top + i*rowH, mid = y + rowH*0.42;
+    if (hot){ const hg = g.createLinearGradient(48, 0, SW - 48, 0); hg.addColorStop(0, 'rgba(169,214,142,.24)'); hg.addColorStop(1, 'rgba(169,214,142,.06)');
+      rrect(44, y + 2, SW - 88, rowH - 4, 24); g.fillStyle = hg; g.fill(); g.strokeStyle = 'rgba(169,214,142,.55)'; g.lineWidth = 2.5; g.stroke();
+      g.save(); g.shadowColor = 'rgba(169,214,142,.9)'; g.shadowBlur = 18; g.fillStyle = col; g.beginPath(); g.arc(80, mid, 11, 0, 7); g.fill(); g.restore(); }
+    else { g.fillStyle = col; g.beginPath(); g.arc(80, mid, 10, 0, 7); g.fill(); }
+    g.textAlign = 'left'; g.fillStyle = INK; font(hot ? 800 : 600, Math.min(38, rowH*0.38)); g.fillText(name, 112, mid + 12);
+    g.fillStyle = hot ? 'rgba(244,238,226,.82)' : SOFT; font(500, Math.min(30, rowH*0.3)); g.fillText(sub, 112, mid + 12 + Math.min(40, rowH*0.4));
+    g.textAlign = 'right'; g.fillStyle = col; font(hot ? 800 : 700, Math.min(hot ? 62 : 54, rowH*(hot ? 0.56 : 0.5))); g.fillText(val, SW - 72, mid + 18);
+  };
+  if (L3) sc.per.forEach((p2, k) => { const v = Math.round(p2.avg); row(k, gc(v), `Hole ${k + 1} · ${holeNameFor(holeNum, k)}`, `${p2.word} · ${p2.strokes} stroke${p2.strokes === 1 ? '' : 's'}`, String(v), v >= 90); });
+  else r0.shots.forEach((s2, i) => { const gr = shotGrade(s2), col = s2.wet ? '#8ec4e8' : gc(gr);
     const to = s2.gimme ? 'conceded' : s2.holed ? 'in the cup' : s2.wet ? 'water, +1' : `${fmtShort(s2.endD, s2.endLie)}, ${LIE_NAME[s2.endLie].toLowerCase()}`;
-    g.fillStyle = SOFT; font(500, Math.min(30, rowH*0.3)); g.fillText(`${fmtShort(s2.fromD, s2.fromLie)} → ${to}`, 112, y + rowH*0.42 + 12 + Math.min(40, rowH*0.4));
-    g.textAlign = 'right'; g.fillStyle = col; font(700, Math.min(54, rowH*0.5)); g.fillText(gr === null ? '—' : String(gr), SW - 64, y + rowH*0.42 + 18);
-  });
-  // field, streak, badges
-  g.fillStyle = 'rgba(244,238,226,.12)'; g.fillRect(64, 1660, SW - 128, 2);
-  g.textAlign = 'left'; const fl = pastKey ? "Past hole · doesn't count" : fieldLine();
-  g.fillStyle = INK; font(700, 44); if (fl) g.fillText(fl, 64, 1730);
-  const ev = lastEval || {fresh:[], ups:[]}, bits = [];
-  if (!preview && !pastKey){ const days = LS.get('dailyhole:days', []); bits.push(`🔥 ${Math.max(1, streakFrom(days))}-day streak`); }
-  const bd = [...(ev.fresh || []), ...(ev.ups || [])].map(id => BADGES.find(b => b.id === id)).filter(Boolean).slice(0, 4);
-  if (bd.length) bits.push(bd.map(b => `${b.ic} ${b.name}`).join('  '));
-  g.fillStyle = SOFT; fit(bits.join('   ·   '), 500, 34, SW - 128); g.fillText(bits.join('   ·   '), 64, 1790);
-  g.fillStyle = '#e7c068'; font(600, 34); g.fillText('Play today’s hole · ' + (location.host + location.pathname).replace(/\/(index\.html)?$/, ''), 64, 1868);
+    row(i, col, s2.mode === 'full' ? `${shotName(s2)} · ${clubName(s2)}` : shotName(s2), `${fmtShort(s2.fromD, s2.fromLie)} → ${to}`, gr === null ? '—' : String(gr), (gr ?? 0) >= 90); });
+  // field and streak, side by side
+  const tiles = [];
+  { let ft = null;
+    if (pastKey) ft = {big:'Replay', sub:"doesn't count"};
+    else if (board && board.total > 0 && !preview && board.me && board.me.rank && !board.me.flagged) ft = {big:`#${board.me.rank}`, sub:`of ${board.total} today`};
+    else if (!LOOP){ const pct = fieldPct(scoreOf(mainRound)); if (pct !== null) ft = {big:`Top ${Math.max(1, 100 - pct)}%`, sub:`vs ${FIELD_N} sim rounds`}; }
+    if (ft) tiles.push({...ft, gold:true});
+    const days = LS.get('dailyhole:days', []);
+    const sn = preview ? 0 : pastKey ? streakFrom(days.concat(myHistory().map(e => e.day)), pastKey) : Math.max(1, streakFrom(days));
+    if (sn) tiles.push({big:`🔥 ${sn}`, sub:sn === 1 ? 'day streak' : `day streak${pastKey ? ' then' : ''}`}); }
+  const TY = 1562, TH = 168, TG = 24, TW = tiles.length > 1 ? (SW - 128 - TG)/2 : SW - 128;
+  tiles.forEach((t, i) => { const x = 64 + i*(TW + TG), cxT = x + TW/2;
+    rrect(x, TY, TW, TH, 28); g.fillStyle = t.gold ? 'rgba(231,192,104,.12)' : 'rgba(244,238,226,.06)'; g.fill();
+    g.strokeStyle = t.gold ? 'rgba(231,192,104,.75)' : 'rgba(244,238,226,.16)'; g.lineWidth = 2.5; g.stroke();
+    g.textAlign = 'center'; g.fillStyle = t.gold ? '#e7c068' : INK; fit(t.big, 700, 80, TW - 40); g.fillText(t.big, cxT, TY + 96);
+    g.fillStyle = SOFT; font(500, 30); g.fillText(t.sub, cxT, TY + 142); });
+  // badges on their own line: new ones plain, leveled-up ones with their new metal
+  const ev = lastEval || {fresh:[], ups:[], counts:{}};
+  if (!pastKey){
+    const items = [...(ev.fresh || []).map(id => ({b:BADGES.find(x => x.id === id)})), ...(ev.ups || []).map(id => { const b = BADGES.find(x => x.id === id); return {b, up:b ? metalIdx(b, (ev.counts || {})[id]) : -1}; })].filter(x => x.b);
+    const shown = items.slice(0, 3), more = items.length - shown.length;
+    if (shown.length){
+      const BY = 1810, gap = 44; let px = 34;
+      const measure = sz => { let w = 0; shown.forEach((x, i) => { font(500, sz); w += g.measureText(`${x.b.ic} ${x.b.name}`).width; if (x.up !== undefined && x.up >= 0){ font(700, sz*0.62); w += 16 + g.measureText(`${METALS[x.up].toUpperCase()} ▲`).width + 28; } if (i) w += gap; }); if (more > 0){ font(500, sz); w += gap + g.measureText(`+${more}`).width; } return w; };
+      while (measure(px) > SW - 128 && px > 22) px -= 2;
+      let x = (SW - measure(px))/2; g.textAlign = 'left';
+      shown.forEach((it, i) => { if (i) x += gap; font(500, px); g.fillStyle = INK; const tx = `${it.b.ic} ${it.b.name}`; g.fillText(tx, x, BY); x += g.measureText(tx).width;
+        if (it.up !== undefined && it.up >= 0){ font(700, px*0.62); const lt = `${METALS[it.up].toUpperCase()} ▲`, lw = g.measureText(lt).width + 28; x += 16;
+          rrect(x, BY - px*0.78, lw, px*1.02, px*0.51); g.fillStyle = METAL_C[it.up]; g.fill(); g.fillStyle = '#1b1b14'; g.fillText(lt, x + 14, BY - px*0.08); x += lw; } });
+      if (more > 0){ font(500, px); g.fillStyle = SOFT; g.fillText(`+${more}`, x + gap, BY); }
+    }
+  }
+  { const ft = 'Play today’s hole · ' + (location.host + location.pathname).replace(/\/(index\.html)?$/, ''); g.textAlign = 'center'; g.fillStyle = '#e7c068'; fit(ft, 600, 34, SW - 128); g.fillText(ft, SW/2, 1880); }
   const blob = await new Promise(r => c.toBlob(r, 'image/png'));
   if (!blob || ver !== shareVer) return;
   if (shareURL) URL.revokeObjectURL(shareURL);
