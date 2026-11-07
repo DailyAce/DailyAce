@@ -104,6 +104,13 @@ button{font-family:var(--sans)}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 .btn{font-weight:600;font-size:.9rem;line-height:1;color:var(--clubhouse);background:var(--ink);border:0;border-radius:999px;padding:13px 18px;cursor:pointer;flex:1 1 auto}
 .btn.quiet{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--edge)}
+.btn.chal{background:transparent;color:var(--fair);box-shadow:inset 0 0 0 1.5px var(--fair)}
+.sum-btns .btn{flex:1 1 40%;white-space:nowrap;padding-left:10px;padding-right:10px}
+.chal-pill{pointer-events:auto;align-self:center;display:flex;align-items:center;gap:8px;max-width:calc(100% - 24px);padding:7px 7px 7px 14px;border-radius:999px;font-size:.82rem;line-height:1.25;color:var(--ink);background:rgba(8,12,10,.62);box-shadow:inset 0 0 0 1.5px var(--fair);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.chal-pill b{color:var(--fair);font-weight:600}
+.chal-pill button{flex:none;width:26px;height:26px;border:0;border-radius:50%;padding:0;display:grid;place-items:center;color:var(--ink);background:rgba(244,238,226,.12);cursor:pointer}
+.sum-chal{font-size:.9rem;font-weight:600;text-align:center;padding:9px 12px;border-radius:14px;box-shadow:inset 0 0 0 1.5px var(--fair)}
+.sum-chal span{display:block;font-weight:400;font-size:.8rem;color:var(--soft);margin-top:2px}
 .btn:focus-visible,.chip:focus-visible,.icon:focus-visible,.seg button:focus-visible,.tag:focus-visible{outline:2px solid var(--fair);outline-offset:2px}
 
 /* first-run: welcome choice + quick walkthrough */
@@ -510,6 +517,7 @@ a.btn{text-align:center;text-decoration:none}
       </div>
       <div class="balance"><button class="tag" id="psTag" hidden>Practice swing</button></div>
     </div>
+    <div class="chal-pill" id="chalPill" hidden><span id="chalTxt"></span><button id="chalX" aria-label="Hide the challenge"><svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
   </header>
 
   <div class="mid">
@@ -562,6 +570,7 @@ a.btn{text-align:center;text-decoration:none}
         <div class="sum-col"><div class="num" id="sumStrokes">—</div><div class="sum-word" id="sumWord">—</div></div>
         <div class="sum-col"><div class="num" id="sumScore">—</div><div class="sum-word">Grade</div></div>
       </div>
+      <div class="sum-chal" id="sumChal" hidden></div>
       <div class="pbline" id="sumPB" hidden><span class="pb-ic">📈</span><div><b id="sumPBHead"></b><span id="sumPBSub"></span></div></div>
       <div class="syn" id="sumSyn" hidden></div>
       <div class="body" id="sumExplain" hidden></div>
@@ -613,7 +622,7 @@ a.btn{text-align:center;text-decoration:none}
       </div>
       <div class="style" hidden><div class="label">Today you played it like a</div><div class="title" id="styleName">—</div><div class="body" id="styleWhy"></div></div>
       <div class="share" id="shareText" hidden></div>
-      <div class="btns"><button class="btn" id="againBtn" hidden>Play again</button><button class="btn" id="shareImgBtn">Share scorecard</button><button class="btn quiet" id="copyBtn" hidden>Copy result</button><button class="btn quiet" id="moreSumBtn">More golf</button><button class="btn quiet" id="profSumBtn">Profile</button></div>
+      <div class="btns sum-btns"><button class="btn" id="againBtn" hidden>Play again</button><button class="btn" id="shareImgBtn">Share scorecard</button><button class="btn chal" id="chalBtn" hidden>Challenge a friend</button><button class="btn quiet" id="copyBtn" hidden>Copy result</button><button class="btn quiet" id="moreSumBtn">More golf</button><button class="btn quiet" id="profSumBtn">Profile</button></div>
       <div class="foot" id="countdown"></div>
     </div>
 
@@ -2948,6 +2957,7 @@ function showSummary(){
   const c = L3 ? (() => { const cx = roundCtx(L3), tees = L3.holes.map(h => roundCtx(h).teeFt).filter(v => v !== null); cx.teeFt = tees.length ? Math.min(...tees) : null; cx.streak = c0.streak; return cx; })() : c0;
   if (pastKey){ const prev = LS.get('dailyhole:past:' + pastKey, null); if (!prev || better(sc, prev)) LS.set('dailyhole:past:' + pastKey, {word:sc.word, avg:sc.avg, strokes:sc.strokes}); }
   $('againBtn').hidden = !pastKey;
+  chalMine = (preview || pastKey) ? null : {strokes:sc.strokes, grade:Math.round(sc.avg)}; $('chalBtn').hidden = !chalMine; $('chalPill').hidden = true; renderChalResult();
   const dw = DIFF_WORD ? ` · ${DIFF_WORD}` : '';
   $('sumTitle').textContent = L3 ? `No. ${holeNum} · Weekend loop` : pastKey ? holeName : `No. ${holeNum} · ${holeName}`;
   $('sumLabel').textContent = (preview ? 'Preview · ' : '') + (L3 ? '3 holes · par 9' : (pastKey ? dayLabel(pastKey) + ' · ' : '') + `${YARDS} yds`) + dw;
@@ -4731,6 +4741,49 @@ function drawTeeShot(t){
   }
   ctx.restore();
 }
+// ---------- challenge a friend ----------
+// A challenge link carries the sender's day, strokes, grade and tag: challenge.html#c=2026-11-06.2.88.Bryan
+// It only ever shows strokes and grade, and only for today's hole.
+let chalMine = null;
+const CHAL_KEY = 'dailyhole:chal:' + todayKey;
+const chalWord = (day, strokes) => loopDay(holeNumFor(day)) ? (t => t === 0 ? 'E' : t > 0 ? '+' + t : '' + t)(strokes - 9) + ` (${strokes})` : (WORDS[strokes] || `${strokes} strokes`).toLowerCase();
+const chalArt = (day, n) => { const w = chalWord(day, n); return loopDay(holeNumFor(day)) ? w : (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w; };
+function readChallenge(){
+  const m = /^#c=(\d{4}-\d{2}-\d{2})\.(\d{1,2})\.(\d{1,3})(?:\.(.{1,90}))?$/.exec(location.hash || ''); if (!m) return null;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch(e){}
+  let who = ''; try { who = decodeURIComponent(m[4] || ''); } catch(e){}
+  who = who.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20);
+  return {day:m[1], strokes:+m[2], grade:Math.min(100, +m[3]), who:who || 'A friend'};
+}
+function showChallenge(){
+  if (preview || thumb) return;
+  const c = readChallenge();
+  if (c && c.day !== todayKey){ $('chalTxt').textContent = 'That challenge was for an older hole. Today’s is fresh.'; $('chalPill').hidden = false; setTimeout(() => $('chalPill').hidden = true, 6000); return; }
+  if (c) LS.set(CHAL_KEY, c);
+  const cur = LS.get(CHAL_KEY, null); if (!cur || mainRound.done) return;
+  const t = $('chalTxt'); t.textContent = ''; const b = document.createElement('b'); b.textContent = cur.who;
+  t.append(b, ` shot ${chalArt(cur.day, cur.strokes)}, grade ${cur.grade}. Beat it.`);
+  $('chalPill').hidden = false;
+}
+function renderChalResult(){
+  const cur = LS.get(CHAL_KEY, null), el = $('sumChal');
+  if (!cur || !chalMine){ el.hidden = true; return; }
+  const me = chalMine, win = me.strokes < cur.strokes || (me.strokes === cur.strokes && me.grade > cur.grade), tie = me.strokes === cur.strokes && me.grade === cur.grade;
+  el.textContent = tie ? `Dead even with ${cur.who}` : win ? `You beat ${cur.who}` : `${cur.who} wins this one`;
+  const sub = document.createElement('span'); sub.textContent = `${cur.who}: ${chalWord(cur.day, cur.strokes)}, grade ${cur.grade}`; el.appendChild(sub);
+  el.hidden = false;
+}
+$('chalX').addEventListener('click', () => { $('chalPill').hidden = true; });
+cv.addEventListener('pointerdown', () => { $('chalPill').hidden = true; });
+$('chalBtn').addEventListener('click', async () => {
+  if (!chalMine) return;
+  const tag = (myTag || '').slice(0, 20), base = location.origin + location.pathname.replace(/[^/]*$/, '');
+  const url = `${base}challenge.html#c=${todayKey}.${chalMine.strokes}.${chalMine.grade}${tag ? '.' + encodeURIComponent(tag) : ''}`;
+  const text = `Daily Ace No. ${holeNum}: I shot ${chalArt(todayKey, chalMine.strokes)}, grade ${chalMine.grade}. Same hole for everyone. Beat me.`;
+  try { if (navigator.share){ await navigator.share({text, url}); return; } } catch(e){ if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(`${text}\n${url}`); $('chalBtn').textContent = 'Link copied'; setTimeout(() => $('chalBtn').textContent = 'Challenge a friend', 2000); } catch(e){}
+});
+
 if (thumb){
   // a still of the hole for the More golf cards and the share image: high behind the tee, lake and green in frame, hills behind
   setupLie(); const bx = GR.x*0.2, bz = -58, by = 34, dist = Math.hypot(GR.x - bx, GR.z - bz);
@@ -4754,8 +4807,10 @@ if (thumb){
   frame(performance.now() + 32);
   if (shot) drawTeeShot(shot);
   postThumb(720, shot ? 0.7 : 0.76);
+
 } else {
 initParts(); renderHeader();
+showChallenge();
 const joinM = /^#join=([A-Za-z0-9]{6})$/.exec(location.hash || '');
 if (joinM && online()){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} setTimeout(() => showInvite(joinM[1].toUpperCase()), 900); }
 if (online()) refreshLeagues();
