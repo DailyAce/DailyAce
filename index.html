@@ -2781,7 +2781,7 @@ const STEPS = {common:[1,10,25,50], uncommon:[1,5,15,30], rare:[1,3,8,15], epic:
 function metalIdx(b, n){ if (ONCE.has(b.id) || !n) return -1; let i = -1; STEPS[b.tier].forEach((v, k) => { if (n >= v) i = k; }); return i; }
 function badgeCounts(){ const owned = LS.get('dailyhole:badges', {}), counts = LS.get('dailyhole:bcount', {}); for (const id in owned) if (!counts[id]) counts[id] = 1; return counts; }
 function prevDay(key){ return new Date(Date.parse(key + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10); }
-function streakFrom(days){ const set = new Set(days); let n = 0, k = todayKey; while (set.has(k)){ n++; k = prevDay(k); } return n; }
+function streakFrom(days, from){ const set = new Set(days); let n = 0, k = from || todayKey; while (set.has(k)){ n++; k = prevDay(k); } return n; }
 function evaluateDay(c){
   let days = LS.get('dailyhole:days', []); const pals = new Set(LS.get('dailyhole:pals', []));
   if (!preview && !days.includes(todayKey)){ days.push(todayKey); pals.add(PAL_NAME); LS.set('dailyhole:days', days); LS.set('dailyhole:pals', [...pals]); }
@@ -2959,7 +2959,8 @@ function showSummary(){
   }
   $('stTee').textContent = c.teeFt === null ? 'Wet' : c.teeFt === 0 ? 'Ace' : c.teeFt >= 90 ? `${Math.round(c.teeFt/3)}y` : `${Math.round(c.teeFt)}′`;
   $('stPutts').textContent = c.puttCount;
-  $('stLong').textContent = pastKey || preview ? '—' : `${c.streak}`;
+  { const pastN = pastKey ? streakFrom(LS.get('dailyhole:days', []).concat(myHistory().map(e => e.day)), pastKey) : 0;
+    $('stLong').textContent = preview ? '—' : pastKey ? (pastN ? `${pastN}` : '—') : `${c.streak}`; }
   const beat = c.teeFt !== null && c.teeFt < TOUR_FT;
   $('sumVs').classList.toggle('win', beat);
   $('vsHead').textContent = c.teeFt === null ? 'The lake won this one' : beat ? 'You beat the Tour' : 'The Tour wins this one';
