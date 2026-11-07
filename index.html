@@ -196,18 +196,33 @@ button{font-family:var(--sans)}
 .rep-why{font-size:.8rem;line-height:1.45;color:var(--soft)}
 
 /* summary */
-.sum-score{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.sum-head{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
+.sum-head .title{font-size:1.4rem}
+.sum-head .label{font-size:.6rem}
+.sum-score{display:grid;grid-template-columns:1fr 1fr;align-items:end;position:relative}
+.sum-score::before{content:"";position:absolute;left:50%;top:10%;bottom:12%;width:1px;background:var(--edge)}
+.sum-col{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
 .sum-score .num{font-size:5.4rem}
-.sum-word{font-size:1.6rem;text-align:right}
-.sum-word small{display:block;font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);margin-top:6px;font-stretch:100%}
-.sum-sub{margin-top:6px}
+.sum-word{font-size:.72rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
+.sum-col:first-child .sum-word{color:var(--ink)}
+.sc-row.hot{margin:2px -10px;padding:9px 10px;border-radius:12px;border-top-color:transparent;background:linear-gradient(90deg,rgba(169,214,142,.2),rgba(169,214,142,.05));box-shadow:inset 0 0 0 1px rgba(169,214,142,.4)}
+.sc-row.hot + .sc-row{border-top-color:transparent}
+.sc-row.hot i{box-shadow:0 0 0 3px rgba(169,214,142,.25),0 0 10px rgba(169,214,142,.8)}
+.sc-row.hot .sc-what{font-weight:800}
+.sc-row.hot .sc-what span{color:var(--ink);opacity:.8}
+.sc-row.hot .sc-g{font-size:1.3rem;font-weight:800}
 .sc-g{font-size:1.05rem;font-weight:700;font-stretch:82%;font-variant-numeric:tabular-nums;text-align:right;min-width:2.2em}
-.field{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:16px;box-shadow:inset 0 0 0 1px var(--edge)}
-.field-row{display:flex;align-items:baseline;gap:10px}
-.field-row b{font-size:1.9rem;font-weight:700;font-stretch:78%;font-variant-numeric:tabular-nums;line-height:1}
-.field-row span{font-size:.86rem;color:var(--ink)}
-.field-row.sim b{font-size:1.35rem;color:var(--soft)}
-.field-row.sim span{color:var(--soft)}
+.field{display:flex;flex-direction:column;gap:10px}
+.field-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.field-top .field-links{gap:14px}
+.field-top .linkish{font-size:.76rem}
+.field-tiles{display:flex;gap:8px}
+.ftile{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 8px;border-radius:14px;background:var(--well);text-align:center}
+.ftile b{font-size:2rem;font-weight:700;font-stretch:78%;font-variant-numeric:tabular-nums;line-height:1}
+.ftile span{font-size:.7rem;color:var(--soft);line-height:1.3}
+.ftile.sim b{color:var(--fair)}
+.field .body{font-size:.76rem;text-align:center}
+.field .body:empty{display:none}
 .tagbox{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:16px;background:var(--well)}
 .tag-row{display:flex;gap:8px}
 .tag-row input,.set-row input{flex:1;min-width:0;font:600 .95rem var(--sans);color:var(--ink);background:rgba(0,0,0,.25);border:1px solid var(--edge);border-radius:12px;padding:11px 12px;-webkit-user-select:text;user-select:text}
@@ -292,7 +307,7 @@ a.btn{text-align:center;text-decoration:none}
 .pr-stats b{font-size:.88rem;font-weight:600}
 .pr-stats .pr-brk{color:#f2a33a}
 .pr-mk{color:#b9d8f0}
-.sc-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--edge)}
+.sc-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--edge)}
 .sc-row:first-child{border-top:0}
 .sc-row i{width:9px;height:9px;border-radius:50%}
 .sc-what{font-size:.86rem;font-weight:600;min-width:0}
@@ -300,6 +315,8 @@ a.btn{text-align:center;text-decoration:none}
 .sc-sg{font-size:.82rem;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .stat{display:flex;flex-direction:column;gap:5px;padding:12px;border-radius:14px;background:var(--well)}
+.stats .stat{align-items:center;text-align:center}
+.streak:empty{display:none}
 .stat .num{font-size:1.65rem}
 .stat .label{font-size:.56rem}
 .vs{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:16px;box-shadow:inset 0 0 0 1px var(--edge)}
@@ -527,12 +544,33 @@ a.btn{text-align:center;text-decoration:none}
     </div>
 
     <div class="card" id="summary" hidden>
-      <div class="label" id="sumLabel">Today</div>
-      <div class="sum-score"><div><div class="num" id="sumScore">—</div><div class="label sum-sub">Grade</div></div><div class="sum-word title" id="sumWord">—<small id="sumStrokes"></small></div></div>
+      <div class="sum-head"><div class="title" id="sumTitle">Today</div><div class="label" id="sumLabel"></div></div>
+      <div class="sum-score">
+        <div class="sum-col"><div class="num" id="sumStrokes">—</div><div class="sum-word" id="sumWord">—</div></div>
+        <div class="sum-col"><div class="num" id="sumScore">—</div><div class="sum-word">Grade</div></div>
+      </div>
       <div class="pbline" id="sumPB" hidden><span class="pb-ic">📈</span><div><b id="sumPBHead"></b><span id="sumPBSub"></span></div></div>
-      <div class="syn" id="sumSyn"></div>
-      <div class="body" id="sumExplain"></div>
+      <div class="syn" id="sumSyn" hidden></div>
+      <div class="body" id="sumExplain" hidden></div>
       <div class="sc" id="scorecard"></div>
+      <div class="field" id="sumField">
+        <div class="field-top"><div class="label" id="fieldLabel">Today's field</div><div class="field-links"><button class="linkish" id="boardBtn" hidden>Leaderboard</button><button class="linkish" id="leaguesBtn" hidden>Leagues</button></div></div>
+        <div class="field-tiles">
+          <div class="ftile" id="fieldReal" hidden><b id="fieldRank">#—</b><span id="fieldRealTxt"></span></div>
+          <div class="ftile sim" id="fieldSim"><b id="fieldSimPct">…</b><span id="fieldSimTxt">Simulating</span></div>
+        </div>
+        <div class="body" id="fieldNote"></div>
+      </div>
+      <div class="tagbox" id="tagBox" hidden>
+        <div class="label">Gamer tag</div>
+        <div class="tag-row"><input id="tagInput" maxlength="16" placeholder="flagHunter22" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Gamer tag"><button class="btn" id="tagSave">Save</button></div>
+        <div class="body" id="tagMsg">Pick a tag to show up on the leaderboard. 3 to 16 letters, numbers or underscores.</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="num" id="stTee">—</span><span class="label">Tee shot</span></div>
+        <div class="stat"><span class="num" id="stPutts">—</span><span class="label">Putts</span></div>
+        <div class="stat"><span class="num" id="stLong">—</span><span class="label">Streak</span></div>
+      </div>
       <div class="precap" id="sumPutts" hidden>
         <div class="pr-head"><div class="label" id="prLabel">Your putts</div><button type="button" class="pr-make" id="prMakeBtn" aria-pressed="false">Make line</button></div>
         <canvas id="prCv" role="img" aria-label="Contour map of the green with each putt drawn: a dashed line for where you aimed and how hard, a solid line for where it rolled."></canvas>
@@ -546,23 +584,6 @@ a.btn{text-align:center;text-decoration:none}
         </div>
         <div class="body" id="prNote" hidden></div>
         <div class="body pr-mk" id="prMake" hidden></div>
-      </div>
-      <div class="field" id="sumField">
-        <div class="label" id="fieldLabel">Today's field</div>
-        <div class="field-row" id="fieldReal" hidden><b id="fieldRank">#—</b><span id="fieldRealTxt"></span></div>
-        <div class="field-row sim" id="fieldSim"><b id="fieldSimPct">…</b><span id="fieldSimTxt">Simulating the field…</span></div>
-        <div class="body" id="fieldNote"></div>
-        <div class="field-links"><button class="linkish" id="boardBtn" hidden>See the leaderboard</button><button class="linkish" id="leaguesBtn" hidden>Leagues</button></div>
-      </div>
-      <div class="tagbox" id="tagBox" hidden>
-        <div class="label">Gamer tag</div>
-        <div class="tag-row"><input id="tagInput" maxlength="16" placeholder="flagHunter22" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Gamer tag"><button class="btn" id="tagSave">Save</button></div>
-        <div class="body" id="tagMsg">Pick a tag to show up on the leaderboard. 3 to 16 letters, numbers or underscores.</div>
-      </div>
-      <div class="stats">
-        <div class="stat"><span class="num" id="stTee">—</span><span class="label">Tee shot</span></div>
-        <div class="stat"><span class="num" id="stPutts">—</span><span class="label">Putts</span></div>
-        <div class="stat"><span class="num" id="stLong">—</span><span class="label">Best putt</span></div>
       </div>
       <div class="vs" id="sumVs" hidden>
         <div class="label">Your tee shot vs the Tour</div>
@@ -2911,11 +2932,13 @@ function showSummary(){
   const c = L3 ? (() => { const cx = roundCtx(L3), tees = L3.holes.map(h => roundCtx(h).teeFt).filter(v => v !== null); cx.teeFt = tees.length ? Math.min(...tees) : null; cx.streak = c0.streak; return cx; })() : c0;
   if (pastKey){ const prev = LS.get('dailyhole:past:' + pastKey, null); if (!prev || better(sc, prev)) LS.set('dailyhole:past:' + pastKey, {word:sc.word, avg:sc.avg, strokes:sc.strokes}); }
   $('againBtn').hidden = !pastKey;
-  $('sumLabel').textContent = L3 ? `No. ${holeNum} · Weekend loop · 3 holes` + (DIFF_WORD ? ` · ${DIFF_WORD}` : '') : (pastKey ? `${dayLabel(pastKey)} · ${holeName} · ${YARDS} yds` : `${preview ? 'Preview · ' : ''}No. ${holeNum} · ${holeName} · ${YARDS} yds`) + (DIFF_WORD ? ` · ${DIFF_WORD}` : '');
+  const dw = DIFF_WORD ? ` · ${DIFF_WORD}` : '';
+  $('sumTitle').textContent = L3 ? `No. ${holeNum} · Weekend loop` : pastKey ? holeName : `No. ${holeNum} · ${holeName}`;
+  $('sumLabel').textContent = (preview ? 'Preview · ' : '') + (L3 ? '3 holes · par 9' : (pastKey ? dayLabel(pastKey) + ' · ' : '') + `${YARDS} yds`) + dw;
   $('sumScore').textContent = Math.round(sc.avg);
   $('sumExplain').textContent = `Each shot is graded 0 to 100 against a Tour pro hitting from the same spot. 50 matches the Tour; above 50 beats it. Fewer strokes always ranks first.`;
-  $('sumWord').firstChild.textContent = sc.word;
-  $('sumStrokes').textContent = L3 ? `${sc.strokes} strokes · par 9` : round.pickedUp ? `Picked up after ${MAX_STROKES}` : `${round.strokes} stroke${round.strokes === 1 ? '' : 's'}`;
+  $('sumWord').textContent = round.pickedUp && !L3 ? 'Picked up' : sc.word;
+  $('sumStrokes').textContent = L3 ? sc.strokes : round.pickedUp ? `${MAX_STROKES}+` : round.strokes;
   $('sumSyn').textContent = synopsis(R0);
   { const t = todayPB, isNew = !!(t && t.state === 'new'), near = !!(t && !isNew && t.state !== 'first' && t.rank <= 3 && t.of >= 4);
     $('sumPB').hidden = !(isNew || near); $('sumPB').classList.toggle('tie', near);
@@ -2925,7 +2948,7 @@ function showSummary(){
   const card = $('scorecard'); card.innerHTML = ''; let lastHole = -1;
   for (const s of R0.shots){
     if (L3 && s.hole !== lastHole){ lastHole = s.hole; const hd = document.createElement('div'); hd.className = 'sc-hole'; hd.textContent = `Hole ${s.hole + 1} · ${holeNameFor(holeNum, s.hole)} · ${sc.per[s.hole].word}`; card.appendChild(hd); }
-    const row = document.createElement('div'); row.className = 'sc-row';
+    const row = document.createElement('div'); row.className = 'sc-row' + ((shotGrade(s) ?? 0) >= 90 ? ' hot' : '');
     const dot = document.createElement('i'); dot.style.background = gradeColor(s);
     const what = document.createElement('div'); what.className = 'sc-what'; what.textContent = s.mode === 'full' ? `${shotName(s)} · ${clubName(s)}` : shotName(s);
     const sub = document.createElement('span');
@@ -2936,14 +2959,14 @@ function showSummary(){
   }
   $('stTee').textContent = c.teeFt === null ? 'Wet' : c.teeFt === 0 ? 'Ace' : c.teeFt >= 90 ? `${Math.round(c.teeFt/3)}y` : `${Math.round(c.teeFt)}′`;
   $('stPutts').textContent = c.puttCount;
-  $('stLong').textContent = c.longestMadeFt === null ? '—' : c.longestMadeFt < 1 ? `${Math.round(c.longestMadeFt*12)}″` : `${Math.round(c.longestMadeFt)}′`;
+  $('stLong').textContent = pastKey || preview ? '—' : `${c.streak}`;
   const beat = c.teeFt !== null && c.teeFt < TOUR_FT;
   $('sumVs').classList.toggle('win', beat);
   $('vsHead').textContent = c.teeFt === null ? 'The lake won this one' : beat ? 'You beat the Tour' : 'The Tour wins this one';
   $('vsYou').textContent = c.teeFt === null ? 'In the water' : c.teeFt === 0 ? 'In the cup' : fmtDist(c.teeFt/3);
   $('vsBucket').textContent = TOUR_BUCKET; $('vsTour').textContent = `about ${TOUR_FT} ft`;
   $('vsLadder').textContent = c.teeFt === null ? '—' : c.teeFt === 0 ? 'Beyond Tour' : ladderLabel(c.teeFt);
-  $('sumStreak').textContent = pastKey ? "A past hole. It doesn't count toward your streak." : preview ? 'Preview hole. Streaks count on the real daily.' : `Day ${c.streak} of your streak · come back tomorrow`;
+  $('sumStreak').textContent = pastKey ? "A past hole. It doesn't count toward your streak." : preview ? 'Preview hole. Streaks count on the real daily.' : '';
   const nb = (fresh || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean).sort((a,b) => TIER_RANK[a.tier] - TIER_RANK[b.tier]);
   const ub = (ev.ups || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean);
   const items = [...nb.map(b => ({b, tag:'New'})), ...ub.map(b => ({b, tag:METALS[metalIdx(b, ev.counts[b.id])]}))];
@@ -4144,13 +4167,13 @@ function renderField(){
     const rank = board.me ? board.me.rank : null;
     $('fieldRank').textContent = rank ? `#${rank}` : '—';
     if (board.me && board.me.flagged){ $('fieldRealTxt').textContent = "Your round didn't pass the shot replay check, so it isn't ranked."; $('boardBtn').hidden = false; return; }
-    $('fieldRealTxt').textContent = `of ${board.total} player${board.total === 1 ? '' : 's'} today` + (board.total >= 20 && board.me ? ` · top ${Math.max(1, 100 - Math.round(board.me.better_than/Math.max(1, board.total - 1)*100))}%` : '');
+    $('fieldRealTxt').textContent = `of ${board.total} today` + (board.total >= 20 && board.me ? ` · top ${Math.max(1, 100 - Math.round(board.me.better_than/Math.max(1, board.total - 1)*100))}%` : '');
   }
   $('boardBtn').hidden = !real; $('leaguesBtn').hidden = !online() || preview;
   const showSim = !LOOP && (!real || board.total < 200);
   $('fieldSim').hidden = !showSim;
-  if (showSim){ const pct = fieldPct(me); $('fieldSimPct').textContent = pct === null ? '…' : `Top ${Math.max(1, 100 - pct)}%`; $('fieldSimTxt').textContent = pct === null ? 'Simulating the field…' : 'of the simulated field'; }
-  $('fieldNote').textContent = showSim ? `The simulated field is ${FIELD_N} computer-played rounds on this hole, not real people.` + (online() || preview ? '' : ' The live leaderboard isn\'t connected yet.') : '';
+  if (showSim){ const pct = fieldPct(me); $('fieldSimPct').textContent = pct === null ? '…' : `Top ${Math.max(1, 100 - pct)}%`; $('fieldSimTxt').textContent = pct === null ? 'Simulating…' : `vs ${FIELD_N} sim rounds`; }
+  $('fieldNote').textContent = online() || preview ? '' : "The live leaderboard isn't connected yet.";
   const pct = fieldPct(me);
   if (shareBase) $('shareText').textContent = shareBase + (real && board.me ? `\n#${board.me.rank} of ${board.total} today` : pct !== null && !pastKey && !LOOP ? `\nTop ${Math.max(1, 100 - pct)}% of the simulated field` : '');
 }
