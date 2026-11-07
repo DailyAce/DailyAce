@@ -177,6 +177,12 @@ button{font-family:var(--sans)}
 .g-great i,.g-good i{background:var(--good)} .g-fine i{background:var(--fair)} .g-poor i,.g-costly i{background:var(--poor)} .g-wet i{background:var(--lake)}
 .grade-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .grade-cap{font-size:.62rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.gring{position:relative;width:82px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.gring svg{width:82px;height:82px;display:block}
+.gring b{position:absolute;top:0;left:0;width:82px;height:82px;display:grid;place-items:center;font-size:1.9rem;font-weight:700;font-stretch:78%;font-variant-numeric:tabular-nums}
+.gring span{font-size:.6rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+#shotCard{padding-bottom:0}
+#shotCard::after{content:"";flex:none;height:20px;margin-top:-14px}
 #swipeSvg{width:100%;height:auto;font-family:var(--sans);margin-bottom:2px}
 .note{font-size:.84rem;line-height:1.45;color:var(--ink)}
 .note.soft{color:var(--soft)}
@@ -516,10 +522,10 @@ a.btn{text-align:center;text-decoration:none}
     </div>
     <div class="card" id="shotCard" hidden>
       <div class="shot-top">
-        <div class="card-head"><div class="label" id="scLabel">Tee shot</div><div class="num shot-res" id="scRes">—</div></div>
-        <div class="grade-wrap"><div class="grade" id="scGrade"><i></i><span id="scGradeTxt"></span></div><div class="grade-cap">Tour average = 50</div></div>
+        <div class="card-head"><div class="label" id="scLabel">Tee shot</div><div class="num shot-res" id="scRes">—</div><div class="shot-sub" id="scSub"></div></div>
+        <div class="grade-wrap"><div class="grade" id="scGrade"><i></i><span id="scGradeTxt"></span></div><div class="grade-cap" hidden>Tour average = 50</div>
+          <div class="gring" id="scRing" hidden><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34" fill="none" stroke="rgba(244,238,226,.12)" stroke-width="7"/><circle id="scRingArc" cx="40" cy="40" r="34" fill="none" stroke-width="7" stroke-linecap="round" transform="rotate(-90 40 40)" pathLength="100" stroke-dasharray="0 100"/></svg><b id="scRingNum"></b><span id="scRingWord"></span></div></div>
       </div>
-      <div class="shot-sub" id="scSub"></div>
       <div class="note" id="scNote" hidden></div>
       <div class="trace" id="trace" hidden>
         <div class="label">Club face through your swing</div>
@@ -2625,18 +2631,21 @@ function ladderLabel(ft){ for (const [k, n] of LADDER) if (ft <= TOUR_FT*k) retu
 
 function showShotCard(s){
   logPutt(s);
-  phase = 'card'; document.querySelector('.grade-cap').hidden = false;
+  phase = 'card';
   $('scLabel').textContent = s.n === 1 ? `Tee shot · ${clubName(s)}` : `Shot ${s.n} · ${shotName(s)}`;
   const res = $('scRes');
   res.textContent = s.holed ? (s.n === 1 ? 'Ace' : 'In the cup') : s.wet ? 'Wet' : fmtDist(s.endD);
   res.style.color = s.holed ? 'var(--flag)' : s.wet ? 'var(--lake)' : '';
   $('scSub').textContent = s.holed ? (s.mode === 'putt' ? `Holed from ${fmtDist(s.fromD)}.` : `Holed from ${fmtDist(s.fromD)} out.`) :
-    s.wet ? 'Penalty stroke. Dropping on the bank, no closer to the hole.' :
-    `${LIE_IN[s.endLie][0].toUpperCase() + LIE_IN[s.endLie].slice(1)} · ${s.mode === 'putt' ? `rolled from ${fmtDist(s.fromD)}` : `carried ${s.carry} yds`}`;
+    s.wet ? 'Water · penalty stroke' :
+    s.mode === 'putt' ? `Rolled from ${fmtDist(s.fromD)}` :
+    s.endLie === 'green' ? (s.n === 1 ? 'Green in regulation' : 'On the green') : {deep:'Deep rough', tee:'Still on the tee', fairway:'Fairway', rough:'Rough', sand:'Sand', fringe:'Fringe'}[s.endLie] || LIE_NAME[s.endLie];
   const gr = shotGrade(s), g = s.wet ? [0, 'wet', 'Penalty'] : gradeOf(gr);
-  $('scGrade').className = `grade g-${g[1]}`; $('scGradeTxt').textContent = `${g[2]} · ${gr}`;
+  $('scGrade').hidden = true; $('scRing').hidden = false;
+  { const v = s.wet ? 0 : gr ?? 0, col = s.wet ? 'var(--lake)' : gr >= 70 ? 'var(--good)' : gr >= 45 ? 'var(--fair)' : 'var(--poor)';
+    $('scRingArc').setAttribute('stroke-dasharray', `${clamp(v, s.wet ? 0 : 1, 100)} 100`); $('scRingArc').style.stroke = col;
+    $('scRingNum').textContent = s.wet ? '—' : gr ?? '—'; $('scRingWord').textContent = gr === null && !s.wet ? '' : g[2]; }
   let note = '';
-  if (s.n === 1 && !s.wet){ const ft = s.endD*3; note = s.holed ? 'Better than any Tour average. Frame it.' : ft < TOUR_FT ? `Inside the Tour average from here, about ${TOUR_FT} ft.` : `${ladderLabel(ft)}-level tee shot. Tour average is about ${TOUR_FT} ft.`; }
   if (s.lipped && !s.holed) note = 'Lipped out.' + (note ? ' ' + note : '');
   if (s.gimmeNext) note = (note ? note + ' ' : '') + "Inside 3 feet. That's good, pick it up.";
   if (round.pickedUp) note = `That's ${MAX_STROKES}. Pick it up and live to fight tomorrow.`;
@@ -2647,7 +2656,7 @@ function showShotCard(s){
   $('shotCard').hidden = false; $('shotCard').scrollTop = 0;
 }
 function showRangeCard(r){
-  phase = 'card'; document.querySelector('.grade-cap').hidden = true;
+  phase = 'card'; $('scGrade').hidden = false; $('scRing').hidden = true;
   $('scLabel').textContent = `Range · ${clubName(r)}`;
   $('scRes').textContent = `${r.carry} yds`; $('scRes').style.color = r.holed ? 'var(--flag)' : '';
   const off = Math.abs(r.off) < 1 ? 'on line' : `${Math.round(Math.abs(r.off))} yds ${r.off > 0 ? 'right' : 'left'}`;
@@ -4021,8 +4030,9 @@ function openShareCard(){
 }
 $('shareImgBtn').addEventListener('click', () => {
   // the share sheet has to open straight from the tap, so the image is made ahead of time
-  if (shareFile && navigator.canShare && navigator.share){ let ok = false; try { ok = navigator.canShare({files:[shareFile]}); } catch(e){}
-    if (ok){ navigator.share({files:[shareFile]}).catch(err => { if (!err || err.name !== 'AbortError') openShareCard(); }); return; } }
+  if (shareFile && navigator.canShare && navigator.share){ let ok = false, data = {files:[shareFile], url:location.origin + location.pathname};
+    try { ok = navigator.canShare(data); if (!ok){ data = {files:[shareFile]}; ok = navigator.canShare(data); } } catch(e){}
+    if (ok){ navigator.share(data).catch(err => { if (!err || err.name !== 'AbortError') openShareCard(); }); return; } }
   openShareCard();
 });
 $('shareClose').addEventListener('click', () => { $('shareCard').hidden = true; $('summary').hidden = false; });
