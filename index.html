@@ -858,6 +858,8 @@ if (dm && recentKeys(todayKey).includes(dm[1])){ pastKey = dm[1]; holeNum = hole
 // the first one you haven't finished today (or the one named in a preview link like #h8s1).
 const LOOP_FROM = 8;
 const loopDay = n => n >= LOOP_FROM && ((((n - 1 + 5) % 7) + 7) % 7) >= 5;
+const loopName = n => ((((n - 1 + 5) % 7) + 7) % 7) === 5 ? 'Saturday Track' : 'Sunday Stroll';
+const loopWord = tp => tp === 0 ? 'Even' : tp < 0 ? `${-tp} under` : `${tp} over`;
 let SUB = 0;
 if (hm && hm[2]) SUB = +hm[2];
 else if (tm && tm[2]) SUB = +tm[2];
@@ -2717,7 +2719,7 @@ const WORDS = {1:'Ace', 2:'Birdie', 3:'Par', 4:'Bogey', 5:'Double bogey', 6:'Tri
 function scoreOf(r){
   if (r.loop){
     const per = r.holes.map(h => scoreOf(h)), strokes = per.reduce((a, p) => a + p.strokes, 0);
-    const tp = strokes - 9; return {strokes, word:`${tp === 0 ? 'E' : tp > 0 ? '+' + tp : '-' + (-tp)} (${strokes})`, avg:+(per.reduce((a, p) => a + p.avg, 0)/3).toFixed(2), per};
+    const tp = strokes - 9; return {strokes, word:loopWord(tp), avg:+(per.reduce((a, p) => a + p.avg, 0)/3).toFixed(2), per};
   }
   const avg = holeGrade(r.shots.map(shotGrade).filter(x => x !== null));
   return {strokes: r.pickedUp ? 7 : r.strokes, word: r.pickedUp ? 'Picked up' : (WORDS[r.strokes] || `${r.strokes} strokes`), avg:+avg.toFixed(2)};
@@ -2841,7 +2843,7 @@ const dayLabel = key => new Date(Date.parse(key + 'T12:00:00Z')).toLocaleDateStr
 // ---------- your history: every finished daily round saved on this phone ----------
 // Weekday par 3s and weekend loops (par 9) are ranked separately: fewest strokes to par, then the better average grade.
 function makeEntry(day, n, r, sc, extra){
-  const loop = loopDay(n), par = loop ? 9 : 3, e = {day, n, loop, r, sc, par, toPar:sc.strokes - par, name: loop ? 'Weekend loop' : holeNameFor(n), teeFt:null, longPutt:null};
+  const loop = loopDay(n), par = loop ? 9 : 3, e = {day, n, loop, r, sc, par, toPar:sc.strokes - par, name: loop ? loopName(n) : holeNameFor(n), teeFt:null, longPutt:null};
   if (r){ const holes = loop ? r.holes : [r];
     const tees = holes.map(h => h.shots[0]).filter(Boolean).map(t => t.wet ? null : t.holed ? 0 : t.endD*3).filter(v => v !== null);
     const made = r.shots.filter(x => x.mode === 'putt' && x.holed && !x.gimme).map(x => x.fromD*3);
@@ -2959,7 +2961,7 @@ function showSummary(){
   $('againBtn').hidden = !pastKey;
   chalMine = (preview || pastKey) ? null : {strokes:sc.strokes, grade:Math.round(sc.avg)}; $('chalBtn').hidden = !chalMine; $('chalPill').hidden = true; renderChalResult();
   const dw = DIFF_WORD ? ` · ${DIFF_WORD}` : '';
-  $('sumTitle').textContent = L3 ? `No. ${holeNum} · Weekend loop` : pastKey ? holeName : `No. ${holeNum} · ${holeName}`;
+  $('sumTitle').textContent = L3 ? `No. ${holeNum} · ${loopName(holeNum)}` : pastKey ? holeName : `No. ${holeNum} · ${holeName}`;
   $('sumLabel').textContent = (preview ? 'Preview · ' : '') + (L3 ? '3 holes · par 9' : (pastKey ? dayLabel(pastKey) + ' · ' : '') + `${YARDS} yds`) + dw;
   $('sumScore').textContent = Math.round(sc.avg);
   $('sumExplain').textContent = `Each shot is graded 0 to 100 against a Tour pro hitting from the same spot. 50 matches the Tour; above 50 beats it. Fewer strokes always ranks first.`;
@@ -2968,7 +2970,7 @@ function showSummary(){
   $('sumSyn').textContent = synopsis(R0);
   { const t = todayPB, isNew = !!(t && t.state === 'new'), near = !!(t && !isNew && t.state !== 'first' && t.rank <= 3 && t.of >= 4);
     $('sumPB').hidden = !(isNew || near); $('sumPB').classList.toggle('tie', near);
-    const fmt = e => `${e.sc.avg.toFixed(1)} grade · ${e.loop ? 'weekend loop ' + toParWord(e.toPar) : e.sc.word.toLowerCase()} on ${dayLabel(e.day)}`;
+    const fmt = e => `${e.sc.avg.toFixed(1)} grade · ${e.loop ? loopName(e.n) + ' ' + loopWord(e.toPar).toLowerCase() : e.sc.word.toLowerCase()} on ${dayLabel(e.day)}`;
     if (isNew){ $('sumPBHead').textContent = 'New personal best'; $('sumPBSub').textContent = `Old best: ${fmt(t.prev)}`; }
     else if (near){ $('sumPBHead').textContent = `Your ${ordinal(t.rank)}-best round of ${t.of}`; $('sumPBSub').textContent = `Best ever: ${fmt(t.prev)}`; } }
   const card = $('scorecard'); card.innerHTML = ''; let lastHole = -1;
@@ -3007,7 +3009,7 @@ function showSummary(){
   const [style, why] = playStyle(c); $('styleName').textContent = style; $('styleWhy').textContent = why;
   const squares = L3 ? L3.holes.map(h => h.shots.map(gradeEmoji).join('')).join(' ') : round.shots.map(gradeEmoji).join('');
   const teeTxt = c.teeFt === null ? 'Tee shot wet' : c.teeFt === 0 ? 'Ace' : `${L3 ? 'Best tee shot' : 'Tee shot'} ${fmtDist(c.teeFt/3)}`;
-  const head = L3 ? `⛳ Daily Ace No. ${holeNum} · Weekend loop` + (DIFF_WORD ? ` · ${DIFF_WORD}` : '') : (pastKey ? `⛳ Daily Ace · ${dayLabel(pastKey)} (replay) · ${holeName}` : `⛳ Daily Ace No. ${holeNum} · ${holeName} · ${YARDS} yds`) + (DIFF_WORD ? ` · ${DIFF_WORD}` : '');
+  const head = L3 ? `⛳ Daily Ace No. ${holeNum} · ${loopName(holeNum)}` + (DIFF_WORD ? ` · ${DIFF_WORD}` : '') : (pastKey ? `⛳ Daily Ace · ${dayLabel(pastKey)} (replay) · ${holeName}` : `⛳ Daily Ace No. ${holeNum} · ${holeName} · ${YARDS} yds`) + (DIFF_WORD ? ` · ${DIFF_WORD}` : '');
   shareBase = `${head}\n${squares}  ${sc.word} · ${Math.round(sc.avg)}\n${teeTxt} · ${c.puttCount} putt${c.puttCount === 1 ? '' : 's'}${beat ? ' · Beat the Tour' : ''}${preview ? '' : ` · 🔥${c.streak}`}`;
   $('shareText').textContent = shareBase;
   $('copyBtn').textContent = 'Copy result';
@@ -3019,7 +3021,7 @@ function showSummary(){
 // between weekend loop holes: this hole's result and the way to the next one
 function showLoopCard(){
   const c = roundCtx(round), sc = scoreOf(round), ev = evaluateDay(c);
-  $('loopLabel').textContent = `Weekend loop · Hole ${HOLE_SUB + 1} of 3`;
+  $('loopLabel').textContent = `${loopName(holeNum)} · Hole ${HOLE_SUB + 1} of 3`;
   $('loopTitle').textContent = holeName;
   $('loopResult').textContent = `${sc.word} · ${round.pickedUp ? 'picked up' : round.strokes + ' stroke' + (round.strokes === 1 ? '' : 's')} · ${Math.round(sc.avg)} grade`;
   const list = $('loopList'); list.innerHTML = '';
@@ -3968,7 +3970,7 @@ async function buildShareImage(){
     g.fillStyle = '#1b1b14'; g.textAlign = 'left'; g.fillText('📈', px + 20, py + 39); g.fillText(txt, px + 66, py + 39);
   }
   // hole name, centered
-  g.textAlign = 'center'; g.fillStyle = INK; const ttl = L3 ? 'Weekend loop' : holeName; fit(ttl, 700, 104, SW - 128); g.fillText(ttl, SW/2, 760);
+  g.textAlign = 'center'; g.fillStyle = INK; const ttl = L3 ? loopName(holeNum) : holeName; fit(ttl, 700, 104, SW - 128); g.fillText(ttl, SW/2, 760);
   font(500, 36); g.fillStyle = SOFT; const stl = L3 ? `3 holes · par 9${DIFF_WORD ? ' · ' + DIFF_WORD : ''}` : `Par 3 · ${YARDS} yds · ${pinDesc()}${DIFF_WORD ? ' · ' + DIFF_WORD : ''}`; fit(stl, 500, 36, SW - 128); g.fillText(stl, SW/2, 818);
   // score: strokes | grade, two equal columns, each centered
   const LX = SW/4, RX = SW*3/4, ry = 978, rr = 92;
@@ -4263,7 +4265,7 @@ async function openBoard(scope){
   if (scope === 'all'){
     try { board = await rpc('day_board', {p_day:todayKey, p_player:pid}); } catch(e){}
     if (!board){ $('boardNote').textContent = "Couldn't load the leaderboard."; return; }
-    $('boardLabel').textContent = "Today's leaderboard"; $('boardTitle').textContent = `${board.total} player${board.total === 1 ? '' : 's'} · ${LOOP ? 'Weekend loop' : holeName}`;
+    $('boardLabel').textContent = "Today's leaderboard"; $('boardTitle').textContent = `${board.total} player${board.total === 1 ? '' : 's'} · ${LOOP ? loopName(holeNum) : holeName}`;
     fillAwards($('boardAwards'), board);
     (board.top || []).forEach(row => boardRow(list, [['b-rank', `${row.rank}`], ['b-tag', row.tag], ['b-word', row.word], ['b-avg', Number(row.avg).toFixed(1)]], row.me));
     const me = board.me, below = me && me.rank && !(board.top || []).some(t => t.me);
@@ -4451,7 +4453,7 @@ function replayDay(body, makeHole){
     putts += r.putts; if (r.longPutt !== null) longPutt = Math.max(longPutt || 0, r.longPutt); if (r.updown !== null) updown = Math.max(updown || 0, r.updown);
   }
   const tp = strokes - 9;
-  return {ok:true, flag, strokes, avg:+(gn ? gs/gn : 0).toFixed(2), word:`${tp === 0 ? 'E' : tp > 0 ? '+' + tp : '-' + (-tp)} (${strokes})`, teeFt, putts, longPutt, updown};
+  return {ok:true, flag, strokes, avg:+(gn ? gs/gn : 0).toFixed(2), word:(tp === 0 ? 'Even' : tp < 0 ? `${-tp} under` : `${tp} over`), teeFt, putts, longPutt, updown};
 }
 // ==== END DAY REPLAY ====
 
@@ -4746,7 +4748,7 @@ function drawTeeShot(t){
 // It only ever shows strokes and grade, and only for today's hole.
 let chalMine = null;
 const CHAL_KEY = 'dailyhole:chal:' + todayKey;
-const chalWord = (day, strokes) => loopDay(holeNumFor(day)) ? (t => t === 0 ? 'E' : t > 0 ? '+' + t : '' + t)(strokes - 9) + ` (${strokes})` : (WORDS[strokes] || `${strokes} strokes`).toLowerCase();
+const chalWord = (day, strokes) => loopDay(holeNumFor(day)) ? loopWord(strokes - 9).replace('Even', 'even') : (WORDS[strokes] || `${strokes} strokes`).toLowerCase();
 const chalArt = (day, n) => { const w = chalWord(day, n); return loopDay(holeNumFor(day)) ? w : (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w; };
 function readChallenge(){
   const m = /^#c=(\d{4}-\d{2}-\d{2})\.(\d{1,2})\.(\d{1,3})(?:\.(.{1,90}))?$/.exec(location.hash || ''); if (!m) return null;
@@ -4779,8 +4781,8 @@ $('chalBtn').addEventListener('click', async () => {
   if (!chalMine) return;
   const tag = (myTag || '').slice(0, 20), base = location.origin + location.pathname.replace(/[^/]*$/, '');
   const url = `${base}challenge.html#c=${todayKey}.${chalMine.strokes}.${chalMine.grade}${tag ? '.' + encodeURIComponent(tag) : ''}`;
-  const loop = loopDay(holeNumFor(todayKey)), toPar = (t => t === 0 ? 'E' : t > 0 ? '+' + t : '' + t)(chalMine.strokes - 9);
-  const text = loop ? `Daily Ace · Weekend Loop: I shot ${toPar}. Average shot grade of ${chalMine.grade}. Same three holes for everyone, let's see what you've got.`
+  const loop = loopDay(holeNumFor(todayKey)), toPar = loopWord(chalMine.strokes - 9).replace('Even', 'even');
+  const text = loop ? `Daily Ace · ${loopName(holeNum)}: I shot ${toPar}. Average shot grade of ${chalMine.grade}. Same three holes for everyone, let's see what you've got.`
     : `Daily Ace · ${holeName}: I shot ${chalArt(todayKey, chalMine.strokes)}. Average shot grade of ${chalMine.grade}. Same hole for everyone, let's see what you've got.`;
   try { if (navigator.share){ await navigator.share({text, url}); return; } } catch(e){ if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(`${text}\n${url}`); $('chalBtn').textContent = 'Link copied'; setTimeout(() => $('chalBtn').textContent = 'Challenge a friend', 2000); } catch(e){}
