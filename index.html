@@ -4115,7 +4115,7 @@ function openShareCard(){
 }
 $('shareImgBtn').addEventListener('click', () => {
   // the share sheet has to open straight from the tap, so the image is made ahead of time
-  if (shareFile && navigator.canShare && navigator.share){ let ok = false, data = {files:[shareFile], url:location.origin + location.pathname};
+  if (shareFile && navigator.canShare && navigator.share){ let ok = false, data = {files:[shareFile], url:location.origin + location.pathname.replace(/[^/]*$/, '') + (loopDay(holeNum) ? 'loop.html' : '')};
     try { ok = navigator.canShare(data); if (!ok){ data = {files:[shareFile]}; ok = navigator.canShare(data); } } catch(e){}
     if (ok){ navigator.share(data).catch(err => { if (!err || err.name !== 'AbortError') openShareCard(); }); return; } }
   openShareCard();
@@ -4879,7 +4879,7 @@ cv.addEventListener('pointerdown', () => { $('chalPill').hidden = true; });
 $('chalBtn').addEventListener('click', async () => {
   if (!chalMine) return;
   const tag = (myTag || '').slice(0, 20), base = location.origin + location.pathname.replace(/[^/]*$/, '');
-  const url = `${base}challenge.html#c=${todayKey}.${chalMine.strokes}.${chalMine.grade}${tag ? '.' + encodeURIComponent(tag) : ''}`;
+  const url = `${base}${loopDay(holeNumFor(todayKey)) ? 'challenge-loop' : 'challenge'}.html#c=${todayKey}.${chalMine.strokes}.${chalMine.grade}${tag ? '.' + encodeURIComponent(tag) : ''}`;
   const loop = loopDay(holeNumFor(todayKey)), toPar = loopWord(chalMine.strokes - 9).replace('Even', 'even');
   const text = loop ? `Daily Ace · ${loopName(holeNum)}: I shot ${toPar}. Average shot grade of ${chalMine.grade}. Same three holes for everyone, let's see what you've got.`
     : `Daily Ace · ${holeName}: I shot ${chalArt(todayKey, chalMine.strokes)}. Average shot grade of ${chalMine.grade}. Same hole for everyone, let's see what you've got.`;
