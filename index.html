@@ -284,6 +284,22 @@ a.btn{text-align:center;text-decoration:none}
 .rp-list .more-item.all b{color:#e7c068}
 .yday-win{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:16px;background:rgba(231,192,104,.14)}
 .yday-win b{font-size:1.35rem;font-weight:700;letter-spacing:-.01em}.yday-win span{font-size:.85rem;color:var(--soft)}
+.hud:has(#ydayCard:not([hidden])) .holebar,.hud:has(#ydayCard:not([hidden])) .chal-pill{display:none}
+#ydayCard{width:min(420px,100%);padding:16px;gap:10px;background:#121b15;backdrop-filter:none;-webkit-backdrop-filter:none}
+#ydayCard .card-head{gap:3px}
+#ydayCard .yday-win{padding:10px 14px}
+#ydayCard .yday-win b{font-size:1.2rem}
+#ydayCard .awards{gap:6px}
+#ydayCard .award{gap:2px;padding:8px 6px}
+#ydayCard .award .label{font-size:.56rem;letter-spacing:.1em;white-space:nowrap}
+#ydayCard .award .label br{display:none}
+#ydayCard .aw-v{font-size:1.4rem;margin-top:1px}
+#ydayCard .award span{font-size:.66rem}
+#ydayCard .b-row{padding:6px}
+#ydayCard .board .b-tag{text-decoration:none}
+#ydayCard .body{font-size:.82rem;text-align:center}
+#ydayCard .btns .btn{flex:1 1 0;white-space:nowrap;padding-left:8px;padding-right:8px}
+@media (max-height:600px){#ydayList .b-row:nth-child(n+4){display:none}#ydayCard{padding:12px 16px;gap:7px}#ydayCard .award{padding:6px}}
 .sc-hole{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fair);padding:10px 0 4px}
 .field-links{display:flex;gap:18px;flex-wrap:wrap}
 .board-tabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -4px;padding:0 4px}
@@ -723,7 +739,7 @@ html.rcp body{margin:0;touch-action:auto}
       <div class="awards" id="ydayAwards"></div>
       <div class="board" id="ydayList"></div>
       <div class="body" id="ydayMe"></div>
-      <div class="btns"><button class="btn primary" id="ydayClose">Play today's hole</button></div>
+      <div class="btns"><button class="btn quiet" id="ydayShare" hidden>Share results</button><button class="btn primary" id="ydayClose">Play today's hole</button></div>
     </div>
 
     <div class="card intro" id="introCard" hidden>
@@ -805,7 +821,7 @@ html.rcp body{margin:0;touch-action:auto}
     </div>
 
     <div class="card" id="shareCard" hidden>
-      <div class="card-head"><div class="label">Scorecard</div><div class="title">Press and hold to save</div></div>
+      <div class="card-head"><div class="label" id="shareLabel">Scorecard</div><div class="title">Press and hold to save</div></div>
       <img id="shareImg" class="share-img" alt="Your Daily Ace scorecard">
       <div class="btns"><a class="btn" id="shareDl" download="daily-ace.png">Download</a><button class="btn quiet" id="shareClose">Back</button></div>
     </div>
@@ -4107,9 +4123,11 @@ async function buildShareImage(){
   if (shareURL) URL.revokeObjectURL(shareURL);
   shareURL = URL.createObjectURL(blob);
   try { shareFile = new File([blob], `daily-ace-${pastKey || todayKey}.png`, {type:'image/png'}); } catch(e){ shareFile = null; }
-  if (!$('shareCard').hidden){ $('shareImg').src = shareURL; $('shareDl').href = shareURL; }
+  if (!$('shareCard').hidden && !shareFromYday){ $('shareImg').src = shareURL; $('shareDl').href = shareURL; }
 }
+let shareFromYday = false;
 function openShareCard(){
+  shareFromYday = false; $('shareLabel').textContent = 'Scorecard'; $('shareDl').download = 'daily-ace.png';
   $('summary').hidden = true; $('shareCard').hidden = false; $('shareCard').scrollTop = 0;
   if (shareURL){ $('shareImg').src = shareURL; $('shareDl').href = shareURL; } else { $('shareImg').removeAttribute('src'); buildShareImage(); }
 }
@@ -4120,7 +4138,7 @@ $('shareImgBtn').addEventListener('click', () => {
     if (ok){ navigator.share(data).catch(err => { if (!err || err.name !== 'AbortError') openShareCard(); }); return; } }
   openShareCard();
 });
-$('shareClose').addEventListener('click', () => { $('shareCard').hidden = true; $('summary').hidden = false; });
+$('shareClose').addEventListener('click', () => { $('shareCard').hidden = true; if (shareFromYday){ shareFromYday = false; $('ydayCard').hidden = false; } else $('summary').hidden = false; });
 function gauss(r){ let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
 function pureShot(x, z, yaw, speed, launch, spin, side){
   const b = {x, y:Hh(x, z)+0.05, z, vx:speed*Math.cos(launch)*Math.sin(yaw), vy:speed*Math.sin(launch), vz:speed*Math.cos(launch)*Math.cos(yaw), spin, side, state:'air', landed:false, bounced:false};
@@ -4249,7 +4267,7 @@ async function loadYesterday(){
 function fillAwards(el, bd){
   el.innerHTML = '';
   const award = (l1, l2, who, val, sub) => { const d = document.createElement('div'); d.className = 'award' + (who ? '' : ' none');
-    const l = document.createElement('div'); l.className = 'label'; l.append(l1, document.createElement('br'), l2);
+    const l = document.createElement('div'); l.className = 'label'; l.append(l1, ' ', document.createElement('br'), l2);
     const v = document.createElement('div'); v.className = 'aw-v'; v.textContent = who ? val : '—';
     const t = document.createElement('b'); t.textContent = who || 'Nobody yet'; d.append(l, t, v);
     if (who && sub){ const sp = document.createElement('span'); sp.textContent = sub; d.appendChild(sp); }
@@ -4271,11 +4289,12 @@ async function showYesterday(force){
   LS.set('dailyhole:yday:' + y, true);
   const hn = holeNumFor(y);
   $('ydayLabel').textContent = `Yesterday · No. ${hn}`;
-  $('ydayTitle').textContent = holeNameFor(hn);
+  $('ydayTitle').textContent = loopDay(hn) ? loopName(hn) : holeNameFor(hn);
+  $('ydayShare').hidden = !(bd && bd.total); ydayShareFile = null; if (bd && bd.total) buildYdayImage(bd, y, hn);
   if (bd && bd.total){
     const w = (bd.top || [])[0];
     $('ydayWinner').hidden = !w;
-    if (w){ $('ydayWinTag').textContent = w.tag; $('ydayWinScore').textContent = `${w.word} · ${Number(w.avg).toFixed(1)} grade`; }
+    if (w){ $('ydayWinTag').textContent = w.tag; $('ydayWinScore').textContent = `${wordOf(w.word)} · ${Number(w.avg).toFixed(1)} grade`; }
     fillAwards($('ydayAwards'), bd);
     const me = bd.me;
     $('ydayMe').textContent = me && me.flagged ? "Your round didn't pass the shot replay check, so it isn't ranked." : me && me.rank ? `You finished #${me.rank} of ${bd.total}.` : `${bd.total} player${bd.total === 1 ? '' : 's'}. You didn't play this one.`;
@@ -4286,6 +4305,81 @@ async function showYesterday(force){
   ydayShown = true; $('summary').hidden = true; openCard('ydayCard');
   return true;
 }
+// final results as a story-sized image, made ahead of time so the share sheet can open straight from the tap
+let ydayShareFile = null, ydayShareURL = null, ydayVer = 0;
+async function buildYdayImage(bd, day, hn){
+  const ver = ++ydayVer, SW = 1080, SH = 1920, c = document.createElement('canvas'); c.width = SW; c.height = SH; const g = c.getContext('2d');
+  try { await Promise.all([document.fonts.load('700 90px "Instrument Sans"'), document.fonts.load('500 36px "Instrument Sans"'), document.fonts.load('600 36px "Instrument Sans"')]); } catch(e){}
+  const url = await getThumb(hn); let img = null;
+  if (url){ img = new Image(); await new Promise(r => { img.onload = r; img.onerror = () => { img = null; r(); }; img.src = url; }); }
+  if (ver !== ydayVer) return;
+  const FONT = '"Instrument Sans", system-ui, sans-serif', INK = '#f4eee2', SOFT = '#b9bba9', GOLD = '#e7c068', BG = '#0e1611', font = (w, px) => { g.font = `${w} ${px}px ${FONT}`; };
+  const fit = (txt, w, px, maxW) => { let p = px; font(w, p); while (g.measureText(txt).width > maxW && p > 20){ p -= 2; font(w, p); } };
+  const clip = (txt, maxW) => { if (g.measureText(txt).width <= maxW) return txt; let t = txt; while (t.length > 1 && g.measureText(t + '…').width > maxW) t = t.slice(0, -1); return t + '…'; };
+  const rrect = (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); };
+  const spaced = (px) => { if (g.letterSpacing !== undefined) g.letterSpacing = px + 'px'; };
+  g.fillStyle = BG; g.fillRect(0, 0, SW, SH);
+  const HH = 620;
+  if (img){ g.save(); g.beginPath(); g.rect(0, 0, SW, HH); g.clip(); const k = Math.max(SW/img.width, HH/img.height), iw = img.width*k, ih = img.height*k; g.drawImage(img, (SW - iw)/2, (HH - ih)/2, iw, ih); g.restore(); }
+  else { const sky = g.createLinearGradient(0, 0, 0, HH); [['#272a57',0],['#d77f7c',.45],['#3d5a3a',.62],['#1f331d',1]].forEach(([col, st]) => sky.addColorStop(st, col)); g.fillStyle = sky; g.fillRect(0, 0, SW, HH); }
+  const fade = g.createLinearGradient(0, HH*0.3, 0, HH); fade.addColorStop(0, 'rgba(14,22,17,0)'); fade.addColorStop(1, BG); g.fillStyle = fade; g.fillRect(0, 0, SW, HH);
+  const topShade = g.createLinearGradient(0, 0, 0, 200); topShade.addColorStop(0, 'rgba(14,22,17,.55)'); topShade.addColorStop(1, 'rgba(14,22,17,0)'); g.fillStyle = topShade; g.fillRect(0, 0, SW, 200);
+  g.textBaseline = 'alphabetic';
+  { const lx = 88, ly = 92, k = 2.3; g.save(); g.translate(lx - 10*k, ly - 10*k); g.scale(k, k);
+    g.strokeStyle = INK; g.lineWidth = 1.4; g.beginPath(); g.arc(10, 10, 8.6, 0, 7); g.stroke();
+    g.lineCap = 'round'; g.beginPath(); g.moveTo(8.3, 14.6); g.lineTo(8.3, 5.2); g.stroke();
+    g.fillStyle = '#e4573f'; g.beginPath(); g.moveTo(8.9, 5.4); g.lineTo(13.9, 7.5); g.lineTo(8.9, 9.6); g.closePath(); g.fill(); g.restore(); }
+  g.fillStyle = INK; font(700, 46); g.textAlign = 'left'; g.fillText('daily ace', 126, 108);
+  font(600, 32); g.textAlign = 'right'; g.fillText(`No. ${hn} · ${dayLabel(day)}`, SW - 64, 104);
+  g.textAlign = 'center'; font(600, 30); g.fillStyle = GOLD; spaced(6); g.fillText('FINAL RESULTS', SW/2, 500); spaced(0);
+  const ttl = loopDay(hn) ? loopName(hn) : holeNameFor(hn); g.fillStyle = INK; fit(ttl, 700, 100, SW - 128); g.fillText(ttl, SW/2, 600);
+  // winner
+  const w = (bd.top || [])[0]; let y = 650;
+  if (w){ rrect(64, y, SW - 128, 190, 32); g.fillStyle = 'rgba(231,192,104,.14)'; g.fill(); g.strokeStyle = 'rgba(231,192,104,.6)'; g.lineWidth = 2.5; g.stroke();
+    g.textAlign = 'left'; g.fillStyle = SOFT; font(600, 28); spaced(5); g.fillText('WINNER', 104, y + 54); spaced(0);
+    g.fillStyle = INK; font(700, 72); g.fillText(clip(w.tag, SW - 208), 104, y + 136);
+    g.fillStyle = SOFT; font(500, 34); g.textAlign = 'right'; g.fillText(`${wordOf(w.word)} · ${Number(w.avg).toFixed(1)}`, SW - 104, y + 54);
+    y += 214; }
+  // awards
+  const c1 = bd.closest, lp = bd.longest, ud = bd.updown, sh = bd.shot;
+  const aw = [['CLOSEST TO THE PIN', c1 && c1.tag, c1 ? (Number(c1.ft) === 0 ? 'Ace' : fmtDist(c1.ft/3)) : ''], ['LONGEST PUTT MADE', lp && lp.tag, lp ? fmtDist(lp.ft/3) : ''], ['BEST UP & DOWN', ud && ud.tag, ud ? fmtDist(ud.ft/3) : ''], ['SHOT OF THE DAY', sh && sh.tag, sh ? String(Math.round(sh.grade)) : '']];
+  const AG = 20, AW = (SW - 128 - AG)/2, AH = 196;
+  aw.forEach(([l, who, val], i) => { const x = 64 + (i % 2)*(AW + AG), yy = y + (i >> 1)*(AH + AG), cx = x + AW/2;
+    rrect(x, yy, AW, AH, 26); g.fillStyle = 'rgba(244,238,226,.07)'; g.fill(); g.textAlign = 'center';
+    g.fillStyle = SOFT; spaced(3); fit(l, 600, 24, AW - 48); g.fillText(l, cx, yy + 46); spaced(0);
+    g.fillStyle = who ? GOLD : SOFT; fit(who ? val : '—', 700, 66, AW - 48); g.fillText(who ? val : '—', cx, yy + 118);
+    g.fillStyle = who ? INK : SOFT; font(600, 34); g.fillText(clip(who || 'Nobody yet', AW - 48), cx, yy + 168); });
+  y += AH*2 + AG + 22;
+  // top five, plus the sharer if they finished lower
+  const rows = (bd.top || []).slice(0, 5), me = bd.me && bd.me.rank && !bd.me.flagged && !rows.some(r => r.me) ? bd.me : null;
+  const FOOT = 1806, rowH = Math.min(86, (FOOT - y)/(rows.length + (me ? 1 : 0) || 1));
+  const line = (r, yy) => { const mid = yy + rowH/2 + 12;
+    if (r.me){ rrect(52, yy + 3, SW - 104, rowH - 6, 18); g.fillStyle = 'rgba(231,192,104,.14)'; g.fill(); }
+    g.textAlign = 'left'; g.fillStyle = SOFT; font(700, 36); g.fillText(String(r.rank), 84, mid);
+    g.fillStyle = INK; font(600, 38); g.fillText(clip(r.tag || myTag || 'You', 500), 170, mid);
+    g.textAlign = 'right'; g.fillStyle = SOFT; font(500, 32); g.fillText(wordOf(r.word), SW - 214, mid);
+    g.fillStyle = INK; font(700, 38); g.fillText(Number(r.avg).toFixed(1), SW - 84, mid); };
+  rows.forEach((r, i) => line(r, y + i*rowH));
+  if (me) line({...me, me:true}, y + rows.length*rowH);
+  { const ft = 'Play today’s hole · ' + (location.host + location.pathname).replace(/\/(index\.html)?$/, ''); g.textAlign = 'center'; g.fillStyle = GOLD; fit(ft, 600, 34, SW - 128); g.fillText(ft, SW/2, 1872); }
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  if (!blob || ver !== ydayVer) return;
+  if (ydayShareURL) URL.revokeObjectURL(ydayShareURL);
+  ydayShareURL = URL.createObjectURL(blob);
+  try { ydayShareFile = new File([blob], `daily-ace-results-${day}.png`, {type:'image/png'}); } catch(e){ ydayShareFile = null; }
+  if (shareFromYday && !$('shareCard').hidden){ $('shareImg').src = ydayShareURL; $('shareDl').href = ydayShareURL; }
+}
+function openYdayPreview(){
+  shareFromYday = true; $('shareLabel').textContent = 'Final results'; $('shareDl').download = 'daily-ace-results.png';
+  $('ydayCard').hidden = true; $('shareCard').hidden = false; $('shareCard').scrollTop = 0;
+  if (ydayShareURL && ydayShareFile){ $('shareImg').src = ydayShareURL; $('shareDl').href = ydayShareURL; } else $('shareImg').removeAttribute('src');
+}
+$('ydayShare').addEventListener('click', () => {
+  if (ydayShareFile && navigator.canShare && navigator.share){ let ok = false, data = {files:[ydayShareFile], url:location.origin + location.pathname.replace(/[^/]*$/, '') + (loopDay(holeNum) ? 'loop.html' : '')};
+    try { ok = navigator.canShare(data); if (!ok){ data = {files:[ydayShareFile]}; ok = navigator.canShare(data); } } catch(e){}
+    if (ok){ navigator.share(data).catch(err => { if (!err || err.name !== 'AbortError') openYdayPreview(); }); return; } }
+  openYdayPreview();
+});
 $('ydayClose').addEventListener('click', () => { closeCard('ydayCard'); if (phase === 'summary') $('summary').hidden = false; else maybeFly(); });
 function renderField(){
   if (phase !== 'summary') return;
