@@ -297,6 +297,10 @@ a.btn{text-align:center;text-decoration:none}
 #ydayCard .award span{font-size:.66rem}
 #ydayCard .b-row{padding:6px}
 #ydayCard .board .b-tag{text-decoration:none}
+.yday-won{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
+.yday-won[hidden]{display:none}
+.yday-won .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(231,192,104,.14);box-shadow:inset 0 0 0 1px rgba(231,192,104,.55);font-size:.8rem;font-weight:600;white-space:nowrap}
+.yday-won .chip i{font-style:normal;font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#e7c068}
 #ydayCard .body{font-size:.82rem;text-align:center}
 #ydayCard .btns .btn{flex:1 1 0;white-space:nowrap;padding-left:8px;padding-right:8px}
 @media (max-height:600px){#ydayList .b-row:nth-child(n+4){display:none}#ydayCard{padding:12px 16px;gap:7px}#ydayCard .award{padding:6px}}
@@ -737,6 +741,7 @@ html.rcp body{margin:0;touch-action:auto}
       <div class="card-head"><div class="label" id="ydayLabel">Yesterday</div><div class="title" id="ydayTitle">—</div></div>
       <div class="yday-win" id="ydayWinner"><div class="label">Winner</div><b id="ydayWinTag"></b><span id="ydayWinScore"></span></div>
       <div class="awards" id="ydayAwards"></div>
+      <div class="yday-won" id="ydayWon" hidden></div>
       <div class="board" id="ydayList"></div>
       <div class="body" id="ydayMe"></div>
       <div class="btns"><button class="btn quiet" id="ydayShare" hidden>Share results</button><button class="btn primary" id="ydayClose">Play today's hole</button></div>
@@ -2867,6 +2872,12 @@ const BADGES = [
   {id:'s30', ic:'🗓️', name:'Every day in the month', desc:'30-day streak', tier:'epic', t:c => c.streak >= 30},
   {id:'ace', ic:'💎', name:'Ace', desc:'Make a hole in one', tier:'legendary', t:c => c.holed && c.strokes === 1},
   {id:'h100', ic:'👑', name:'Club champion', desc:'Play 100 Daily Ace rounds', tier:'legendary', t:c => c.days >= 100},
+  // daily wins: awarded when yesterday's final results come in, never from the round itself
+  {id:'w_ace', ic:'🏆', name:'Daily Ace', desc:'Win the day on the leaderboard', tier:'epic', t:c => false},
+  {id:'w_pin', ic:'📍', name:'Pin Seeker', desc:'Closest to the pin for the day', tier:'rare', t:c => false},
+  {id:'w_lag', ic:'🧲', name:'Lag Lord', desc:'Longest putt made for the day', tier:'rare', t:c => false},
+  {id:'w_ud', ic:'↕️', name:'1 Up 1 Down', desc:'Best up and down of the day', tier:'rare', t:c => false},
+  {id:'w_top', ic:'💯', name:'Top Shot', desc:'Highest graded shot of the day', tier:'rare', t:c => false},
 ];
 const TIER_RANK = {legendary:0, epic:1, rare:2, uncommon:3, common:4};
 // badges you can earn again level up: Bronze, Silver, Gold, Platinum. Rarer badges need fewer repeats.
@@ -4279,6 +4290,34 @@ function fillAwards(el, bd){
   const kind = !sh ? '' : Number(sh.n) === 1 ? `Tee shot · ${clubName({mode:'full', club:sh.club})}` : sh.mode === 'putt' ? 'Putt' : sh.mode === 'short' ? ((SHORT[sh.type] || {}).name || 'Short game') : clubName({mode:'full', club:sh.club});
   award('Shot', 'of the day', sh && sh.tag, sh ? String(Math.round(sh.grade)) : '', kind);
 }
+// the five daily wins pay out once per day, whenever that day's final results are first seen on this phone
+const WIN_FROM = '2026-11-07';
+function claimWins(bd, day){
+  const key = 'dailyhole:wins:' + day, done = LS.get(key, null); if (done) return done;
+  const me = bd && bd.me, out = [];
+  if (me && me.rank && !me.flagged && me.tag){
+    const w = (bd.top || [])[0], ids = [[w && w.me, 'w_ace'], [bd.closest && bd.closest.tag === me.tag, 'w_pin'], [bd.longest && bd.longest.tag === me.tag, 'w_lag'], [bd.updown && bd.updown.tag === me.tag, 'w_ud'], [bd.shot && bd.shot.tag === me.tag, 'w_top']].filter(x => x[0]).map(x => x[1]);
+    const owned = LS.get('dailyhole:badges', {}), counts = badgeCounts();
+    ids.forEach(id => { const b = BADGES.find(x => x.id === id), isNew = !owned[id];
+      counts[id] = isNew ? 1 : (counts[id] || 1) + 1; if (isNew) owned[id] = day;
+      out.push({id, label:isNew ? 'New' : METALS[metalIdx(b, counts[id])]}); });
+    if (ids.length){ LS.set('dailyhole:badges', owned); LS.set('dailyhole:bcount', counts); }
+  }
+  LS.set(key, out); return out;
+}
+// days played earlier in the week whose results were never opened
+async function claimMissedWins(y){
+  const days = LS.get('dailyhole:days', []); let k = prevDay(y), list = [];
+  for (let i = 0; i < 6 && k >= WIN_FROM; i++, k = prevDay(k)) if (days.includes(k) && !LS.get('dailyhole:wins:' + k, null)) list.push(k);
+  const res = await Promise.all(list.map(async d => { try { return claimWins(await rpc('day_board', {p_day:d, p_player:pid}), d); } catch(e){ return []; } }));
+  return res.flat();
+}
+function renderWins(list){
+  const el = $('ydayWon'); el.innerHTML = ''; el.hidden = !list.length;
+  list.forEach(w => { const b = BADGES.find(x => x.id === w.id); if (!b) return;
+    const c = document.createElement('span'); c.className = 'chip'; c.append(`${b.ic} ${b.name}`);
+    const t = document.createElement('i'); t.textContent = w.label; c.appendChild(t); el.appendChild(c); });
+}
 async function showYesterday(force){
   if (!online() || preview) return false;
   const y = prevDay(todayKey);
@@ -4302,6 +4341,7 @@ async function showYesterday(force){
     (bd.top || []).slice(0, 5).forEach(row => { const d = document.createElement('div'); d.className = 'b-row' + (row.me ? ' me' : '');
       [['b-rank', `${row.rank}`], ['b-tag', row.tag], ['b-word', wordOf(row.word)], ['b-avg', Number(row.avg).toFixed(1)]].forEach(([cls, txt]) => { const e = document.createElement('span'); e.className = cls; e.textContent = txt; d.appendChild(e); }); $('ydayList').appendChild(d); });
   } else { $('ydayWinner').hidden = true; $('ydayAwards').innerHTML = ''; $('ydayList').innerHTML = ''; $('ydayMe').textContent = 'No rounds were posted yesterday.'; }
+  renderWins(bd && bd.total ? [...claimWins(bd, y), ...await claimMissedWins(y).catch(() => [])] : []);
   ydayShown = true; $('summary').hidden = true; openCard('ydayCard');
   return true;
 }
