@@ -495,6 +495,10 @@ html.rcp body{margin:0;touch-action:auto}
 .chip[aria-pressed="true"] small{color:#4c5246}
 .soundtip{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 172px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:8px 14px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;white-space:nowrap;z-index:7}
 .flytag{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:10px;align-items:baseline;padding:10px 16px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.85rem;font-weight:600;white-space:nowrap;z-index:6}
+.revbar{pointer-events:auto;position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));border-radius:18px;padding:12px 14px;z-index:6;color:var(--ink);max-width:460px;margin:0 auto}
+.revbar .rv-top{display:flex;gap:10px;align-items:baseline;font-weight:600;font-size:.9rem}.revbar .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}
+.revbar .rv-key{display:flex;gap:16px;font-size:.78rem;color:var(--soft);margin:6px 0 10px}.revbar .rv-key i{display:inline-block;width:18px;height:0;margin-right:6px;vertical-align:middle;border-top:2px dashed rgba(255,255,255,.9)}.revbar .rv-key i.rv-a{border-top:3px solid #f2c45a}
+.revbar .rv-btns{display:flex;gap:8px}.revbar .rv-btns .btn{padding:10px 12px;font-size:.85rem}.revbar #rvShade[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
 .flytag .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}.flytag .skip{color:var(--soft);font-weight:500}
 .sep{width:1px;height:22px;background:var(--edge);margin:0 4px}
 .meter{position:fixed;right:calc(max(16px, env(safe-area-inset-right, 0px)) + 4px);top:30%;height:30%;width:8px;border-radius:8px;background:rgba(244,238,226,.22);opacity:0;transition:opacity .2s;pointer-events:none}
@@ -598,7 +602,7 @@ html.rcp body{margin:0;touch-action:auto}
         <div class="rep-row"><span class="label">Curve</span><div><div class="gauge curve"><b id="repDot"></b></div><div class="ends"><span id="endL">Hook</span><span id="endR">Slice</span></div></div><span class="rep-v" id="repCurveTxt"></span></div>
         <div class="rep-why" id="repWhy"></div>
       </div>
-      <div class="btns"><button class="btn" id="nextBtn">Next shot</button><button class="btn quiet" id="backBtn" hidden>Your card</button></div>
+      <div class="btns"><button class="btn" id="nextBtn">Next shot</button><button class="btn quiet" id="reviewBtn" hidden>Review shot</button><button class="btn quiet" id="backBtn" hidden>Your card</button></div>
     </div>
 
     <div class="card" id="summary" hidden>
@@ -802,7 +806,7 @@ html.rcp body{margin:0;touch-action:auto}
       <div class="help-sec"><h3>Leagues</h3><p class="body">Start a private league from the scorecard or settings, then send friends the invite. Everyone in it gets their own leaderboard for the day and the week.</p></div>
       <div class="help-sec"><h3>The week</h3><p class="body">Holes get harder through the week. Monday is the easiest, with a big green and soft slopes. Each day the hole gets longer, the green smaller and the slopes and wind stronger, up to Friday, the toughest. The weekend eases off. Today's difficulty shows under the logo.</p></div>
       <div class="help-sec"><h3>Power</h3><p class="body"><b>100%</b> is a full swing with the club or shot shown. A meter on the side away from your swiping thumb fills as you swing. In your first few rounds and in practice, a <b>Pin</b> mark shows the power that reaches the flag with no wind.</p></div>
-      <div class="help-sec"><h3>Swiping</h3><p class="body">Drag down on the course to take it back, then flick straight up. Farther back means more power, and a slow flick loses some. Drift <b>right</b> and the ball curves right (slice). Drift <b>left</b> and it curves left (hook). Putts only care how far you pull back.</p></div>
+      <div class="help-sec"><h3>Swiping</h3><p class="body">Drag down on the course to take it back, then flick straight up. Farther back means more power, and a slow flick loses some. Drift <b>right</b> and the ball curves right (slice). Drift <b>left</b> and it curves left (hook). A flick within about 5° of straight up counts as dead straight. Putts only care how far you pull back.</p></div>
       <div class="help-sec"><h3>Swinging your phone</h3><p class="body">Take your stance with the phone in your dominant hand like the grip: <b>screen up, top pointing down at the ball</b>, the screen sitting on the swing plane. The game only arms when you're set up this way and still. Then swing through. <b>Speed</b> sets power, and the <b>club face</b> at impact sets curve: open goes right, closed goes left (for a right-hander). Look down at the face gauge to square it up before you swing. Waving the phone around doesn't count.</p></div>
       <div class="help-sec"><h3>Shots</h3><p class="body"><b>Full</b> is a normal swing. <b>Punch</b> flies low and runs. Around the green, <b>Chip</b> runs out, <b>Pitch</b> lands soft, and <b>Flop</b> goes straight up and stops. <b>Sand</b> gets you out of a bunker. From the fringe you can <b>Putt</b>.</p></div>
       <div class="help-sec"><h3>More golf</h3><p class="body">Tap the target icon for the driving range and the holes from the last five days. None of it counts. After each phone swing you'll see a chart of what your club face did from takeaway to impact.</p></div>
@@ -839,6 +843,7 @@ html.rcp body{margin:0;touch-action:auto}
   </div>
 
   <button id="soundTip" class="soundtip glass" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>Tap anywhere for sound</button>
+  <div id="revBar" class="revbar glass" hidden><div class="rv-top"><span class="k" id="rvK">Shot review</span><span id="rvTxt"></span></div><div class="rv-key"><span><i class="rv-g"></i>Ideal</span><span><i class="rv-a"></i>Your shot</span></div><div class="rv-btns"><button class="btn quiet" id="rvShade" aria-pressed="false">Shade</button><button class="btn quiet" id="rvAgain">Replay</button><button class="btn" id="rvDone">Done</button></div></div>
   <button id="flyTag" class="flytag glass" hidden><span class="k">Flyover</span><span id="flyName"></span><span class="skip">Tap to skip</span></button>
   <footer class="bottom" id="controls">
     <div class="hint" id="hint"></div>
@@ -1480,6 +1485,31 @@ if (!GEN3){
   if (TYPE !== 'cliff') for (let i=0;i<n(30);i++){ const x = GR.x + (fxR()-0.5)*120, z = GR.z + GR.rz + 22 + fxR()*60; if (okForTree(x, z, 2.1)) addTree(x, z, 16+fxR()*12); }
   if (TYPE !== 'links') for (let i=0;i<14;i++){ const s = i%2 ? 1 : -1; const z = -12 + fxR()*40; const x = s*(26 + z*0.12 + fxR()*40); if (okForTree(x, z, 2)) addTree(x, z, 14+fxR()*9); }
 }
+// Edge fill: two staggered tree rows (plus a loose third) down both sides of the hole, so the chase camera never
+// looks out over empty ground. Its own seeded generator, so nothing else about the hole (or any old hole) shifts,
+// and never solid, so the ball flies through them exactly as before.
+{
+  const E = rng(hash(holeNum*4241 + HOLE_SUB*613 + 77)), TY = GEN3 ? C.TYPE : '';
+  const dens = ((SB && SB.sparse) || 1)*(TY === 'links' ? 0.3 : 1), FZ = GR.z - GR.rz - 4;
+  const cx = z => GR.x*clamp((z - 30)/Math.max(1, FZ - 30), 0, 1);
+  const edgeTree = (x, z, h) => {
+    let kind = PAL.kind, round = false, leaf = null;
+    if (kind === 'mixed'){ round = E() < 0.7; leaf = PAL.leaves ? PAL.leaves[Math.floor(E()*PAL.leaves.length)] : null; }
+    else if (kind === 'round'){ round = true; leaf = PAL.leaf ? PAL.leaf[Math.floor(E()*PAL.leaf.length)] : PAL.tree[0]; }
+    if (SB && LOOK.scenery === 'coastal' && E() < 0.35) kind = 'palm';
+    const wk = {pine:0.34, mixed:round ? 0.55 : 0.34, round:0.55, spruce:0.25, palm:0.32, cactus:0.24, dead:0.4}[kind] || 0.34, hk = {palm:0.7, cactus:0.28, round:0.8}[kind] || 1;
+    trees.push({x, z, h:h*hk, w:h*hk*wk*(0.95+E()*0.3), seed:Math.floor(E()*1e6), tone:E(), round, leaf, kind, solid:false, edge:true});
+  };
+  const ok = (x, z) => { const s = surfaceAt(x, z); return (s === 'rough' || s === 'deep') && gDist(x, z) > 2.2 && !inWater(x, z); };
+  const rows = [[46, 12, 5.5, 15, 10], [66, 22, 6.5, 17, 11], [100, 50, 11, 18, 12]];   // [offset, spread, spacing, height, height var]
+  for (const sd of [-1, 1]) for (const [off, spr, gap, h0, hv] of rows) for (let z = 5; z < GR.z + 130; z += gap*(0.75 + E()*0.5)){
+    if (E() > dens) continue;
+    const x = cx(z) + sd*(off + E()*spr + Math.max(0, z - GR.z)*0.25);
+    if (ok(x, z)) edgeTree(x, z + (E() - 0.5)*gap*0.6, h0 + E()*hv);
+  }
+  // and a stand of trees behind the tee, for the reverse angle in the shot review
+  for (let i=0; i<Math.round(70*dens); i++){ const x = (E() - 0.5)*320, z = -40 - E()*90; if (ok(x, z)) edgeTree(x, z, 16 + E()*12); }
+}
 const SOLID = trees.filter(t => t.solid);
 const reeds = []; { const W0 = WATER.filter(w => w.length < 400); for (let i=0;i<120 && W0.length;i++){ const w = W0[i % W0.length], p = w[Math.floor(fxR()*w.length)]; if (Math.abs(p[0]) < 200 && C.TYPE !== 'cliff' && !(SB && (LOOK.scenery === 'desert'))) reeds.push({x:p[0] + (fxR()-0.5)*6, z:p[1] + (fxR()-0.5)*1.4, h:0.7 + fxR()*0.9}); } }
 const clouds = Array.from({length:PAL.nosun ? 11 : 7}, () => ({u:-0.9+fxR()*1.8, v:0.15+fxR()*0.5, s:0.6+fxR()*0.9, puffs:Array.from({length:5+Math.floor(fxR()*4)}, () => [fxR()*2-1, fxR()*0.5-0.25, 0.35+fxR()*0.45])}));
@@ -1646,7 +1676,8 @@ function ridgePath(r, mirror){
   ctx.closePath(); return true;
 }
 function drawRidges(hz){
-  for (const r of ridges){
+  // the shot review looks back toward the tee, so the hills swing round behind it
+  for (const r0 of ridges){ const r = cosY < 0 ? {...r0, z:-r0.z*0.85} : r0;
     const fx = cam.x + sinY*(r.z - cam.z);
     const top = proj(fx, r.h+r.a, r.z), base = proj(fx, 0, r.z);
     const y0 = top ? top[1] : hz-100, y1 = base ? base[1] : hz;
@@ -1801,6 +1832,7 @@ function drawTree(t, mirror){
   if (t.prop){ if (!mirror) drawProp(t); return; }
   const base = proj(t.x, 0, t.z); if (!base) return; const top = proj(t.x, mirror ? -t.h : t.h, t.z); if (!top) return;
   const hpx = base[1]-top[1], wpx = t.w*F/base[2]; if (Math.abs(hpx) < 1.2) return;
+  if (base[0] + wpx < 0 || base[0] - wpx > W) return;   // off the side of the screen
   const dist = base[2], hazeT = Math.min(PAL.fog ? 0.7 : 0.85, Math.max(0, PAL.fog ? (dist-25)/260 : (dist-35)/460));
   if (PAL.kind === 'dead'){ drawDeadTree(t, base, top, hpx, wpx, mirror, hazeT); return; }
   if (t.kind === 'palm'){ drawPalm(t, base, top, hpx, wpx, mirror, hazeT); return; }
@@ -1913,7 +1945,7 @@ function drawLake(hz){
   ctx.save(); ctx.fillStyle = g; ctx.fill(); ctx.clip();
   ctx.globalAlpha = 0.4;
   for (const r of ridges){ if (ridgePath(r, true)){ ctx.fillStyle = r.c1; ctx.fill(); } }
-  for (const t of trees) if (t.z > 60) drawTree(t, true);
+  for (const t of trees) if (t.z > 60 && !t.edge) drawTree(t, true);
   ctx.globalAlpha = 1;
   const [sx] = sunScreen();
   const [tx, tz] = fwd(280), [bx, bz] = fwd(10);
@@ -2386,7 +2418,7 @@ function stepBall(dt, b, sim){
 let ffMute = false;
 function fastForward(){
   ffMute = true; let i = 0;
-  while (phase === 'flight' && i < 60000){ stepBall(1/240, ball, false); i++; }
+  while (phase === 'flight' && i < 60000){ stepBall(1/240, ball, false); i++; if (ball.path && i % 4 === 0 && ball.path.length < 3000) ball.path.push([ball.x, ball.y, ball.z]); }
   ffMute = false; ball.trail = [];
 }
 function splash(b){
@@ -2422,7 +2454,7 @@ function launch(power, curve, info){
   const yaw = aimYaw() + (mode === 'putt' ? cu*0.03 : cu*0.035);
   const gh = Hh(ball.x, ball.z);
   Object.assign(ball, {sx:ball.x, sz:ball.z, trail:[], carry:0, t:0, wet:false, lipped:false, lipT:0, side:0, spin:0, wv:undefined, treeT:0, hitTree:false});
-  ball.landX = ball.landZ = undefined;
+  ball.landX = ball.landZ = undefined; ball.path = mode === 'full' ? [[ball.x, ball.y, ball.z]] : null; ghostShot = null;
   if (mode === 'putt'){
     const v = Math.sqrt(2*SURF.green.dec*(PUTT_RANGES[puttRangeIdx]/3)*p);
     Object.assign(ball, {y:gh, vx:v*Math.sin(yaw), vy:0, vz:v*Math.cos(yaw), state:'roll', landed:true, bounced:true});
@@ -2433,7 +2465,7 @@ function launch(power, curve, info){
     Object.assign(ball, {y:gh+0.05, vx:L.speed*Math.cos(L.launch)*Math.sin(yaw), vy:L.speed*Math.sin(L.launch), vz:L.speed*Math.cos(L.launch)*Math.cos(yaw), spin:L.spin, side:cu*(mode === 'full' ? 5.5 : 2.5), state:'air', landed:false, bounced:false});
     sfx.hit(p, currentLie, mode === 'full' ? fullType : shortType);
   }
-  flightFollow = mode === 'full' ? {sx:ball.x, sz:ball.z, yaw:addr.yaw, back:Math.hypot(addr.x-ball.x, addr.z-ball.z), y0:addr.y, d, pitch:addr.pitch} : null;
+  flightFollow = mode === 'full' ? {sx:ball.x, sz:ball.z, yaw:addr.yaw, back:Math.hypot(addr.x-ball.x, addr.z-ball.z), y0:addr.y, d, pitch:addr.pitch} : null;   // short shots keep their green-side view
   phase = 'flight'; if (navigator.vibrate) try { navigator.vibrate(mode === 'putt' ? 8 : 18); } catch(e){}
   setHint(mode === 'putt' ? '' : 'Tap to skip ahead'); $('controls').hidden = true;
 }
@@ -2459,6 +2491,7 @@ function finish(){
   const shot = {n:shotStart.n, mode:shotStart.mode, club:shotStart.club, type:shotStart.type, aim:shotStart.aim, fromLie:shotStart.lie, fromD:+shotStart.d.toFixed(3),
     endLie, endD:+endD.toFixed(3), sg:+sg.toFixed(3), carry:Math.round(ball.carry || 0), landD:+landD.toFixed(2), landSurf, landPast, wet, holed, penalty, lipped:!!ball.lipped, sw:lastSwing, need:+shotStart.need.toFixed(3),
     grade:gradeShot({mode:shotStart.mode, fromLie:shotStart.lie, fromD:shotStart.d, endLie, endD, holed, wet, bx:shotStart.x, bz:shotStart.z})};
+  ghostShot = shot.mode === 'full' && ball.path && ball.path.length > 4 ? buildGhost(shot) : null;
   round.shots.push(shot); round.strokes += 1 + penalty;
   if (!holed && !wet && endLie === 'green' && endD*3 <= 3){
     round.shots.push({n:shot.n + 1 + penalty, mode:'putt', club:null, type:'gimme', aim:0, fromLie:'green', fromD:+endD.toFixed(3), endLie:'holed', endD:0, sg:+(expStrokes('green', endD) - 1).toFixed(3), grade:null, carry:0, landD:0, landSurf:'green', landPast:false, wet:false, holed:true, gimme:true, penalty:0, sw:null, need:0});
@@ -2484,7 +2517,7 @@ function setupLie(){
   if (mode === 'full'){ clubIdx = CLUBS.findIndex(c => c.carry >= d - 3); if (clubIdx < 0) clubIdx = CLUBS.length-1; fullType = 'full'; }
   if (mode === 'short'){ shortType = currentLie === 'sand' ? 'sand' : d < 22 ? 'chip' : 'pitch'; if (currentLie === 'fringe' && d < 14) mode = 'putt'; }
   if (mode === 'putt'){ pickRange(); computeRead(); } else caddieText = '';
-  flightFollow = null; phase = 'ready'; motion.state = 'address'; motion.stillSince = 0;
+  flightFollow = null; review = null; $('revBar').hidden = true; phase = 'ready'; motion.state = 'address'; motion.stillSince = 0;
   Object.assign(WIND, windFor(ball.x, ball.z)); $('windMph').textContent = WIND.mph ? `${WIND.mph} mph` : 'Calm'; renderWind(true);
   addr = addressView();
   $('controls').hidden = false; $('icons').hidden = false;
@@ -2534,7 +2567,8 @@ const canPutt = () => currentLie === 'green' || ((currentLie === 'fringe' || cur
 function fmtDist(yd){ const ft = yd*3; if (ft >= 90) return `${Math.round(yd)} yds`; if (ft >= 10) return `${Math.round(ft)} ft`; const f = Math.floor(ft), inch = Math.round((ft-f)*12); if (inch === 12) return `${f+1} ft`; return f ? `${f} ft ${inch} in` : `${inch} in`; }
 function fmtShort(yd, lie){ if (yd*3 < 10) return fmtDist(yd); return (lie === 'green' || lie === 'fringe' || yd < 25) ? `${Math.round(yd*3)} ft` : `${Math.round(yd)} yds`; }
 const powerLabel = p => p < 0.5 ? 'Soft' : p < 0.85 ? 'Smooth' : p <= 1.0 ? 'Full' : 'Overswing';
-function curveLabel(cu){ const a = Math.abs(cu); if (a < 0.12) return 'Straight'; if (mode === 'putt' || lastSwing && lastSwing.mode === 'putt') return cu > 0 ? 'Pushed' : 'Pulled'; if (a < 0.35) return cu > 0 ? 'Fade' : 'Draw'; if (a < 0.7) return cu > 0 ? 'Slice' : 'Hook'; return cu > 0 ? 'Big slice' : 'Snap hook'; }
+function curveLabel(cu){ const a = Math.abs(cu); const pt = mode === 'putt' || lastSwing && lastSwing.mode === 'putt';
+  if (pt ? a < 0.12 : a < 0.005) return 'Straight'; if (pt) return cu > 0 ? 'Pushed' : 'Pulled'; if (a < 0.12) return cu > 0 ? 'Slight fade' : 'Slight draw'; if (a < 0.35) return cu > 0 ? 'Fade' : 'Draw'; if (a < 0.7) return cu > 0 ? 'Slice' : 'Hook'; return cu > 0 ? 'Big slice' : 'Snap hook'; }
 // old grade scale (strokes gained squashed onto 0–100); only a fallback for rounds saved before gradeShot
 const gradeNum = sg => Math.round(clamp(50 + 50*Math.tanh(sg/0.75), 0, 100));
 const shotGrade = s => s.gimme ? null : (s.grade ?? gradeNum(s.sg));
@@ -2670,7 +2704,9 @@ function swingWhy(s){
   const a = Math.abs(sw.cu); let pow, cur;
   if (sw.input === 'swipe'){
     pow = s.mode === 'putt' ? `Hit it ${Math.round(sw.p*sw.range)} ft on a flat green (${sw.range} ft range).` : `Pull-back ${Math.round(sw.back*100)}% × flick speed ${Math.round(sw.tempo*100)}%.` + (sw.tempo < 0.95 ? ' Flick faster to keep all of it.' : '');
-    cur = a < 0.12 ? 'Your swipe went straight.' : s.mode === 'putt' ? `Your swipe drifted ${sw.cu > 0 ? 'right, so it was pushed right' : 'left, so it was pulled left'}.` : `Your flick drifted ${sw.cu > 0 ? 'right' : 'left'}, so it curved ${sw.cu > 0 ? 'right' : 'left'}.`;
+    const dg = Math.abs(sw.drift || 0), sd = (sw.drift || 0) > 0 ? 'right' : 'left';
+    cur = s.mode !== 'putt' && sw.drift !== undefined ? (sw.cu === 0 ? (dg ? `Your flick leaned ${dg}° ${sd}, inside the straight band, so it flew straight.` : 'Your flick went dead straight.') : `Your flick leaned ${dg}° ${sd} (the straight band is about ±5°), so it curved ${sw.cu > 0 ? 'right' : 'left'}.`)
+      : a < 0.12 ? 'Your swipe went straight.' : s.mode === 'putt' ? `Your swipe drifted ${sw.cu > 0 ? 'right, so it was pushed right' : 'left, so it was pulled left'}.` : `Your flick drifted ${sw.cu > 0 ? 'right' : 'left'}, so it curved ${sw.cu > 0 ? 'right' : 'left'}.`;
   } else {
     pow = `Swing speed ${sw.rate}°/s. 100% on ${sw.feel} is ${sw.ref}°/s.`;
     const fd = sw.face || 0; cur = Math.abs(fd) < 3 ? 'Face square at impact.' : `Face ${Math.round(Math.abs(fd))}° ${fd > 0 ? 'open' : 'closed'} at impact, so it went ${sw.cu > 0 ? 'right' : 'left'}.`;
@@ -2703,7 +2739,7 @@ function fillReport(s){
   $('repPowTxt').textContent = s.mode === 'putt' && sw.range ? `${Math.round(sw.p*sw.range)} ft pace` : `${Math.round(sw.p*100)}% ${powerLabel(sw.p)}`;
   $('repDot').style.left = `${(clamp(sw.cu, -1, 1)+1)/2*100}%`;
   const putt = s.mode === 'putt'; $('endL').textContent = putt ? 'Pull' : 'Hook'; $('endR').textContent = putt ? 'Push' : 'Slice';
-  const a = Math.abs(sw.cu); $('repCurveTxt').textContent = a < 0.12 ? 'Straight' : putt ? (sw.cu > 0 ? 'Pushed' : 'Pulled') : a < 0.35 ? (sw.cu > 0 ? 'Fade' : 'Draw') : a < 0.7 ? (sw.cu > 0 ? 'Slice' : 'Hook') : (sw.cu > 0 ? 'Big slice' : 'Snap hook');
+  const a = Math.abs(sw.cu); $('repCurveTxt').textContent = !putt ? curveLabel(sw.cu) : a < 0.12 ? 'Straight' : putt ? (sw.cu > 0 ? 'Pushed' : 'Pulled') : a < 0.35 ? (sw.cu > 0 ? 'Fade' : 'Draw') : a < 0.7 ? (sw.cu > 0 ? 'Slice' : 'Hook') : (sw.cu > 0 ? 'Big slice' : 'Snap hook');
   $('repWhy').textContent = swingWhy(s);
 }
 // benchmarks: Tour proximity by yardage bucket (approximate, from public PGA Tour stat pages) and an amateur ladder
@@ -2737,6 +2773,9 @@ function showShotCard(s){
   $('nextBtn').textContent = round.done ? (practice ? 'Play it again' : 'See your card') : 'Next shot';
   $('backBtn').hidden = !(practice && round.done); $('backBtn').textContent = 'Your card'; $('trace').hidden = true;
   $('shotCard').hidden = false; $('shotCard').scrollTop = 0;
+  const canReview = !!ghostShot && s.mode === 'full' && s.n === ghostShot.n0;
+  $('reviewBtn').hidden = !canReview;
+  if (canReview && !s.wet && (shotGrade(s) ?? 0) >= 90 && !reduceMotion) startReview(true);
 }
 function showRangeCard(r){
   phase = 'card'; $('scGrade').hidden = false; $('scRing').hidden = true;
@@ -3425,8 +3464,11 @@ function drawSwipeTrail(){
   const left = bx > W - 150, tx = left ? bx - 14 : bx + 14; ctx.textAlign = left ? 'right' : 'left';
   ctx.fillStyle = '#f4eee2'; ctx.fillText(putt ? `${Math.round(back*PUTT_RANGES[puttRangeIdx])} ft pace` : `${Math.round(back*100)}% back`, tx, by + 2);
   if (done){
-    const e = pts.at(-1); ctx.fillStyle = curveColor(cu); ctx.textAlign = e[0] > W - 150 ? 'right' : 'left'; const ex = e[0] > W - 150 ? e[0] - 16 : e[0] + 16;
-    const drift = Math.abs(cu) < 0.12 ? 'Straight' : putt ? (cu > 0 ? 'Drifted right: pushed' : 'Drifted left: pulled') : (cu > 0 ? 'Drifted right: ' : 'Drifted left: ') + curveLabel(cu).toLowerCase();
+    const e = pts.at(-1); ctx.fillStyle = curveColor(cu); ctx.textAlign = e[0] > W - 180 ? 'right' : 'left'; const ex = e[0] > W - 180 ? e[0] - 16 : e[0] + 16;
+    const dg = Math.abs(liveTrail && liveTrail.drift || 0), side = (liveTrail && liveTrail.drift || 0) > 0 ? 'right' : 'left';
+    const drift = putt ? (Math.abs(cu) < 0.12 ? 'Straight' : cu > 0 ? 'Drifted right: pushed' : 'Drifted left: pulled')
+      : cu === 0 ? (dg ? `Straight · ${dg}° ${side}` : 'Straight')
+      : `${dg}° ${side}: ${curveLabel(cu).toLowerCase()}`;
     ctx.fillText(drift, ex, e[1] - 4);
     if (!putt){ ctx.fillStyle = tempo < 0.95 ? '#e7c068' : 'rgba(244,238,226,.85)'; ctx.fillText(tempo < 0.95 ? `Slow flick: ${Math.round(tempo*100)}% speed` : 'Full-speed flick', ex, e[1] + 14); }
   }
@@ -3506,14 +3548,25 @@ function fireSwipe(){
   const s = swipe.samples; if (s.length < 2 || swipe.back < 0.03){ swipe = null; return; }
   const last = s.at(-1); let first = s[0]; for (const p of s) if (last[0]-p[0] <= 90){ first = p; break; }
   const vy = (first[2]-last[2])/Math.max(8, last[0]-first[0]);
-  const curve = clamp(((last[1]-swipe.maxX)/Math.max(30, swipe.maxY-last[2]))*1.8, -1, 1);
+  const slope = (last[1]-swipe.maxX)/Math.max(30, swipe.maxY-last[2]);
+  const drift = Math.round(Math.atan(slope)*180/Math.PI);   // degrees the flick leaned off vertical (+ = right)
+  const curve = mode === 'putt' ? clamp(slope*1.8, -1, 1) : straightBand(clamp(slope*1.8, -1, 1));
   const back = swipe.back, all = swipe.all, bx = swipe.maxX, by = swipe.maxY; swipe = null;
   const tempo = mode === 'putt' ? 1 : mode === 'short' ? clamp(vy/0.9, 0.6, 1) : clamp(vy/1.3, 0.35, 1);
   // keep the finger path: on screen for a moment, and in the shot report (relative to the bottom of the pull-back)
   const step = Math.max(1, Math.ceil(all.length/48)), trail = all.filter((_, i) => i % step === 0 || i === all.length-1).map(p => [Math.round(p[0]-bx), Math.round(p[1]-by)]);
-  liveTrail = {pts:all, bx, by, back, tempo, curve, putt: mode === 'putt', t:performance.now()};
-  if (mode === 'putt'){ launch(back, curve, {input:'swipe', back:+back.toFixed(2), range:PUTT_RANGES[puttRangeIdx], trail}); return; }
-  launch(back*tempo, curve, {input:'swipe', back:+back.toFixed(2), tempo:+tempo.toFixed(2), trail});
+  liveTrail = {pts:all, bx, by, back, tempo, curve, drift, putt: mode === 'putt', t:performance.now()};
+  if (mode === 'putt'){ launch(back, curve, {input:'swipe', back:+back.toFixed(2), range:PUTT_RANGES[puttRangeIdx], trail, drift}); return; }
+  launch(back*tempo, curve, {input:'swipe', back:+back.toFixed(2), tempo:+tempo.toFixed(2), trail, drift});
+}
+// Small wobbles in a flick shouldn't turn into a curving ball once wind gets hold of it.
+// Anything inside the band flies dead straight; outside it, curve comes back gradually (no cliff at the edge)
+// and still reaches full hook/slice at the extremes. Applied before launch, so the server replays the result as-is.
+const STRAIGHT_BAND = 0.16;
+function straightBand(cu){
+  const a = Math.abs(cu); if (a <= STRAIGHT_BAND) return 0;
+  const t = (a - STRAIGHT_BAND)/(1 - STRAIGHT_BAND);
+  return Math.sign(cu)*t*(0.45 + 0.55*t);
 }
 function endTouch(e){
   touches.delete(e.pointerId);
@@ -3851,20 +3904,134 @@ function readView(){
   if (mode === 'putt'){ const d = Math.max(2, dPin(ball.x, ball.z)), s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); const mx = ball.x + s*d*0.42, mz = ball.z + c*d*0.42; const back = d*0.25, hgt = Math.max(6, d*2.3); return {x:mx - s*back, y:Hh(mx, mz) + hgt, z:mz - c*back, pitch:Math.atan2(hgt, back), yaw:addr.yaw}; }
   const s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); return {x:GR.x - s*82, y:92, z:GR.z - c*82, pitch:47*D2R, yaw:addr.yaw}; }
 let thumbPose = null;
+// Shot camera (cosmetic only). Full shots: hold on the tee for a beat so you see the start line and the wind
+// take it, chase from behind and above (staying close to the target line), then park high over the green, or
+// over wherever the ball is coming down, and watch it land and run out from there.
+function parkPose(f, lx, lz){
+  // frame the landing spot and the green together; the closer the landing is to the pin, the more it's just the green
+  const dl = Math.hypot(lx - GR.x, lz - GR.z), w = clamp((dl - 25)/60, 0, 1);
+  const fx = GR.x + (lx - GR.x)*(0.35 + 0.4*w), fz = GR.z + (lz - GR.z)*(0.35 + 0.4*w);
+  const spread = Math.max(GR.rz*2.4, dl*0.9), back = 70 + spread*0.8, hgt = 38 + spread*0.35;
+  const s = Math.sin(f.yaw), c = Math.cos(f.yaw), gy = Hh(fx, fz);
+  return {x:fx - s*back, y:gy + hgt, z:fz - c*back, pitch:Math.atan2(hgt, back), yaw:f.yaw};
+}
+function flightCam(dt){
+  const f = flightFollow; f.age = (f.age || 0) + dt;
+  const s = Math.sin(f.yaw), c = Math.cos(f.yaw);
+  if (!f.stage) f.stage = f.short ? 'park' : 'hold';
+  if (f.stage === 'hold'){ if (f.age < 0.55) return null; f.stage = 'chase'; }
+  if (f.stage === 'chase'){
+    const gy = Hh(ball.x, ball.z), up = ball.y - gy;
+    // hand off to the parked view once it's on the way down and not far off the ground, or once it lands
+    if (ball.state !== 'air' || (ball.vy < 0 && up < Math.max(9, f.apex*0.55))) f.stage = 'park';
+    else {
+      f.apex = Math.max(f.apex || 0, up);
+      const along = (ball.x-f.sx)*s + (ball.z-f.sz)*c, lat = clamp((ball.x-f.sx)*c - (ball.z-f.sz)*s, -28, 28);
+      const back = 20, a = along - back, px = f.sx + s*a + c*lat*0.85, pz = f.sz + c*a - s*lat*0.85;
+      const cy = Math.max(Hh(px, pz) + 4, ball.y + 5), lookY = ball.y*0.7 + gy*0.3, ahead = back + 28;
+      return {x:px, y:cy, z:pz, pitch:Math.atan2(cy - lookY, ahead), yaw:f.yaw};
+    }
+  }
+  if (!f.park){
+    // where it's coming down, from where it is now (good enough to frame a camera; physics is untouched)
+    let lx = ball.x, lz = ball.z;
+    if (ball.state === 'air'){ const up = Math.max(0, ball.y - Hh(ball.x, ball.z)), tl = ball.vy < 0 ? up/Math.max(4, -ball.vy) : (ball.vy + Math.sqrt(ball.vy*ball.vy + 2*G*up))/G; lx += ball.vx*tl; lz += ball.vz*tl; }
+    f.park = parkPose(f, lx, lz);
+  }
+  return f.park;
+}
+// ---------- shot review (cosmetic only) ----------
+// After a full shot: a reverse angle from behind the green with your ball flight and a ghost of the ideal one
+// (same club, same wind, no curve, aimed and hit so it finishes at the pin). Plays on its own for 90+ shots.
+let ghostShot = null, review = null;
+function buildGhost(shot){
+  const sx = shotStart.x, sz = shotStart.z, gh0 = Hh(sx, sz);
+  const lx = ball.landX === undefined ? ball.x : ball.landX, lz = ball.landZ === undefined ? ball.z : ball.landZ;
+  // the ideal ball rolls out about as far as yours did, so aim its landing that far short of the pin
+  const roll = ball.wet ? 3 : clamp(Math.hypot(ball.x - lx, ball.z - lz), 0, 25);
+  const y0 = yawTo(sx, sz), tx = PIN.x - Math.sin(y0)*roll, tz = PIN.z - Math.cos(y0)*roll;
+  const run = (p, yaw, keep) => {
+    const L = shotParams(p), b = {x:sx, y:gh0 + 0.05, z:sz, sx, sz, vx:L.speed*Math.cos(L.launch)*Math.sin(yaw), vy:L.speed*Math.sin(L.launch), vz:L.speed*Math.cos(L.launch)*Math.cos(yaw), spin:L.spin, side:0, state:'air', t:0};
+    const path = keep ? [[b.x, b.y, b.z]] : null;
+    for (let i=0; i<2400 && b.state === 'air'; i++){ stepBall(1/120, b, 2); if (keep && i % 2 === 0) path.push([b.x, b.y, b.z]); }
+    return {x:b.landX ?? b.x, z:b.landZ ?? b.z, path};
+  };
+  ffMute = true;
+  let p = clamp(shotStart.need || 1, 0.3, 1.12), yaw = y0;
+  try {
+    for (let it=0; it<8; it++){
+      const r = run(p, yaw), ex = tx - r.x, ez = tz - r.z; if (Math.hypot(ex, ez) < 0.4) break;
+      const rp = run(Math.min(1.12, p + 0.01), yaw), ry = run(p, yaw + 0.004);
+      const a = (rp.x - r.x)/0.01, c = (rp.z - r.z)/0.01, b2 = (ry.x - r.x)/0.004, d = (ry.z - r.z)/0.004, det = a*d - b2*c;
+      if (Math.abs(det) < 1e-6) break;
+      p = clamp(p + (d*ex - b2*ez)/det, 0.2, 1.12); yaw += clamp((a*ez - c*ex)/det, -0.2, 0.2);
+    }
+    const g = run(p, yaw, true);
+    g.path.push([g.x, Hh(g.x, g.z), g.z]);
+    return {n0:shot.n, path:g.path, land:[g.x, g.z], end:[PIN.x, PIN.z], aimYds:Math.round(Math.tan(yaw - y0)*shotStart.d), p,
+      act:{path:ball.path.slice(), land:[lx, lz], end:[ball.x, ball.z], wet:!!ball.wet}, ft:Math.round(shot.endD*3), grade:shot.grade, sw:shot.sw};
+  } finally { ffMute = false; }
+}
+function reviewCam(G){
+  // behind the green, looking back up the line toward where the shot came from
+  const sx = shotStart.x, sz = shotStart.z, d = Math.hypot(PIN.x - sx, PIN.z - sz) || 1, ux = (PIN.x - sx)/d, uz = (PIN.z - sz)/d;
+  const lx = (G.land[0] + G.act.land[0])/2, lz = (G.land[1] + G.act.land[1])/2;
+  const spread = Math.hypot(G.land[0] - G.act.land[0], G.land[1] - G.act.land[1]), back = 48 + GR.rz*0.6 + spread*0.9, cx = lx + ux*back, cz = lz + uz*back, hgt = 22 + spread*0.25;
+  return {x:cx, y:Hh(cx, cz) + hgt, z:cz, pitch:Math.atan2(hgt, back*1.7), yaw:Math.atan2(-ux, -uz)};
+}
+function startReview(auto){
+  if (!ghostShot) return;
+  review = {t:0, auto, shade:review ? review.shade : false, cam:reviewCam(ghostShot)}; Object.assign(cam, review.cam);
+  $('shotCard').hidden = true; $('revBar').hidden = false;
+  const G = ghostShot, sw = G.sw, dg = sw && sw.drift !== undefined ? Math.abs(sw.drift) : null;
+  $('rvK').textContent = auto ? 'Highlight' : 'Shot review';
+  const aimTxt = Math.abs(G.aimYds) < 2 ? 'ideal aimed at the pin' : `ideal aimed ${Math.abs(G.aimYds)} yds ${G.aimYds > 0 ? 'right' : 'left'}`;
+  $('rvTxt').textContent = [G.act.wet ? 'Wet' : G.ft === 0 ? 'Holed' : `${G.ft} ft`, dg ? `leaned ${dg}° ${sw.drift > 0 ? 'right' : 'left'}` : null, aimTxt].filter(Boolean).join(' · ');
+  $('rvShade').setAttribute('aria-pressed', String(review.shade));
+}
+function endReview(){ if (!review) return; review = null; $('revBar').hidden = true; if (phase === 'card') $('shotCard').hidden = false; }
+$('reviewBtn').addEventListener('click', () => startReview(false));
+$('rvDone').addEventListener('click', endReview);
+$('rvAgain').addEventListener('click', () => { if (review) review.t = 0; });
+$('rvShade').addEventListener('click', () => { if (!review) return; review.shade = !review.shade; $('rvShade').setAttribute('aria-pressed', String(review.shade)); });
+function drawReview(dt){
+  if (!review || !ghostShot) return;
+  review.t += dt; const G = ghostShot, u = clamp((review.t - 0.6)/2.6, 0, 1), e = u < 1 ? 1 - Math.pow(1 - u, 2) : 1;
+  const pts = arr => { const n = Math.max(1, Math.round((arr.length - 1)*e)), out = []; for (let i=0;i<=n;i++){ const q = arr[i]; const s = proj(q[0], q[1], q[2]); if (s) out.push(s); } return out; };
+  const gp = pts(G.path), ap = pts(G.act.path);
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (review.shade && gp.length > 1 && ap.length > 1){
+    const g = G.grade ?? 0, col = g >= 90 ? '120,200,120' : g >= 70 ? '160,205,110' : g >= 45 ? '231,192,104' : '227,130,95';
+    ctx.fillStyle = `rgba(${col},.28)`; ctx.beginPath(); gp.forEach((s, i) => i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1])); for (let i=ap.length-1;i>=0;i--) ctx.lineTo(ap[i][0], ap[i][1]); ctx.closePath(); ctx.fill();
+  }
+  const line = (P, col, w, dash) => { if (P.length < 2) return; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); P.forEach((s, i) => i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1])); ctx.stroke(); ctx.setLineDash([]); };
+  line(gp, 'rgba(0,0,0,.25)', 4, [7, 7]); line(gp, 'rgba(255,255,255,.9)', 2.2, [7, 7]);
+  line(ap, 'rgba(0,0,0,.3)', 5, []); line(ap, '#f2c45a', 3, []);
+  const dot = (s, col, r) => { if (!s) return; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(s[0], s[1], r, 0, 7); ctx.fill(); };
+  dot(gp.at(-1), 'rgba(255,255,255,.75)', 4); dot(ap.at(-1), '#fff', 4.5);
+  if (u >= 1){
+    const ge = proj(G.end[0], Hh(G.end[0], G.end[1]), G.end[1]), ae = proj(G.act.end[0], Hh(G.act.end[0], G.act.end[1]), G.act.end[1]);
+    if (ge && ae && !G.act.wet && G.ft > 0){
+      ctx.strokeStyle = '#f2c45a'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(ae[0], ae[1]); ctx.lineTo(ge[0], ge[1]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = '600 13px "Instrument Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const mx = (ae[0] + ge[0])/2, my = (ae[1] + ge[1])/2 - 16, tx = `${G.ft} ft`, w = ctx.measureText(tx).width + 14;
+      ctx.fillStyle = 'rgba(12,16,14,.75)'; ctx.beginPath(); ctx.roundRect(mx - w/2, my - 11, w, 22, 6); ctx.fill(); ctx.fillStyle = '#f4eee2'; ctx.fillText(tx, mx, my + 1);
+    }
+  }
+  ctx.restore();
+  if (review.auto && review.t > 6.5) endReview();   // the highlight hands back to the card on its own
+}
 function updateCamera(dt){
   if (thumbPose){ Object.assign(cam, thumbPose); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; }
   if (fly){ fly.t += dt; if (fly.t >= fly.keys.at(-1).t){ endFlyover(); } else { Object.assign(cam, flyPose(fly.t)); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; } }
   let t = addr;
-  if (reading) t = readView();
+  if (review) t = review.cam;
+  else if (reading) t = readView();
   else if (holeView && phase === 'ready') t = holeViewTarget();
   else if (flightFollow && (phase === 'flight' || phase === 'done' || phase === 'card')){
-    const f = flightFollow, s = Math.sin(f.yaw), c = Math.cos(f.yaw);
-    const along = (ball.x-f.sx)*s + (ball.z-f.sz)*c, lat = (ball.x-f.sx)*c - (ball.z-f.sz)*s;
-    const ca = clamp(along - 72, -f.back, f.d - 66);
-    const prog = clamp((ca + f.back)/Math.max(1, f.back + f.d - 66), 0, 1);
-    t = {x:f.sx + s*ca + c*lat*0.5*prog, z:f.sz + c*ca - s*lat*0.5*prog, y:f.y0 - Math.min(5, (ca + f.back)*0.035), pitch:f.pitch, yaw:f.yaw};
+    const ft = flightCam(dt); if (ft) t = ft;
   }
-  const k = 1 - Math.exp(-dt*(reading ? 3 : phase === 'flight' ? 1.6 : 2.2));
+  const k = 1 - Math.exp(-dt*(reading ? 3 : flightFollow && flightFollow.stage === 'chase' ? 2.6 : flightFollow && flightFollow.stage === 'park' ? 1.3 : phase === 'flight' ? 1.6 : 2.2));
   cam.x += (t.x-cam.x)*k; cam.y += (t.y-cam.y)*k; cam.z += (t.z-cam.z)*k; cam.pitch += (t.pitch-cam.pitch)*k;
   let dy = t.yaw - cam.yaw; while (dy > Math.PI) dy -= 2*Math.PI; while (dy < -Math.PI) dy += 2*Math.PI; cam.yaw += dy*k;
   cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
@@ -3993,6 +4160,7 @@ function frame(now){
   const dt = Math.min(0.05, (now-lastT)/1000); lastT = now; T += reduceMotion ? dt*0.3 : dt;
   if (phase === 'flight'){ acc += dt; const h = 1/240; while (acc >= h && phase === 'flight'){ stepBall(h, ball, false); acc -= h; }
     if (ball.state === 'air' || ball.state === 'roll'){ const tr = ball.trail, lp = tr.at(-1), gap = mode === 'putt' ? 0.25 : 1.2; if (!lp || Math.hypot(ball.x-lp[0], ball.y-lp[1], ball.z-lp[2]) > gap) tr.push([ball.x, ball.y + (mode === 'putt' ? 0.02 : 0), ball.z]); if (tr.length > 240) tr.shift(); }
+    if (ball.path && ball.path.length < 3000) ball.path.push([ball.x, ball.y, ball.z]);
     if (phase === 'flight' && mode === 'putt') tracePutt();
   } else acc = 0;
   updateCamera(dt);
@@ -4010,7 +4178,7 @@ function frame(now){
   if (PAL.fog){ const fg = ctx.createLinearGradient(0, hz - H*0.25, 0, H); fg.addColorStop(0, 'rgba(225,228,232,.55)'); fg.addColorStop(0.35, 'rgba(225,228,232,.38)'); fg.addColorStop(1, 'rgba(225,228,232,.06)'); ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H); }
   artFrame(dt); drawParts(dt);
   artVignette(); artGrain();
-  drawSwipeTrail();
+  drawReview(dt); drawSwipeTrail();
   renderFace(); renderWind(false); syncViewsIfChanged();
   if (!thumb) requestAnimationFrame(frame);
 }
@@ -5080,7 +5248,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(reframeSoo
 [300, 1000, 2500].forEach(ms => setTimeout(reframe, ms));
 if (!recapM) requestAnimationFrame(frame);
 }
-window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN};
+window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN, GR, get cam(){ return cam; }, get ff(){ return flightFollow; }, get edgeTrees(){ return trees.filter(t => t.edge).length; }};
 })();
 </script>
 
