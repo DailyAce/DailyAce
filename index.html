@@ -3972,16 +3972,27 @@ function buildGhost(shot){
       act:{path:ball.path.slice(), land:[lx, lz], end:[ball.x, ball.z], wet:!!ball.wet}, ft:Math.round(shot.endD*3), grade:shot.grade, sw:shot.sw};
   } finally { ffMute = false; }
 }
-function reviewCam(G){
-  // behind the green, looking back up the line toward where the shot came from
+let REVIEW_ANGLE = 'behind';
+function reviewCam(G, angle){
   const sx = shotStart.x, sz = shotStart.z, d = Math.hypot(PIN.x - sx, PIN.z - sz) || 1, ux = (PIN.x - sx)/d, uz = (PIN.z - sz)/d;
   const lx = (G.land[0] + G.act.land[0])/2, lz = (G.land[1] + G.act.land[1])/2;
-  const spread = Math.hypot(G.land[0] - G.act.land[0], G.land[1] - G.act.land[1]), back = 48 + GR.rz*0.6 + spread*0.9, cx = lx + ux*back, cz = lz + uz*back, hgt = 22 + spread*0.25;
-  return {x:cx, y:Hh(cx, cz) + hgt, z:cz, pitch:Math.atan2(hgt, back*1.7), yaw:Math.atan2(-ux, -uz)};
+  const spread = Math.hypot(G.land[0] - G.act.land[0], G.land[1] - G.act.land[1]);
+  const look = (cx, cy, cz, fx, fy, fz) => { const h = Math.hypot(fx - cx, fz - cz); return {x:cx, y:cy, z:cz, yaw:Math.atan2(fx - cx, fz - cz), pitch:Math.atan2(cy - fy, h), focus:h}; };
+  if (angle === 'behind'){
+    // behind the green, looking back up the line toward where the shot came from
+    const back = 48 + GR.rz*0.6 + spread*0.9, cx = lx + ux*back, cz = lz + uz*back, hgt = 22 + spread*0.25;
+    return {x:cx, y:Hh(cx, cz) + hgt, z:cz, pitch:Math.atan2(hgt, back*1.7), yaw:Math.atan2(-ux, -uz), focus:back};
+  }
+  if (angle === 'high'){
+    // up over the fairway, looking down the line at the green: the left/right miss reads like a map
+    const fx = lx + ux*6, fz = lz + uz*6, back = 70 + spread*0.6, cx = fx - ux*back, cz = fz - uz*back, cy = Hh(fx, fz) + 70 + spread*0.5;
+    return look(cx, cy, cz, fx, Hh(fx, fz), fz);
+  }
+  return reviewCam(G, 'behind');
 }
 function startReview(auto){
   if (!ghostShot) return;
-  review = {t:0, auto, shade:review ? review.shade : false, cam:reviewCam(ghostShot)}; Object.assign(cam, review.cam);
+  review = {t:0, auto, shade:review ? review.shade : false, cam:reviewCam(ghostShot, REVIEW_ANGLE)}; Object.assign(cam, review.cam);
   $('shotCard').hidden = true; $('revBar').hidden = false;
   const G = ghostShot, sw = G.sw, dg = sw && sw.drift !== undefined ? Math.abs(sw.drift) : null;
   $('rvK').textContent = auto ? 'Highlight' : 'Shot review';
@@ -4169,9 +4180,9 @@ function frame(now){
   drawSky(hz); drawRidges(hz); drawGround(hz); drawLake(hz); drawCourseNear(); drawGreenComplex(); artGreenLight(); drawRangeDots(); drawAim(); drawTurfAim(dt);
   const treeCut = fly ? 3 + 35*clamp((fly.keys.at(-1).t - fly.t)/2.5, 0, 1) : 3;
   const vis = []; for (const t of trees){ const z = camSpace(t.x, 0, t.z)[2]; if (z > treeCut) vis.push([z, t]); } vis.sort((a,b) => b[0]-a[0]);
-  const dP = camSpace(PIN.x, 0, PIN.z)[2], closeCut = mode === 'full' ? 3 : 8;
+  const dP = camSpace(PIN.x, 0, PIN.z)[2], closeCut = review ? review.cam.focus*(review.cam.cut || 0.6) : mode === 'full' ? 3 : 8;
   if (!reading) for (const [z, t] of vis) if (z < 400) drawTreeShadow(t);
-  for (const [z, t] of vis) if (z >= dP && (!reading || z > dP + 20)) drawTree(t, false);
+  for (const [z, t] of vis) if (z >= dP && (!reading || z > dP + 20) && !(review && z < closeCut)) drawTree(t, false);
   drawFlag(); drawBall();
   if (!reading) for (const [z, t] of vis) if (z < dP && z > closeCut) drawTree(t, false);
   drawSplashes(dt); drawLakeLife(dt); drawGeese(dt, hz);
@@ -5248,7 +5259,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(reframeSoo
 [300, 1000, 2500].forEach(ms => setTimeout(reframe, ms));
 if (!recapM) requestAnimationFrame(frame);
 }
-window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN, GR, get cam(){ return cam; }, get ff(){ return flightFollow; }, get edgeTrees(){ return trees.filter(t => t.edge).length; }};
+window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN, GR, get cam(){ return cam; }, get ff(){ return flightFollow; }, get edgeTrees(){ return trees.filter(t => t.edge).length; }, reviewAngle:(a) => { REVIEW_ANGLE = a; if (review) startReview(false); }};
 })();
 </script>
 
