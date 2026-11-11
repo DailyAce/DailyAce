@@ -498,7 +498,7 @@ html.rcp body{margin:0;touch-action:auto}
 .revbar{pointer-events:auto;position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));border-radius:18px;padding:12px 14px;z-index:6;color:var(--ink);max-width:460px;margin:0 auto}
 .revbar .rv-top{display:flex;gap:10px;align-items:baseline;font-weight:600;font-size:.9rem}.revbar .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}
 .revbar .rv-key{display:flex;gap:16px;font-size:.78rem;color:var(--soft);margin:6px 0 10px}.revbar .rv-key i{display:inline-block;width:18px;height:0;margin-right:6px;vertical-align:middle;border-top:2px dashed rgba(255,255,255,.9)}.revbar .rv-key i.rv-a{border-top:3px solid #f2c45a}
-.revbar .rv-btns{display:flex;gap:8px}.revbar .rv-btns .btn{padding:10px 12px;font-size:.85rem}.revbar #rvShade[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
+.revbar .rv-btns{display:flex;gap:8px}.revbar .rv-btns .btn{padding:10px 12px;font-size:.85rem}.revbar #rvCompare[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
 .flytag .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}.flytag .skip{color:var(--soft);font-weight:500}
 .sep{width:1px;height:22px;background:var(--edge);margin:0 4px}
 .meter{position:fixed;right:calc(max(16px, env(safe-area-inset-right, 0px)) + 4px);top:30%;height:30%;width:8px;border-radius:8px;background:rgba(244,238,226,.22);opacity:0;transition:opacity .2s;pointer-events:none}
@@ -843,7 +843,7 @@ html.rcp body{margin:0;touch-action:auto}
   </div>
 
   <button id="soundTip" class="soundtip glass" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>Tap anywhere for sound</button>
-  <div id="revBar" class="revbar glass" hidden><div class="rv-top"><span class="k" id="rvK">Shot review</span><span id="rvTxt"></span></div><div class="rv-key"><span><i class="rv-g"></i>Ideal</span><span><i class="rv-a"></i>Your shot</span></div><div class="rv-btns"><button class="btn quiet" id="rvShade" aria-pressed="false">Shade</button><button class="btn quiet" id="rvAgain">Replay</button><button class="btn" id="rvDone">Done</button></div></div>
+  <div id="revBar" class="revbar glass" hidden><div class="rv-top"><span class="k" id="rvK">Shot review</span><span id="rvTxt"></span></div><div class="rv-key"><span id="rvKeyG" hidden><i class="rv-g"></i>Perfect shot</span><span><i class="rv-a"></i>Your shot</span></div><div class="rv-btns"><button class="btn quiet" id="rvCompare" aria-pressed="false">Compare</button><button class="btn quiet" id="rvAgain">Replay</button><button class="btn" id="rvDone">Done</button></div></div>
   <button id="flyTag" class="flytag glass" hidden><span class="k">Flyover</span><span id="flyName"></span><span class="skip">Tap to skip</span></button>
   <footer class="bottom" id="controls">
     <div class="hint" id="hint"></div>
@@ -3943,8 +3943,8 @@ function flightCam(dt){
   return {x:T.x, y:T.y, z:T.z, yaw:Math.atan2(dx, dz), pitch:Math.max(-0.03, Math.atan2(T.y - (fy + 2), h + 6))};
 }
 // ---------- shot review (cosmetic only) ----------
-// After a full shot: a reverse angle from behind the green with your ball flight and a ghost of the ideal one
-// (same club, same wind, no curve, aimed and hit so it finishes at the pin). Plays on its own for 90+ shots.
+// After a full shot: a reverse angle from behind the green retracing your ball flight. Compare adds a ghost of the
+// perfect shot (same club, same wind, no curve, aimed and hit so it finishes at the pin). Plays on its own for 90+ shots.
 let ghostShot = null, review = null;
 function buildGhost(shot){
   const sx = shotStart.x, sz = shotStart.z, gh0 = Hh(sx, sz);
@@ -3994,34 +3994,37 @@ function reviewCam(G, angle){
 }
 function startReview(auto){
   if (!ghostShot) return;
-  review = {t:0, auto, shade:review ? review.shade : false, cam:reviewCam(ghostShot, REVIEW_ANGLE)}; Object.assign(cam, review.cam);
+  review = {t:0, auto, compare:false, gStart:0, cam:reviewCam(ghostShot, REVIEW_ANGLE)}; Object.assign(cam, review.cam);
   $('shotCard').hidden = true; $('revBar').hidden = false;
   const G = ghostShot, sw = G.sw, dg = sw && sw.drift !== undefined ? Math.abs(sw.drift) : null;
   $('rvK').textContent = auto ? 'Highlight' : 'Shot review';
-  const aimTxt = Math.abs(G.aimYds) < 2 ? 'ideal aimed at the pin' : `ideal aimed ${Math.abs(G.aimYds)} yds ${G.aimYds > 0 ? 'right' : 'left'}`;
-  $('rvTxt').textContent = [G.act.wet ? 'Wet' : G.ft === 0 ? 'Holed' : `${G.ft} ft`, dg ? `leaned ${dg}° ${sw.drift > 0 ? 'right' : 'left'}` : null, aimTxt].filter(Boolean).join(' · ');
-  $('rvShade').setAttribute('aria-pressed', String(review.shade));
+  review.base = [G.act.wet ? 'Wet' : G.ft === 0 ? 'Holed' : `${G.ft} ft`, dg ? `leaned ${dg}° ${sw.drift > 0 ? 'right' : 'left'}` : null];
+  review.aimTxt = Math.abs(G.aimYds) < 2 ? 'perfect shot aimed at the pin' : `perfect shot aimed ${Math.abs(G.aimYds)} yds ${G.aimYds > 0 ? 'right' : 'left'}`;
+  setCompare(false);
+}
+// Standard review just retraces your shot from the other end. Compare adds the perfect shot alongside it.
+function setCompare(on){
+  if (!review) return; review.compare = on; review.gStart = review.t;
+  $('rvCompare').setAttribute('aria-pressed', String(on)); $('rvKeyG').hidden = !on;
+  $('rvTxt').textContent = [...review.base, on ? review.aimTxt : null].filter(Boolean).join(' · ');
 }
 function endReview(){ if (!review) return; review = null; $('revBar').hidden = true; if (phase === 'card') $('shotCard').hidden = false; }
 $('reviewBtn').addEventListener('click', () => startReview(false));
 $('rvDone').addEventListener('click', endReview);
-$('rvAgain').addEventListener('click', () => { if (review) review.t = 0; });
-$('rvShade').addEventListener('click', () => { if (!review) return; review.shade = !review.shade; $('rvShade').setAttribute('aria-pressed', String(review.shade)); });
+$('rvAgain').addEventListener('click', () => { if (review){ review.t = 0; review.gStart = 0; } });
+$('rvCompare').addEventListener('click', () => { if (review){ setCompare(!review.compare); review.auto = false; } });
 function drawReview(dt){
   if (!review || !ghostShot) return;
   review.t += dt; const G = ghostShot, u = clamp((review.t - 0.6)/2.6, 0, 1), e = u < 1 ? 1 - Math.pow(1 - u, 2) : 1;
-  const pts = arr => { const n = Math.max(1, Math.round((arr.length - 1)*e)), out = []; for (let i=0;i<=n;i++){ const q = arr[i]; const s = proj(q[0], q[1], q[2]); if (s) out.push(s); } return out; };
-  const gp = pts(G.path), ap = pts(G.act.path);
+  const gu = clamp((review.t - review.gStart - (review.gStart ? 0.15 : 0.6))/2.6, 0, 1), ge2 = gu < 1 ? 1 - Math.pow(1 - gu, 2) : 1;
+  const pts = (arr, k) => { const n = Math.max(1, Math.round((arr.length - 1)*k)), out = []; for (let i=0;i<=n;i++){ const q = arr[i]; const s = proj(q[0], q[1], q[2]); if (s) out.push(s); } return out; };
+  const gp = review.compare ? pts(G.path, ge2) : [], ap = pts(G.act.path, e);
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  if (review.shade && gp.length > 1 && ap.length > 1){
-    const g = G.grade ?? 0, col = g >= 90 ? '120,200,120' : g >= 70 ? '160,205,110' : g >= 45 ? '231,192,104' : '227,130,95';
-    ctx.fillStyle = `rgba(${col},.28)`; ctx.beginPath(); gp.forEach((s, i) => i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1])); for (let i=ap.length-1;i>=0;i--) ctx.lineTo(ap[i][0], ap[i][1]); ctx.closePath(); ctx.fill();
-  }
   const line = (P, col, w, dash) => { if (P.length < 2) return; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); P.forEach((s, i) => i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1])); ctx.stroke(); ctx.setLineDash([]); };
   line(gp, 'rgba(0,0,0,.25)', 4, [7, 7]); line(gp, 'rgba(255,255,255,.9)', 2.2, [7, 7]);
   line(ap, 'rgba(0,0,0,.3)', 5, []); line(ap, '#f2c45a', 3, []);
   const dot = (s, col, r) => { if (!s) return; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(s[0], s[1], r, 0, 7); ctx.fill(); };
-  dot(gp.at(-1), 'rgba(255,255,255,.75)', 4); dot(ap.at(-1), '#fff', 4.5);
+  if (gp.length) dot(gp.at(-1), 'rgba(255,255,255,.75)', 4); dot(ap.at(-1), '#fff', 4.5);
   if (u >= 1){
     const ge = proj(G.end[0], Hh(G.end[0], G.end[1]), G.end[1]), ae = proj(G.act.end[0], Hh(G.act.end[0], G.act.end[1]), G.act.end[1]);
     if (ge && ae && !G.act.wet && G.ft > 0){
