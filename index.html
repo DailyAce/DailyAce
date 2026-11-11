@@ -3952,10 +3952,13 @@ function flightCam(dt){
     // a great one: drop down behind where it's landing, then ride the bounce and the run at the hole
     const L = f.great.land, landed = ball.state !== 'air', ax = landed ? ball.x : L[0], az = landed ? ball.z : L[1];
     if (f.side === undefined){ const ll = (L[0]-f.sx)*c - (L[1]-f.sz)*s; f.side = ll > 2 ? -1 : ll < -2 ? 1 : 1; }
-    const tx = ax - s*13 + c*f.side*4.5, tz = az - c*13 - s*f.side*4.5, ty = Math.max(Hh(tx, tz), Hh(ax, az)) + 4.2;
-    const lx = landed ? ball.x*0.7 + PIN.x*0.3 : L[0]*0.75 + ball.x*0.25, lz = landed ? ball.z*0.7 + PIN.z*0.3 : L[1]*0.75 + ball.z*0.25;
-    const ly = landed ? ball.y*0.6 + Hh(ball.x, ball.z)*0.4 : Hh(L[0], L[1]) + 1.5;
-    return {x:tx, y:ty, z:tz, yaw:Math.atan2(lx - tx, lz - tz), pitch:Math.atan2(ty - ly, Math.max(4, Math.hypot(lx - tx, lz - tz)))};
+    const tx = ax - s*13 + c*f.side*4.5, tz = az - c*13 - s*f.side*4.5, ty = Math.max(Math.max(Hh(tx, tz), Hh(ax, az)) + 4.2, landed ? 0 : ball.y + 3);   // stay above it while it drops, so we look down onto the green, not up at the sky
+    // eyes stay on the ball the whole way down; once it's rolling, ease the frame toward the cup it's running at
+    const w = landed ? clamp((ball.t - (f.landT ?? ball.t))/0.6, 0, 1)*0.3 : 0;
+    const gx = ball.x + (PIN.x - ball.x)*w, gz = ball.z + (PIN.z - ball.z)*w, gy = ball.y + (Hh(PIN.x, PIN.z) - ball.y)*w;
+    if (!f.aim) f.aim = {x:gx, y:gy, z:gz}; const ka = 1 - Math.exp(-dt*12);
+    f.aim.x += (gx - f.aim.x)*ka; f.aim.y += (gy - f.aim.y)*ka; f.aim.z += (gz - f.aim.z)*ka;
+    return {x:tx, y:ty, z:tz, yaw:cam.yaw, pitch:cam.pitch, aim:f.aim};
   }
   if (!f.trail){
     // Trail off: drift on toward a spot short of where it's coming down, settle lower and off to one side,
@@ -4135,6 +4138,9 @@ function updateCamera(dt){
   const k = 1 - Math.exp(-dt*(reading ? 3 : flightFollow && flightFollow.stage === 'chase' ? 2.6 : flightFollow && flightFollow.stage === 'trail' ? 1.5 : flightFollow && flightFollow.stage === 'swoop' ? 2.4 : phase === 'flight' ? 1.6 : 2.2));
   cam.x += (t.x-cam.x)*k; cam.y += (t.y-cam.y)*k; cam.z += (t.z-cam.z)*k; cam.pitch += (t.pitch-cam.pitch)*k;
   let dy = t.yaw - cam.yaw; while (dy > Math.PI) dy -= 2*Math.PI; while (dy < -Math.PI) dy += 2*Math.PI; cam.yaw += dy*k;
+  if (t.aim){   // locked on: point straight at the target from wherever the camera is right now, so it never drifts out of frame
+    const ax = t.aim.x - cam.x, az = t.aim.z - cam.z; cam.yaw = Math.atan2(ax, az); cam.pitch = Math.atan2(cam.y - t.aim.y, Math.max(3, Math.hypot(ax, az)));
+  }
   cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
 }
 
