@@ -2779,7 +2779,7 @@ function showShotCard(s){
   $('shotCard').hidden = false; $('shotCard').scrollTop = 0;
   const canReview = !!ghostShot && s.mode === 'full' && s.n === ghostShot.n0;
   $('reviewBtn').hidden = !canReview;
-  if (canReview && !s.wet && (shotGrade(s) ?? 0) >= 90 && !reduceMotion) startReview(true);
+  if (canReview && !s.wet && (shotGrade(s) ?? 0) >= 90 && !reduceMotion) startHighlight();
 }
 function showRangeCard(r){
   phase = 'card'; $('scGrade').hidden = false; $('scRing').hidden = true;
@@ -3504,6 +3504,7 @@ function doubleTap(x, y){
 }
 document.addEventListener('gesturestart', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
+  if (review && review.hl){ endReview(); return; }   // tap skips the highlight
   sfx.unlock();
   touches.set(e.pointerId, {x:e.clientX, y:e.clientY});
   tapForSound = !$('soundTip').hidden;
@@ -3986,7 +3987,7 @@ function buildGhost(shot){
     const g2 = newton(full, g1.p, g1.yaw, PIN.x, PIN.z, 10, r => r.holed);
     const g = full(g2.p, g2.yaw, true);
     return {n0:shot.n, path:g.path, land:g.land, end:[g.x, g.z], ace:g.holed, aimYds:Math.round(Math.tan(g2.yaw - y0)*shotStart.d), p:g2.p,
-      act:{path:ball.path.slice(), land:[lx, lz], end:[ball.x, ball.z], wet:!!ball.wet}, ft:Math.round(shot.endD*3), grade:shot.grade, sw:shot.sw};
+      act:{path:ball.path.slice(), land:[lx, lz], end:[ball.x, ball.z], wet:!!ball.wet, T:ball.t}, ft:Math.round(shot.endD*3), grade:shot.grade, sw:shot.sw};
   } finally { ffMute = false; finish = keep.finish; splash = keep.splash; sfx.cup = keep.cup; }
 }
 let REVIEW_ANGLE = 'behind';
@@ -4007,6 +4008,43 @@ function reviewCam(G, angle){
   }
   return reviewCam(G, 'behind');
 }
+// ---------- highlight (90+ shots) ----------
+// Starts from where the shot camera finished, above and behind, then swoops down to the landing and rides the
+// bounce and run-up to the hole in slow motion. Replays the ball's real recorded path; tap to skip.
+function startHighlight(){
+  const G = ghostShot, P = G && G.act.path; if (!P || P.length < 8) return;
+  const L = G.act.land, n = P.length;
+  let li = 0, bd = 1e9; for (let i=0;i<n;i++){ const d = Math.hypot(P[i][0] - L[0], P[i][2] - L[1]); if (d < bd){ bd = d; li = i; } if (d < 1.2) { li = i; break; } }
+  const dtS = Math.max(1/240, (G.act.T || n/60)/(n - 1));
+  const sx = shotStart.x, sz = shotStart.z, dd = Math.hypot(L[0] - sx, L[1] - sz) || 1, ux = (L[0] - sx)/dd, uz = (L[1] - sz)/dd;
+  const side = ((cam.x - L[0])*uz - (cam.z - L[1])*ux) >= 0 ? 1 : -1;
+  review = {t:0, auto:true, hl:{P, li, dtS, sT:Math.max(0, li - Math.round(1.1/dtS))*dtS, L, start:{x:cam.x, y:cam.y, z:cam.z, yaw:cam.yaw, pitch:cam.pitch}, ux, uz, side, hold:0,
+    save:{x:ball.x, y:ball.y, z:ball.z, trail:ball.trail, state:ball.state}, follow:null}, cam:{...cam}};
+  $('shotCard').hidden = true; $('revBar').hidden = true; setHint('Tap to skip');
+}
+function highlightPose(dt){
+  const h = review.hl, P = h.P, n = P.length; review.t += dt;
+  const idx0 = h.sT/h.dtS, landed = idx0 >= h.li;
+  // slow motion through the drop and first bounces, then ease back toward real time for the run-up
+  const rate = !landed ? 0.6 : h.sT - h.li*h.dtS < 1.2 ? 0.45 : 0.85;
+  if (idx0 < n - 1) h.sT += dt*rate; else { h.hold += dt; if (h.hold > 1.3){ endReview(); return {...cam}; } }
+  const f = Math.min(n - 1, h.sT/h.dtS), i = Math.floor(f), a = f - i, q = P[i], r = P[Math.min(n - 1, i + 1)];
+  const bx = q[0] + (r[0] - q[0])*a, by = q[1] + (r[1] - q[1])*a, bz = q[2] + (r[2] - q[2])*a;
+  ball.x = bx; ball.y = by; ball.z = bz; ball.state = idx0 >= n - 1 ? h.save.state : 'stopped';
+  const tr = []; for (let k=Math.max(0, i - 200); k<=i; k+=3) tr.push(P[k]); tr.push([bx, by, bz]); ball.trail = tr;
+  // close pose: low, behind the ball along the shot line and a little to the side, looking past it toward the cup
+  // until it lands, wait at the landing spot (never chase back up the fairway); after that, ride along with it
+  const ax = landed ? bx : h.L[0], az = landed ? bz : h.L[1], gy = Hh(ax, az);
+  const tx = ax - h.ux*13 + h.uz*h.side*4.5, tz = az - h.uz*13 - h.ux*h.side*4.5, ty = Math.max(Hh(tx, tz), gy) + 4.2;
+  if (!h.follow) h.follow = {x:tx, y:ty, z:tz}; const kf = 1 - Math.exp(-dt*3.2);
+  h.follow.x += (tx - h.follow.x)*kf; h.follow.y += (ty - h.follow.y)*kf; h.follow.z += (tz - h.follow.z)*kf;
+  const lx = landed ? bx*0.7 + PIN.x*0.3 : h.L[0]*0.75 + bx*0.25, lz = landed ? bz*0.7 + PIN.z*0.3 : h.L[1]*0.75 + bz*0.25, ly = landed ? by*0.6 + Hh(bx, bz)*0.4 : Hh(h.L[0], h.L[1]) + 1.5;
+  const z = clamp(review.t/2.4, 0, 1), e = z*z*(3 - 2*z), S = h.start;
+  const cx = S.x + (h.follow.x - S.x)*e, cy = S.y + (h.follow.y - S.y)*e, cz = S.z + (h.follow.z - S.z)*e;
+  const yawC = Math.atan2(lx - cx, lz - cz), pitC = Math.atan2(cy - ly, Math.max(4, Math.hypot(lx - cx, lz - cz)));
+  let dy = yawC - S.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  return {x:cx, y:cy, z:cz, yaw:S.yaw + dy*Math.min(1, e*1.4), pitch:S.pitch + (pitC - S.pitch)*Math.min(1, e*1.4)};
+}
 function startReview(auto){
   if (!ghostShot) return;
   review = {t:0, auto, compare:false, gStart:0, cam:reviewCam(ghostShot, REVIEW_ANGLE)}; Object.assign(cam, review.cam);
@@ -4023,13 +4061,13 @@ function setCompare(on){
   if (!review) return; review.compare = on; review.gStart = review.t;
   $('rvCompare').setAttribute('aria-pressed', String(on)); $('rvAimS').hidden = !on;
 }
-function endReview(){ if (!review) return; review = null; $('revBar').hidden = true; if (phase === 'card') $('shotCard').hidden = false; }
+function endReview(){ if (!review) return; const h = review.hl; if (h){ Object.assign(ball, h.save); setHint(''); } review = null; $('revBar').hidden = true; if (phase === 'card') $('shotCard').hidden = false; }
 $('reviewBtn').addEventListener('click', () => startReview(false));
 $('rvDone').addEventListener('click', endReview);
 $('rvAgain').addEventListener('click', () => { if (review){ review.t = 0; review.gStart = 0; } });
 $('rvCompare').addEventListener('click', () => { if (review){ setCompare(!review.compare); review.auto = false; } });
 function drawReview(dt){
-  if (!review || !ghostShot) return;
+  if (!review || !ghostShot || review.hl) return;
   review.t += dt; const G = ghostShot, u = clamp((review.t - 0.6)/2.6, 0, 1), e = u < 1 ? 1 - Math.pow(1 - u, 2) : 1;
   const gu = clamp((review.t - review.gStart - (review.gStart ? 0.15 : 0.6))/2.6, 0, 1), ge2 = gu < 1 ? 1 - Math.pow(1 - gu, 2) : 1;
   const pts = (arr, k) => { const n = Math.max(1, Math.round((arr.length - 1)*k)), out = []; for (let i=0;i<=n;i++){ const q = arr[i]; const s = proj(q[0], q[1], q[2]); if (s) out.push(s); } return out; };
@@ -4054,11 +4092,11 @@ function drawReview(dt){
     }
   }
   ctx.restore();
-  if (review.auto && review.t > 6.5) endReview();   // the highlight hands back to the card on its own
 }
 function updateCamera(dt){
   if (thumbPose){ Object.assign(cam, thumbPose); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; }
   if (fly){ fly.t += dt; if (fly.t >= fly.keys.at(-1).t){ endFlyover(); } else { Object.assign(cam, flyPose(fly.t)); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; } }
+  if (review && review.hl){ Object.assign(cam, highlightPose(dt)); cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw); return; }
   let t = addr;
   if (review) t = review.cam;
   else if (reading) t = readView();
@@ -5283,7 +5321,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(reframeSoo
 [300, 1000, 2500].forEach(ms => setTimeout(reframe, ms));
 if (!recapM) requestAnimationFrame(frame);
 }
-window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN, GR, get cam(){ return cam; }, get ff(){ return flightFollow; }, get edgeTrees(){ return trees.filter(t => t.edge).length; }, reviewAngle:(a) => { REVIEW_ANGLE = a; if (review) startReview(false); }};
+window.__dh = {view:() => ({holeView, reading, aimDist, aimOff, aimCups, pin:proj(PIN.x, Hh(PIN.x, PIN.z), PIN.z)}), dayPayload:() => { const r = scoringRound(); return r ? payloadFor(r, todayKey, holeNum) : null; }, sub:HOLE_SUB, aim:() => ({aimOff, aimDist, club:CLUBS[clubIdx].id, need:NEED}), payload:() => payloadFor(round, todayKey, holeNum), setAim:(c)=>{aimCups=c; renderControls();}, range:()=>PUTT_RANGES[puttRangeIdx], ball, get round(){ return round; }, get phase(){ return phase; }, get mode(){ return mode; }, get need(){ return NEED; }, launch: (p, c) => launch(p, c, {input:'swipe', back:p, tempo:1, range:PUTT_RANGES[puttRangeIdx]}), PIN, GR, get cam(){ return cam; }, get ff(){ return flightFollow; }, get edgeTrees(){ return trees.filter(t => t.edge).length; }, reviewAngle:(a) => { REVIEW_ANGLE = a; if (review) startReview(false); }, highlight:() => startHighlight(), get hl(){ return review && review.hl ? 1 : 0; }};
 })();
 </script>
 
