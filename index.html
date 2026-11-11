@@ -3905,40 +3905,42 @@ function readView(){
   const s = Math.sin(addr.yaw), c = Math.cos(addr.yaw); return {x:GR.x - s*82, y:92, z:GR.z - c*82, pitch:47*D2R, yaw:addr.yaw}; }
 let thumbPose = null;
 // Shot camera (cosmetic only). Full shots: hold on the tee for a beat so you see the start line and the wind
-// take it, chase from behind and above (staying close to the target line), then park high over the green, or
-// over wherever the ball is coming down, and watch it land and run out from there.
-function parkPose(f, lx, lz){
-  // frame the landing spot and the green together; the closer the landing is to the pin, the more it's just the green
-  const dl = Math.hypot(lx - GR.x, lz - GR.z), w = clamp((dl - 25)/60, 0, 1);
-  const fx = GR.x + (lx - GR.x)*(0.35 + 0.4*w), fz = GR.z + (lz - GR.z)*(0.35 + 0.4*w);
-  const spread = Math.max(GR.rz*2.4, dl*0.9), back = 70 + spread*0.8, hgt = 38 + spread*0.35;
-  const s = Math.sin(f.yaw), c = Math.cos(f.yaw), gy = Hh(fx, fz);
-  return {x:fx - s*back, y:gy + hgt, z:fz - c*back, pitch:Math.atan2(hgt, back), yaw:f.yaw};
-}
+// take it, chase from behind and above (staying close to the target line), then trail off lower and to one side
+// to watch it drop in and run out.
 function flightCam(dt){
   const f = flightFollow; f.age = (f.age || 0) + dt;
-  const s = Math.sin(f.yaw), c = Math.cos(f.yaw);
-  if (!f.stage) f.stage = f.short ? 'park' : 'hold';
+  const s = Math.sin(f.yaw), c = Math.cos(f.yaw), gy = Hh(ball.x, ball.z), up = ball.y - gy;
+  if (!f.stage) f.stage = 'hold';
   if (f.stage === 'hold'){ if (f.age < 0.55) return null; f.stage = 'chase'; }
   if (f.stage === 'chase'){
-    const gy = Hh(ball.x, ball.z), up = ball.y - gy;
-    // hand off to the parked view once it's on the way down and not far off the ground, or once it lands
-    if (ball.state !== 'air' || (ball.vy < 0 && up < Math.max(9, f.apex*0.55))) f.stage = 'park';
+    f.apex = Math.max(f.apex || 0, up);
+    // once it's past the top and starting down, stop chasing and let it fly away from us
+    if (ball.state !== 'air' || (ball.vy < 0 && up < f.apex*0.85)) f.stage = 'trail';
     else {
-      f.apex = Math.max(f.apex || 0, up);
       const along = (ball.x-f.sx)*s + (ball.z-f.sz)*c, lat = clamp((ball.x-f.sx)*c - (ball.z-f.sz)*s, -28, 28);
       const back = 20, a = along - back, px = f.sx + s*a + c*lat*0.85, pz = f.sz + c*a - s*lat*0.85;
       const cy = Math.max(Hh(px, pz) + 4, ball.y + 5), lookY = ball.y*0.7 + gy*0.3, ahead = back + 28;
+      f.last = {x:px, y:cy, z:pz};
       return {x:px, y:cy, z:pz, pitch:Math.atan2(cy - lookY, ahead), yaw:f.yaw};
     }
   }
-  if (!f.park){
-    // where it's coming down, from where it is now (good enough to frame a camera; physics is untouched)
+  if (!f.trail){
+    // Trail off: drift on toward a spot short of where it's coming down, settle lower and off to one side,
+    // and turn to watch it drop and run out. Never further back than the camera already is, so no pull-back.
     let lx = ball.x, lz = ball.z;
-    if (ball.state === 'air'){ const up = Math.max(0, ball.y - Hh(ball.x, ball.z)), tl = ball.vy < 0 ? up/Math.max(4, -ball.vy) : (ball.vy + Math.sqrt(ball.vy*ball.vy + 2*G*up))/G; lx += ball.vx*tl; lz += ball.vz*tl; }
-    f.park = parkPose(f, lx, lz);
+    if (ball.state === 'air'){ const u = Math.max(0, up), tl = (ball.vy + Math.sqrt(ball.vy*ball.vy + 2*G*u))/G; lx += ball.vx*tl; lz += ball.vz*tl; }
+    const from = f.last || cam, curA = (from.x-f.sx)*s + (from.z-f.sz)*c;
+    const landA = (lx-f.sx)*s + (lz-f.sz)*c, landL = (lx-f.sx)*c - (lz-f.sz)*s;
+    const a = Math.max(curA + 4, landA - (24 + f.d*0.06));
+    const side = landL > 2 ? -1 : landL < -2 ? 1 : (hash(holeNum*13 + round.shots.length) % 2 ? 1 : -1);   // drift away from the miss so the ball stays clear
+    const lat = landL*0.6 + side*8, px = f.sx + s*a + c*lat, pz = f.sz + c*a - s*lat;
+    f.trail = {x:px, z:pz, y:Hh(px, pz) + 7 + f.d*0.02, lx, lz};
   }
-  return f.park;
+  // keep the ball framed a little above centre while it lands and rolls
+  // while it's still in the air, aim between the ball and where it'll land so the turn stays gentle
+  const T = f.trail, air = ball.state === 'air', fx = air ? (ball.x + T.lx)/2 : ball.x, fz = air ? (ball.z + T.lz)/2 : ball.z, fy = air ? (ball.y + Hh(fx, fz))/2 : ball.y;
+  const dx = fx - T.x, dz = fz - T.z, h = Math.max(6, Math.hypot(dx, dz));
+  return {x:T.x, y:T.y, z:T.z, yaw:Math.atan2(dx, dz), pitch:Math.max(-0.03, Math.atan2(T.y - (fy + 2), h + 6))};
 }
 // ---------- shot review (cosmetic only) ----------
 // After a full shot: a reverse angle from behind the green with your ball flight and a ghost of the ideal one
@@ -4042,7 +4044,7 @@ function updateCamera(dt){
   else if (flightFollow && (phase === 'flight' || phase === 'done' || phase === 'card')){
     const ft = flightCam(dt); if (ft) t = ft;
   }
-  const k = 1 - Math.exp(-dt*(reading ? 3 : flightFollow && flightFollow.stage === 'chase' ? 2.6 : flightFollow && flightFollow.stage === 'park' ? 1.3 : phase === 'flight' ? 1.6 : 2.2));
+  const k = 1 - Math.exp(-dt*(reading ? 3 : flightFollow && flightFollow.stage === 'chase' ? 2.6 : flightFollow && flightFollow.stage === 'trail' ? 1.5 : phase === 'flight' ? 1.6 : 2.2));
   cam.x += (t.x-cam.x)*k; cam.y += (t.y-cam.y)*k; cam.z += (t.z-cam.z)*k; cam.pitch += (t.pitch-cam.pitch)*k;
   let dy = t.yaw - cam.yaw; while (dy > Math.PI) dy -= 2*Math.PI; while (dy < -Math.PI) dy += 2*Math.PI; cam.yaw += dy*k;
   cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
