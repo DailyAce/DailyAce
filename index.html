@@ -495,10 +495,11 @@ html.rcp body{margin:0;touch-action:auto}
 .chip[aria-pressed="true"] small{color:#4c5246}
 .soundtip{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 172px);transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:8px 14px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;white-space:nowrap;z-index:7}
 .flytag{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:10px;align-items:baseline;padding:10px 16px;border-radius:999px;border:0;color:var(--ink);font:inherit;font-size:.85rem;font-weight:600;white-space:nowrap;z-index:6}
-.revbar{pointer-events:auto;position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));border-radius:18px;padding:12px 14px;z-index:6;color:var(--ink);max-width:460px;margin:0 auto}
-.revbar .rv-top{display:flex;gap:10px;align-items:baseline;font-weight:600;font-size:.9rem}.revbar .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}
-.revbar .rv-key{display:flex;gap:16px;font-size:.78rem;color:var(--soft);margin:6px 0 10px}.revbar .rv-key i{display:inline-block;width:18px;height:0;margin-right:6px;vertical-align:middle;border-top:2px dashed rgba(255,255,255,.9)}.revbar .rv-key i.rv-a{border-top:3px solid #f2c45a}
-.revbar .rv-btns{display:flex;gap:8px}.revbar .rv-btns .btn{padding:10px 12px;font-size:.85rem}.revbar #rvCompare[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse)}
+.revbar{pointer-events:auto;position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));border-radius:18px;padding:12px 12px 12px 16px;z-index:6;color:var(--ink);max-width:460px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.revbar .rv-stats{display:flex;gap:18px;flex:1;min-width:0}.revbar .rv-st b{display:block;font-size:1.35rem;font-weight:700;line-height:1.05;white-space:nowrap}.revbar .rv-st span{font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;color:var(--soft)}
+.revbar .rv-st.you b{color:#f2c45a}.revbar .rv-st.ace b{color:#fff}
+.revbar .rv-btns{display:flex;gap:6px;flex:none}.revbar .rv-ic{height:40px;min-width:40px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:transparent;color:var(--ink);font:600 .85rem/1 inherit;display:inline-flex;align-items:center;justify-content:center}
+.revbar #rvCompare[aria-pressed="true"]{background:var(--ink);color:var(--clubhouse);border-color:transparent}.revbar .rv-ic svg{width:17px;height:17px}
 .flytag .k{color:var(--flag);text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}.flytag .skip{color:var(--soft);font-weight:500}
 .sep{width:1px;height:22px;background:var(--edge);margin:0 4px}
 .meter{position:fixed;right:calc(max(16px, env(safe-area-inset-right, 0px)) + 4px);top:30%;height:30%;width:8px;border-radius:8px;background:rgba(244,238,226,.22);opacity:0;transition:opacity .2s;pointer-events:none}
@@ -843,7 +844,10 @@ html.rcp body{margin:0;touch-action:auto}
   </div>
 
   <button id="soundTip" class="soundtip glass" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>Tap anywhere for sound</button>
-  <div id="revBar" class="revbar glass" hidden><div class="rv-top"><span class="k" id="rvK">Shot review</span><span id="rvTxt"></span></div><div class="rv-key"><span id="rvKeyG" hidden><i class="rv-g"></i>Perfect shot</span><span><i class="rv-a"></i>Your shot</span></div><div class="rv-btns"><button class="btn quiet" id="rvCompare" aria-pressed="false">Compare</button><button class="btn quiet" id="rvAgain">Replay</button><button class="btn" id="rvDone">Done</button></div></div>
+  <div id="revBar" class="revbar glass" hidden>
+    <div class="rv-stats"><div class="rv-st"><b id="rvFt">–</b><span id="rvFtL">to pin</span></div><div class="rv-st you" id="rvLeanS"><b id="rvLean"></b><span>lean</span></div><div class="rv-st ace" id="rvAimS" hidden><b id="rvAim"></b><span id="rvAimL">ace aim</span></div></div>
+    <div class="rv-btns"><button class="rv-ic" id="rvCompare" aria-pressed="false">Ace</button><button class="rv-ic" id="rvAgain" aria-label="Replay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button><button class="rv-ic" id="rvDone" aria-label="Done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  </div>
   <button id="flyTag" class="flytag glass" hidden><span class="k">Flyover</span><span id="flyName"></span><span class="skip">Tap to skip</span></button>
   <footer class="bottom" id="controls">
     <div class="hint" id="hint"></div>
@@ -3947,32 +3951,43 @@ function flightCam(dt){
 // perfect shot (same club, same wind, no curve, aimed and hit so it finishes at the pin). Plays on its own for 90+ shots.
 let ghostShot = null, review = null;
 function buildGhost(shot){
+  // The ace: same club, lie and wind, no curve, aimed and hit so the ball actually finishes in the cup,
+  // run through the game's own physics (bounces, roll, slope and all).
   const sx = shotStart.x, sz = shotStart.z, gh0 = Hh(sx, sz);
   const lx = ball.landX === undefined ? ball.x : ball.landX, lz = ball.landZ === undefined ? ball.z : ball.landZ;
-  // the ideal ball rolls out about as far as yours did, so aim its landing that far short of the pin
   const roll = ball.wet ? 3 : clamp(Math.hypot(ball.x - lx, ball.z - lz), 0, 25);
   const y0 = yawTo(sx, sz), tx = PIN.x - Math.sin(y0)*roll, tz = PIN.z - Math.cos(y0)*roll;
-  const run = (p, yaw, keep) => {
-    const L = shotParams(p), b = {x:sx, y:gh0 + 0.05, z:sz, sx, sz, vx:L.speed*Math.cos(L.launch)*Math.sin(yaw), vy:L.speed*Math.sin(L.launch), vz:L.speed*Math.cos(L.launch)*Math.cos(yaw), spin:L.spin, side:0, state:'air', t:0};
-    const path = keep ? [[b.x, b.y, b.z]] : null;
-    for (let i=0; i<2400 && b.state === 'air'; i++){ stepBall(1/120, b, 2); if (keep && i % 2 === 0) path.push([b.x, b.y, b.z]); }
-    return {x:b.landX ?? b.x, z:b.landZ ?? b.z, path};
+  const mk = (p, yaw) => { const L = shotParams(p); return {x:sx, y:gh0 + 0.05, z:sz, sx, sz, vx:L.speed*Math.cos(L.launch)*Math.sin(yaw), vy:L.speed*Math.sin(L.launch), vz:L.speed*Math.cos(L.launch)*Math.cos(yaw), spin:L.spin, side:0, state:'air', t:0, trail:[], carry:0, wet:false, lipped:false, lipT:0, treeT:0, hitTree:false, landed:false, bounced:false}; };
+  const fly = (p, yaw) => { const b = mk(p, yaw); for (let i=0; i<2400 && b.state === 'air'; i++) stepBall(1/120, b, 2); return {x:b.landX ?? b.x, z:b.landZ ?? b.z}; };
+  const full = (p, yaw, keep) => {   // the whole shot, landing and roll, exactly as a real one plays (1/240 steps)
+    const b = mk(p, yaw), path = keep ? [[b.x, b.y, b.z]] : null;
+    for (let i=0; i<12000 && (b.state === 'air' || b.state === 'roll'); i++){ stepBall(1/240, b, false); if (keep && i % 4 === 0) path.push([b.x, b.y, b.z]); }
+    if (keep) path.push([b.x, b.y, b.z]);
+    return {x:b.x, z:b.z, holed:b.state === 'holed', wet:b.state === 'wet', land:[b.landX ?? b.x, b.landZ ?? b.z], path};
   };
-  ffMute = true;
-  let p = clamp(shotStart.need || 1, 0.3, 1.12), yaw = y0;
-  try {
-    for (let it=0; it<8; it++){
-      const r = run(p, yaw), ex = tx - r.x, ez = tz - r.z; if (Math.hypot(ex, ez) < 0.4) break;
-      const rp = run(Math.min(1.12, p + 0.01), yaw), ry = run(p, yaw + 0.004);
+  const newton = (f, p, yaw, gx, gz, its, done) => {
+    let best = null;
+    for (let it=0; it<its; it++){
+      const r = f(p, yaw), ex = gx - r.x, ez = gz - r.z, err = Math.hypot(ex, ez);
+      if (!best || err < best.err) best = {p, yaw, err};
+      if (done(r, err)) return {p, yaw, err, ok:true};
+      const rp = f(Math.min(1.12, p + 0.01), yaw), ry = f(p, yaw + 0.004);
       const a = (rp.x - r.x)/0.01, c = (rp.z - r.z)/0.01, b2 = (ry.x - r.x)/0.004, d = (ry.z - r.z)/0.004, det = a*d - b2*c;
       if (Math.abs(det) < 1e-6) break;
-      p = clamp(p + (d*ex - b2*ez)/det, 0.2, 1.12); yaw += clamp((a*ez - c*ex)/det, -0.2, 0.2);
+      p = clamp(p + clamp((d*ex - b2*ez)/det, -0.08, 0.08), 0.2, 1.12); yaw += clamp((a*ez - c*ex)/det, -0.05, 0.05);
     }
-    const g = run(p, yaw, true);
-    g.path.push([g.x, Hh(g.x, g.z), g.z]);
-    return {n0:shot.n, path:g.path, land:[g.x, g.z], end:[PIN.x, PIN.z], aimYds:Math.round(Math.tan(yaw - y0)*shotStart.d), p,
+    return {...best, ok:false};
+  };
+  const keep = {finish, splash, cup:sfx.cup};
+  ffMute = true; finish = () => {}; splash = b => { b.state = 'wet'; }; sfx.cup = () => {};
+  try {
+    // rough aim from the flight alone, then refine on where the full shot comes to rest until it drops
+    const g1 = newton(fly, clamp(shotStart.need || 1, 0.3, 1.12), y0, tx, tz, 8, (r, e) => e < 0.4);
+    const g2 = newton(full, g1.p, g1.yaw, PIN.x, PIN.z, 10, r => r.holed);
+    const g = full(g2.p, g2.yaw, true);
+    return {n0:shot.n, path:g.path, land:g.land, end:[g.x, g.z], ace:g.holed, aimYds:Math.round(Math.tan(g2.yaw - y0)*shotStart.d), p:g2.p,
       act:{path:ball.path.slice(), land:[lx, lz], end:[ball.x, ball.z], wet:!!ball.wet}, ft:Math.round(shot.endD*3), grade:shot.grade, sw:shot.sw};
-  } finally { ffMute = false; }
+  } finally { ffMute = false; finish = keep.finish; splash = keep.splash; sfx.cup = keep.cup; }
 }
 let REVIEW_ANGLE = 'behind';
 function reviewCam(G, angle){
@@ -3997,16 +4012,16 @@ function startReview(auto){
   review = {t:0, auto, compare:false, gStart:0, cam:reviewCam(ghostShot, REVIEW_ANGLE)}; Object.assign(cam, review.cam);
   $('shotCard').hidden = true; $('revBar').hidden = false;
   const G = ghostShot, sw = G.sw, dg = sw && sw.drift !== undefined ? Math.abs(sw.drift) : null;
-  $('rvK').textContent = auto ? 'Highlight' : 'Shot review';
-  review.base = [G.act.wet ? 'Wet' : G.ft === 0 ? 'Holed' : `${G.ft} ft`, dg ? `leaned ${dg}° ${sw.drift > 0 ? 'right' : 'left'}` : null];
-  review.aimTxt = Math.abs(G.aimYds) < 2 ? 'perfect shot aimed at the pin' : `perfect shot aimed ${Math.abs(G.aimYds)} yds ${G.aimYds > 0 ? 'right' : 'left'}`;
+  const arrow = v => v > 0 ? '→' : '←';
+  $('rvFt').textContent = G.act.wet ? 'Wet' : G.ft === 0 ? 'Holed' : `${G.ft} ft`; $('rvFtL').textContent = auto ? 'highlight' : G.act.wet || G.ft === 0 ? 'result' : 'to pin';
+  $('rvLeanS').hidden = !dg; $('rvLean').textContent = dg ? `${arrow(sw.drift)} ${dg}°` : '';
+  $('rvAim').textContent = Math.abs(G.aimYds) < 2 ? 'Pin' : `${arrow(G.aimYds)} ${Math.abs(G.aimYds)} yd`; $('rvAimL').textContent = G.ace ? 'ace aim' : 'best aim';
   setCompare(false);
 }
 // Standard review just retraces your shot from the other end. Compare adds the perfect shot alongside it.
 function setCompare(on){
   if (!review) return; review.compare = on; review.gStart = review.t;
-  $('rvCompare').setAttribute('aria-pressed', String(on)); $('rvKeyG').hidden = !on;
-  $('rvTxt').textContent = [...review.base, on ? review.aimTxt : null].filter(Boolean).join(' · ');
+  $('rvCompare').setAttribute('aria-pressed', String(on)); $('rvAimS').hidden = !on;
 }
 function endReview(){ if (!review) return; review = null; $('revBar').hidden = true; if (phase === 'card') $('shotCard').hidden = false; }
 $('reviewBtn').addEventListener('click', () => startReview(false));
@@ -4025,6 +4040,10 @@ function drawReview(dt){
   line(ap, 'rgba(0,0,0,.3)', 5, []); line(ap, '#f2c45a', 3, []);
   const dot = (s, col, r) => { if (!s) return; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(s[0], s[1], r, 0, 7); ctx.fill(); };
   if (gp.length) dot(gp.at(-1), 'rgba(255,255,255,.75)', 4); dot(ap.at(-1), '#fff', 4.5);
+  // name the two lines right where they finish instead of a legend
+  const tag = (pt, txt, bg, fg, dx) => { if (!pt) return; ctx.font = '700 11px "Instrument Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const w = ctx.measureText(txt).width + 12, x = clamp(pt[0] + dx, w/2 + 4, W - w/2 - 4), y = pt[1] + 16; ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(x - w/2, y - 9, w, 18, 9); ctx.fill(); ctx.fillStyle = fg; ctx.fillText(txt, x, y + 0.5); };
+  if (e >= 1) tag(ap.at(-1), 'YOU', '#f2c45a', '#2a2210', gp.length && gp.at(-1)[0] > ap.at(-1)[0] ? -22 : 22);
+  if (gp.length && ge2 >= 1) tag(gp.at(-1), G.ace ? 'ACE' : 'BEST', 'rgba(255,255,255,.92)', '#1b1d1a', gp.at(-1)[0] >= ap.at(-1)[0] ? 22 : -22);
   if (u >= 1){
     const ge = proj(G.end[0], Hh(G.end[0], G.end[1]), G.end[1]), ae = proj(G.act.end[0], Hh(G.act.end[0], G.act.end[1]), G.act.end[1]);
     if (ge && ae && !G.act.wet && G.ft > 0){
