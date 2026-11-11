@@ -2470,6 +2470,7 @@ function launch(power, curve, info){
     sfx.hit(p, currentLie, mode === 'full' ? fullType : shortType);
   }
   flightFollow = mode === 'full' ? {sx:ball.x, sz:ball.z, yaw:addr.yaw, back:Math.hypot(addr.x-ball.x, addr.z-ball.z), y0:addr.y, d, pitch:addr.pitch} : null;   // short shots keep their green-side view
+  if (flightFollow && !rangeMode) flightFollow.great = predictGreat();
   phase = 'flight'; if (navigator.vibrate) try { navigator.vibrate(mode === 'putt' ? 8 : 18); } catch(e){}
   setHint(mode === 'putt' ? '' : 'Tap to skip ahead'); $('controls').hidden = true;
 }
@@ -2779,7 +2780,6 @@ function showShotCard(s){
   $('shotCard').hidden = false; $('shotCard').scrollTop = 0;
   const canReview = !!ghostShot && s.mode === 'full' && s.n === ghostShot.n0;
   $('reviewBtn').hidden = !canReview;
-  if (canReview && !s.wet && (shotGrade(s) ?? 0) >= 90 && !reduceMotion) startHighlight();
 }
 function showRangeCard(r){
   phase = 'card'; $('scGrade').hidden = false; $('scRing').hidden = true;
@@ -3912,6 +3912,25 @@ let thumbPose = null;
 // Shot camera (cosmetic only). Full shots: hold on the tee for a beat so you see the start line and the wind
 // take it, chase from behind and above (staying close to the target line), then trail off lower and to one side
 // to watch it drop in and run out.
+// Runs this exact shot ahead, silently, through the same physics, to see where it finishes. Nothing about the real
+// shot changes (no randomness in the physics); it only decides whether the camera treats it as a great one.
+function predictGreat(){
+  const b = {...ball, trail:[], path:null}, keep = {finish, splash, cup:sfx.cup};
+  ffMute = true; finish = () => {}; splash = q => { q.state = 'wet'; }; sfx.cup = () => {};
+  try { for (let i=0; i<60000 && (b.state === 'air' || b.state === 'roll'); i++) stepBall(1/240, b, false); }
+  finally { ffMute = false; finish = keep.finish; splash = keep.splash; sfx.cup = keep.cup; }
+  if (b.state === 'wet') return null;
+  const holed = b.state === 'holed', endLie = holed ? 'holed' : surfaceAt(b.x, b.z), endD = holed ? 0 : dPin(b.x, b.z);
+  const g = gradeShot({mode:'full', fromLie:shotStart.lie, fromD:shotStart.d, endLie, endD, holed, wet:false, bx:shotStart.x, bz:shotStart.z});
+  return holed || g >= 90 ? {land:[b.landX ?? b.x, b.landZ ?? b.z], holed, g} : null;
+}
+// Slow motion for great shots: from just before it comes down until it has taken its first bounces.
+function slowMo(){
+  const f = flightFollow; if (!f || !f.great || reduceMotion) return 1;
+  if (ball.state === 'air'){ if (ball.landX !== undefined) return 0.45; const up = Math.max(0, ball.y - Hh(ball.x, ball.z)); if (ball.vy >= 0) return 1; const tl = (ball.vy + Math.sqrt(ball.vy*ball.vy + 2*G*up))/G; return tl < 0.7 ? 0.45 : 1; }
+  if (f.landT === undefined) f.landT = ball.t;
+  return ball.t - f.landT < 1.3 ? 0.45 : 0.8;
+}
 function flightCam(dt){
   const f = flightFollow; f.age = (f.age || 0) + dt;
   const s = Math.sin(f.yaw), c = Math.cos(f.yaw), gy = Hh(ball.x, ball.z), up = ball.y - gy;
@@ -3920,7 +3939,7 @@ function flightCam(dt){
   if (f.stage === 'chase'){
     f.apex = Math.max(f.apex || 0, up);
     // once it's past the top and starting down, stop chasing and let it fly away from us
-    if (ball.state !== 'air' || (ball.vy < 0 && up < f.apex*0.85)) f.stage = 'trail';
+    if (ball.state !== 'air' || (ball.vy < 0 && up < f.apex*0.85)) f.stage = f.great ? 'swoop' : 'trail';
     else {
       const along = (ball.x-f.sx)*s + (ball.z-f.sz)*c, lat = clamp((ball.x-f.sx)*c - (ball.z-f.sz)*s, -28, 28);
       const back = 20, a = along - back, px = f.sx + s*a + c*lat*0.85, pz = f.sz + c*a - s*lat*0.85;
@@ -3928,6 +3947,15 @@ function flightCam(dt){
       f.last = {x:px, y:cy, z:pz};
       return {x:px, y:cy, z:pz, pitch:Math.atan2(cy - lookY, ahead), yaw:f.yaw};
     }
+  }
+  if (f.stage === 'swoop'){
+    // a great one: drop down behind where it's landing, then ride the bounce and the run at the hole
+    const L = f.great.land, landed = ball.state !== 'air', ax = landed ? ball.x : L[0], az = landed ? ball.z : L[1];
+    if (f.side === undefined){ const ll = (L[0]-f.sx)*c - (L[1]-f.sz)*s; f.side = ll > 2 ? -1 : ll < -2 ? 1 : 1; }
+    const tx = ax - s*13 + c*f.side*4.5, tz = az - c*13 - s*f.side*4.5, ty = Math.max(Hh(tx, tz), Hh(ax, az)) + 4.2;
+    const lx = landed ? ball.x*0.7 + PIN.x*0.3 : L[0]*0.75 + ball.x*0.25, lz = landed ? ball.z*0.7 + PIN.z*0.3 : L[1]*0.75 + ball.z*0.25;
+    const ly = landed ? ball.y*0.6 + Hh(ball.x, ball.z)*0.4 : Hh(L[0], L[1]) + 1.5;
+    return {x:tx, y:ty, z:tz, yaw:Math.atan2(lx - tx, lz - tz), pitch:Math.atan2(ty - ly, Math.max(4, Math.hypot(lx - tx, lz - tz)))};
   }
   if (!f.trail){
     // Trail off: drift on toward a spot short of where it's coming down, settle lower and off to one side,
@@ -4104,7 +4132,7 @@ function updateCamera(dt){
   else if (flightFollow && (phase === 'flight' || phase === 'done' || phase === 'card')){
     const ft = flightCam(dt); if (ft) t = ft;
   }
-  const k = 1 - Math.exp(-dt*(reading ? 3 : flightFollow && flightFollow.stage === 'chase' ? 2.6 : flightFollow && flightFollow.stage === 'trail' ? 1.5 : phase === 'flight' ? 1.6 : 2.2));
+  const k = 1 - Math.exp(-dt*(reading ? 3 : flightFollow && flightFollow.stage === 'chase' ? 2.6 : flightFollow && flightFollow.stage === 'trail' ? 1.5 : flightFollow && flightFollow.stage === 'swoop' ? 2.4 : phase === 'flight' ? 1.6 : 2.2));
   cam.x += (t.x-cam.x)*k; cam.y += (t.y-cam.y)*k; cam.z += (t.z-cam.z)*k; cam.pitch += (t.pitch-cam.pitch)*k;
   let dy = t.yaw - cam.yaw; while (dy > Math.PI) dy -= 2*Math.PI; while (dy < -Math.PI) dy += 2*Math.PI; cam.yaw += dy*k;
   cosP = Math.cos(cam.pitch); sinP = Math.sin(cam.pitch); cosY = Math.cos(cam.yaw); sinY = Math.sin(cam.yaw);
@@ -4231,7 +4259,7 @@ let lastT = performance.now(), acc = 0;
 const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function frame(now){
   const dt = Math.min(0.05, (now-lastT)/1000); lastT = now; T += reduceMotion ? dt*0.3 : dt;
-  if (phase === 'flight'){ acc += dt; const h = 1/240; while (acc >= h && phase === 'flight'){ stepBall(h, ball, false); acc -= h; }
+  if (phase === 'flight'){ acc += dt*slowMo(); const h = 1/240; while (acc >= h && phase === 'flight'){ stepBall(h, ball, false); acc -= h; }
     if (ball.state === 'air' || ball.state === 'roll'){ const tr = ball.trail, lp = tr.at(-1), gap = mode === 'putt' ? 0.25 : 1.2; if (!lp || Math.hypot(ball.x-lp[0], ball.y-lp[1], ball.z-lp[2]) > gap) tr.push([ball.x, ball.y + (mode === 'putt' ? 0.02 : 0), ball.z]); if (tr.length > 240) tr.shift(); }
     if (ball.path && ball.path.length < 3000) ball.path.push([ball.x, ball.y, ball.z]);
     if (phase === 'flight' && mode === 'putt') tracePutt();
