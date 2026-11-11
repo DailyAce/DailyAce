@@ -807,7 +807,7 @@ html.rcp body{margin:0;touch-action:auto}
       <div class="help-sec"><h3>Leagues</h3><p class="body">Start a private league from the scorecard or settings, then send friends the invite. Everyone in it gets their own leaderboard for the day and the week.</p></div>
       <div class="help-sec"><h3>The week</h3><p class="body">Holes get harder through the week. Monday is the easiest, with a big green and soft slopes. Each day the hole gets longer, the green smaller and the slopes and wind stronger, up to Friday, the toughest. The weekend eases off. Today's difficulty shows under the logo.</p></div>
       <div class="help-sec"><h3>Power</h3><p class="body"><b>100%</b> is a full swing with the club or shot shown. A meter on the side away from your swiping thumb fills as you swing. In your first few rounds and in practice, a <b>Pin</b> mark shows the power that reaches the flag with no wind.</p></div>
-      <div class="help-sec"><h3>Swiping</h3><p class="body">Drag down on the course to take it back, then flick straight up. Farther back means more power, and a slow flick loses some. Drift <b>right</b> and the ball curves right (slice). Drift <b>left</b> and it curves left (hook). A flick within about 5° of straight up counts as dead straight. Putts only care how far you pull back.</p></div>
+      <div class="help-sec"><h3>Swiping</h3><p class="body">Drag down on the course to take it back, then flick straight up. Farther back means more power, and a slow flick loses some. Drift <b>right</b> and the ball curves right (slice). Drift <b>left</b> and it curves left (hook). A flick within about 3° of straight up counts as dead straight. Putts only care how far you pull back.</p></div>
       <div class="help-sec"><h3>Swinging your phone</h3><p class="body">Take your stance with the phone in your dominant hand like the grip: <b>screen up, top pointing down at the ball</b>, the screen sitting on the swing plane. The game only arms when you're set up this way and still. Then swing through. <b>Speed</b> sets power, and the <b>club face</b> at impact sets curve: open goes right, closed goes left (for a right-hander). Look down at the face gauge to square it up before you swing. Waving the phone around doesn't count.</p></div>
       <div class="help-sec"><h3>Shots</h3><p class="body"><b>Full</b> is a normal swing. <b>Punch</b> flies low and runs. Around the green, <b>Chip</b> runs out, <b>Pitch</b> lands soft, and <b>Flop</b> goes straight up and stops. <b>Sand</b> gets you out of a bunker. From the fringe you can <b>Putt</b>.</p></div>
       <div class="help-sec"><h3>More golf</h3><p class="body">Tap the target icon for the driving range and the holes from the last five days. None of it counts. After each phone swing you'll see a chart of what your club face did from takeaway to impact.</p></div>
@@ -2710,7 +2710,7 @@ function swingWhy(s){
   if (sw.input === 'swipe'){
     pow = s.mode === 'putt' ? `Hit it ${Math.round(sw.p*sw.range)} ft on a flat green (${sw.range} ft range).` : `Pull-back ${Math.round(sw.back*100)}% × flick speed ${Math.round(sw.tempo*100)}%.` + (sw.tempo < 0.95 ? ' Flick faster to keep all of it.' : '');
     const dg = Math.abs(sw.drift || 0), sd = (sw.drift || 0) > 0 ? 'right' : 'left';
-    cur = s.mode !== 'putt' && sw.drift !== undefined ? (sw.cu === 0 ? (dg ? `Your flick leaned ${dg}° ${sd}, inside the straight band, so it flew straight.` : 'Your flick went dead straight.') : `Your flick leaned ${dg}° ${sd} (the straight band is about ±5°), so it curved ${sw.cu > 0 ? 'right' : 'left'}.`)
+    cur = s.mode !== 'putt' && sw.drift !== undefined ? (sw.cu === 0 ? (dg ? `Your flick leaned ${dg}° ${sd}, inside the straight band, so it flew straight.` : 'Your flick went dead straight.') : `Your flick leaned ${dg}° ${sd} (the straight band is about ±3°), so it curved ${sw.cu > 0 ? 'right' : 'left'}.`)
       : a < 0.12 ? 'Your swipe went straight.' : s.mode === 'putt' ? `Your swipe drifted ${sw.cu > 0 ? 'right, so it was pushed right' : 'left, so it was pulled left'}.` : `Your flick drifted ${sw.cu > 0 ? 'right' : 'left'}, so it curved ${sw.cu > 0 ? 'right' : 'left'}.`;
   } else {
     pow = `Swing speed ${sw.rate}°/s. 100% on ${sw.feel} is ${sw.ref}°/s.`;
@@ -3567,11 +3567,11 @@ function fireSwipe(){
 // Small wobbles in a flick shouldn't turn into a curving ball once wind gets hold of it.
 // Anything inside the band flies dead straight; outside it, curve comes back gradually (no cliff at the edge)
 // and still reaches full hook/slice at the extremes. Applied before launch, so the server replays the result as-is.
-const STRAIGHT_BAND = 0.16;
+const STRAIGHT_BAND = 0.10;   // about ±3° of flick lean
 function straightBand(cu){
   const a = Math.abs(cu); if (a <= STRAIGHT_BAND) return 0;
   const t = (a - STRAIGHT_BAND)/(1 - STRAIGHT_BAND);
-  return Math.sign(cu)*t*(0.45 + 0.55*t);
+  return Math.sign(cu)*t*(0.8 + 0.2*t);
 }
 function endTouch(e){
   touches.delete(e.pointerId);
