@@ -5466,9 +5466,12 @@ function runClip(){
           tx = bx - ux*bk; tz = bz - uz*bk; ty = Math.max(Hh(tx, tz), Hh(bx, bz)) + clamp(sep*0.12 + 1.7, 1.9, 3.6);
           gx = PIN.x; gz = PIN.z; gy = Hh(PIN.x, PIN.z) + 0.2; rp = 1.6; ra = 4; rq = 2.2;
         } else {
-        const ux = sep > 4 ? pdx/sep : sY, uz = sep > 4 ? pdz/sep : cY, bk = clamp(sep*0.5 + 7, 8, 18);
-        tx = bx - ux*bk; tz = bz - uz*bk; ty = Math.max(Hh(tx, tz), Hh(bx, bz)) + clamp(sep*0.25 + 3, 3.5, 8);
-        gx = sep > 2 ? bx + pdx*0.5 : bx; gz = sep > 2 ? bz + pdz*0.5 : bz; gy = Hh(gx, gz) - clamp(bk*0.18, 1.2, 3.2) + 0.6; rp = 2.2; ra = 4; rq = 3;
+        // closing frame sits off to one side of the shot line (rotated ~35 degrees), never dead behind the ball, so the trail
+        // reads as a curve rather than collapsing into a vertical stripe; low, with the flag still the focus
+        const bx0 = sep > 4 ? pdx/sep : sY, bz0 = sep > 4 ? pdz/sep : cY, th = side*0.6, cs = Math.cos(th), sn = Math.sin(th);
+        const ux = bx0*cs - bz0*sn, uz = bx0*sn + bz0*cs, bk = clamp(sep*0.5 + 7, 8, 18);
+        tx = bx - ux*bk; tz = bz - uz*bk; ty = Math.max(Hh(tx, tz), Hh(bx, bz)) + clamp(sep*0.2 + 2, 2.2, 6);
+        gx = sep > 2 ? bx + pdx*0.5 : bx; gz = sep > 2 ? bz + pdz*0.5 : bz; gy = Hh(gx, gz) + 0.3; rp = 2.2; ra = 4; rq = 3;
         }
       }
       const kp = 1 - Math.exp(-dt*rp), ka = 1 - Math.exp(-dt*ra), kq = 1 - Math.exp(-dt*rq);
