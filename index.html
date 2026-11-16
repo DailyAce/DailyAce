@@ -370,7 +370,15 @@ html.rcp body{margin:0;touch-action:auto}
 .sc-shr{width:34px;height:34px;padding:0;border:0;border-radius:50%;background:rgba(244,238,226,.08);color:var(--ink);display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .sc-shr svg{width:17px;height:17px}
 .sc-shr:active{background:rgba(244,238,226,.18)}
-.clip-stage{position:relative;width:240px;aspect-ratio:9/16;margin:0 auto;border-radius:16px;overflow:hidden;background:#0e1611}
+.clip-stage{position:relative;width:min(300px,calc((100vh - 250px)*.5625));aspect-ratio:9/16;margin:0 auto;border-radius:16px;overflow:hidden;background:#0e1611;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+#clipSheet{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(8,12,9,.84);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 12px)}
+#clipSheet[hidden]{display:none}
+.cs-box{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:340px}
+.cs-label{font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);padding:0 40px;text-align:center}
+#clipTitle{font-weight:700;text-align:center}
+#clipTitle:empty{display:none}
+.cs-x{position:absolute;top:-6px;right:-6px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(244,238,226,.12);color:var(--ink);font-size:1.3rem;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+#clipSheet .btns{margin:0}
 .clip-stage iframe{position:absolute;left:0;top:0;width:540px;height:960px;border:0;transform-origin:0 0;pointer-events:none}
 .clip-stage video,.clip-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 #clipNote{text-align:center;font-size:.8rem;color:var(--soft);min-height:1.1em}
@@ -844,13 +852,6 @@ html.rcp body{margin:0;touch-action:auto}
       <div class="btns"><a class="btn" id="shareDl" download="daily-ace.png">Download</a><button class="btn quiet" id="shareClose">Back</button></div>
     </div>
 
-    <div class="card" id="clipCard" hidden>
-      <div class="card-head"><div class="label" id="clipLabel">Shot clip</div><div class="title" id="clipTitle">Making your clip</div></div>
-      <div class="clip-stage" id="clipStage"></div>
-      <div id="clipNote"></div>
-      <div class="btns"><button class="btn" id="clipShare" hidden>Share</button><a class="btn quiet" id="clipDl" hidden>Save</a><button class="btn quiet" id="clipClose">Back</button></div>
-    </div>
-
     <div class="card" id="badgeCard" hidden>
       <div class="card-head"><div class="label" id="badgeCount">Badges</div><div class="title">Your locker</div></div>
       <div class="badge-grid" id="badgeGrid"></div>
@@ -880,6 +881,17 @@ html.rcp body{margin:0;touch-action:auto}
       <button id="viewGreen" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="10" rx="6.2" ry="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 10V2.5l3.4 1.5L8 5.6" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>Green</button>
     </nav>
   </footer>
+</div>
+
+<div id="clipSheet" hidden>
+  <div class="cs-box">
+    <button class="cs-x" id="clipClose" type="button" aria-label="Close">&times;</button>
+    <div class="cs-label" id="clipLabel"></div>
+    <div class="clip-stage" id="clipStage"></div>
+    <div id="clipTitle"></div>
+    <div id="clipNote"></div>
+    <div class="btns"><button class="btn" id="clipShare" hidden>Share</button><a class="btn quiet" id="clipDl" hidden>Save</a></div>
+  </div>
 </div>
 
 <script>
@@ -3125,7 +3137,7 @@ function showSummary(){
     sub.textContent = `${fmtShort(s.fromD, s.fromLie)} → ${to}`; what.appendChild(sub);
     const g = document.createElement('div'); g.className = 'sc-g'; const gr = shotGrade(s); g.textContent = gr === null ? '—' : gr; g.style.color = gradeColor(s);
     row.append(dot, what, g);
-    if (clipOK(s)){ row.classList.add('has-clip'); const sh = document.createElement('button'); sh.className = 'sc-shr'; sh.type = 'button'; sh.setAttribute('aria-label', 'Share this shot as a video'); sh.innerHTML = ICONS.share; sh.onclick = () => openShotClip(s, R0); row.appendChild(sh); }
+    if (clipOK(s)){ row.classList.add('has-clip'); const sh = document.createElement('button'); sh.className = 'sc-shr'; sh.type = 'button'; sh.setAttribute('aria-label', 'Watch this shot'); sh.innerHTML = ICONS.play; sh.onclick = () => openShotClip(s, R0); row.appendChild(sh); }
     card.appendChild(row);
   }
   $('stTee').textContent = c.teeFt === null ? 'Wet' : c.teeFt === 0 ? 'Ace' : c.teeFt >= 90 ? `${Math.round(c.teeFt/3)}y` : `${Math.round(c.teeFt)}′`;
@@ -3232,6 +3244,7 @@ function pumpThumbs(){
 function moreItem(title, sub, cls){ const b = document.createElement('button'); b.className = 'more-item' + (cls ? ' ' + cls : ''); const t = document.createElement('b'); t.textContent = title; const u = document.createElement('span'); u.textContent = sub; b.append(t, u); return b; }
 function goHash(h){ try { if (h) location.hash = h; else history.replaceState(null, '', location.pathname + location.search); location.reload(); } catch(e){ setHint("Couldn't switch holes here."); } }
 const ICONS = {
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.5 5.6v12.8L18.8 12z"/></svg>',
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M8 8l4-4 4 4"/><path d="M5 12v7h14v-7"/></svg>',
   flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V3.5"/><path d="M6 4h10.5l-2.2 3.6L16.5 11H6"/><ellipse cx="9" cy="21" rx="5" ry="1.2"/></svg>',
   replay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/><circle cx="12" cy="12" r="1.6"/></svg>',
@@ -4463,42 +4476,51 @@ function clipMeta(s, k, L3){
     hole:L3 ? `No. ${holeNum} · Hole ${k + 1}` : `No. ${holeNum}`, date:pastKey ? dayLabel(pastKey) : dayLabel(todayKey), name:L3 ? holeNameFor(holeNum, k) : holeName,
     url:(location.host + location.pathname).replace(/\/(index\.html)?$/, '')};
 }
+const clipCache = new Map();
 function closeClip(){
   const j = clipJob; clipJob = null;
-  if (j){ clearTimeout(j.timer); window.removeEventListener('message', j.on); if (j.fr) j.fr.remove(); if (j.url) URL.revokeObjectURL(j.url); }
-  $('clipStage').innerHTML = ''; $('clipCard').hidden = true;
+  if (j){ clearTimeout(j.timer); if (j.on) window.removeEventListener('message', j.on); if (j.fr){ j.fr.remove(); j.fr = null; } }
+  $('clipStage').innerHTML = ''; $('clipSheet').hidden = true;
+}
+function showClip(j){
+  const stage = $('clipStage'); stage.innerHTML = '';
+  const el = document.createElement(j.kind === 'video' ? 'video' : 'img');
+  if (j.kind === 'video'){ el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.setAttribute('muted', ''); el.src = j.url; el.onclick = () => { if (el.paused) el.play().catch(() => {}); else el.pause(); }; el.play().catch(() => {}); }
+  else { el.alt = 'Your shot'; el.src = j.url; }
+  stage.appendChild(el);
+  $('clipTitle').textContent = ''; $('clipNote').textContent = j.kind === 'video' ? 'Tap the video to pause.' : 'Your phone can’t record video here, so this is a picture.';
+  $('clipDl').href = j.url; $('clipDl').download = j.file ? j.file.name : 'daily-ace-shot'; $('clipDl').hidden = false;
+  let can = false; try { can = !!(j.file && navigator.share && navigator.canShare && navigator.canShare({files:[j.file]})); } catch(e){}
+  $('clipShare').hidden = !can;
 }
 function openShotClip(s, R0){
   if (clipJob) closeClip();
   const k = s.hole || 0, list = R0.shots.filter(x => (x.hole || 0) === k), idx = list.indexOf(s); if (idx < 0) return;
   const data = {r:shotRows(list.slice(0, idx + 1)), m:clipMeta(s, k, !!curLoop())};
   const hash = `#v${holeNum}${k ? 's' + k : ''}~${b64u(data)}`;
-  $('summary').hidden = true; $('clipCard').hidden = false; $('clipCard').scrollTop = 0;
+  $('clipSheet').hidden = false;
   $('clipLabel').textContent = `${data.m.ttl} · ${data.m.hole}`; $('clipTitle').textContent = 'Making your clip'; $('clipNote').textContent = 'This takes about ten seconds.';
   ['clipShare', 'clipDl'].forEach(id => $(id).hidden = true);
+  const hit = clipCache.get(hash); if (hit){ clipJob = hit; showClip(hit); return; }
   const stage = $('clipStage'); stage.innerHTML = '';
   const fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1; fr.style.transform = `scale(${(stage.clientWidth || 240)/540})`;
   stage.appendChild(fr);
   const j = clipJob = {fr, url:null, file:null, kind:null};
+  const fail = msg => { $('clipTitle').textContent = 'Couldn’t make the clip'; $('clipNote').textContent = msg; if (j.fr){ j.fr.remove(); j.fr = null; } };
   j.on = e => {
     const d = e.data; if (!d || d.dhClip !== hash || clipJob !== j) return;
     clearTimeout(j.timer);
-    const blob = d.ok === true ? d.blob : d.ok === 'still' ? d.blob : null;
-    if (!blob){ $('clipTitle').textContent = 'Couldn’t make the clip'; $('clipNote').textContent = 'Try again in a moment.'; fr.remove(); j.fr = null; return; }
+    const blob = d.ok === true || d.ok === 'still' ? d.blob : null;
+    if (!blob) return fail('Try again in a moment.');
     j.kind = d.ok === true ? 'video' : 'image'; j.url = URL.createObjectURL(blob);
     const ext = j.kind === 'video' ? (blob.type.includes('webm') ? 'webm' : 'mp4') : 'png';
     try { j.file = new File([blob], `daily-ace-${data.m.hole.replace(/\W+/g, '-').toLowerCase()}-shot-${idx + 1}.${ext}`, {type:blob.type}); } catch(e){ j.file = null; }
-    fr.remove(); j.fr = null; stage.innerHTML = '';
-    const el = document.createElement(j.kind === 'video' ? 'video' : 'img');
-    if (j.kind === 'video'){ el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.setAttribute('muted', ''); el.controls = false; el.src = j.url; el.play().catch(() => {}); }
-    else { el.alt = 'Your shot'; el.src = j.url; }
-    stage.appendChild(el);
-    $('clipTitle').textContent = 'Ready to share'; $('clipNote').textContent = j.kind === 'video' ? '' : 'Your phone can’t record video here, so this is a picture.';
-    $('clipDl').href = j.url; $('clipDl').download = j.file ? j.file.name : 'daily-ace-shot'; $('clipDl').hidden = false;
-    { let can = false; try { can = !!(j.file && navigator.share && navigator.canShare && navigator.canShare({files:[j.file]})); } catch(e){} $('clipShare').hidden = !can; }
+    if (j.fr){ j.fr.remove(); j.fr = null; }
+    window.removeEventListener('message', j.on);
+    clipCache.set(hash, j); showClip(j);
   };
   window.addEventListener('message', j.on);
-  j.timer = setTimeout(() => { if (clipJob !== j) return; $('clipTitle').textContent = 'Couldn’t make the clip'; $('clipNote').textContent = 'This phone took too long. Try again.'; fr.remove(); j.fr = null; }, 40000);
+  j.timer = setTimeout(() => { if (clipJob === j) fail('This phone took too long. Try again.'); }, 40000);
   fr.src = location.href.split('#')[0] + hash;
 }
 $('clipShare').addEventListener('click', () => {
@@ -4506,7 +4528,8 @@ $('clipShare').addEventListener('click', () => {
   let ok = false; try { ok = navigator.canShare(data); } catch(e){}
   if (ok) navigator.share(data).catch(() => {}); else $('clipDl').click();
 });
-$('clipClose').addEventListener('click', () => { closeClip(); $('summary').hidden = false; });
+$('clipClose').addEventListener('click', closeClip);
+$('clipSheet').addEventListener('click', e => { if (e.target === $('clipSheet')) closeClip(); });
 function gauss(r){ let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
 function pureShot(x, z, yaw, speed, launch, spin, side){
   const b = {x, y:Hh(x, z)+0.05, z, vx:speed*Math.cos(launch)*Math.sin(yaw), vy:speed*Math.sin(launch), vz:speed*Math.cos(launch)*Math.cos(yaw), spin, side, state:'air', landed:false, bounced:false};
