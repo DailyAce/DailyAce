@@ -366,6 +366,14 @@ html.rcp body{margin:0;touch-action:auto}
 #prNote,.pr-mk,.streak,#countdown{text-align:center;text-wrap:balance}
 .sc-row{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--edge)}
 .sc-row:first-child{border-top:0}
+.sc-row.has-clip{grid-template-columns:14px minmax(0,1fr) auto 34px}
+.sc-shr{width:34px;height:34px;padding:0;border:0;border-radius:50%;background:rgba(244,238,226,.08);color:var(--ink);display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sc-shr svg{width:17px;height:17px}
+.sc-shr:active{background:rgba(244,238,226,.18)}
+.clip-stage{position:relative;width:240px;aspect-ratio:9/16;margin:0 auto;border-radius:16px;overflow:hidden;background:#0e1611}
+.clip-stage iframe{position:absolute;left:0;top:0;width:540px;height:960px;border:0;transform-origin:0 0;pointer-events:none}
+.clip-stage video,.clip-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+#clipNote{text-align:center;font-size:.8rem;color:var(--soft);min-height:1.1em}
 .sc-row i{width:9px;height:9px;border-radius:50%}
 .sc-what{font-size:.86rem;font-weight:600;min-width:0}
 .sc-what span{display:block;font-size:.76rem;font-weight:400;color:var(--soft);margin-top:2px}
@@ -836,6 +844,13 @@ html.rcp body{margin:0;touch-action:auto}
       <div class="btns"><a class="btn" id="shareDl" download="daily-ace.png">Download</a><button class="btn quiet" id="shareClose">Back</button></div>
     </div>
 
+    <div class="card" id="clipCard" hidden>
+      <div class="card-head"><div class="label" id="clipLabel">Shot clip</div><div class="title" id="clipTitle">Making your clip</div></div>
+      <div class="clip-stage" id="clipStage"></div>
+      <div id="clipNote"></div>
+      <div class="btns"><button class="btn" id="clipShare" hidden>Share</button><a class="btn quiet" id="clipDl" hidden>Save</a><button class="btn quiet" id="clipClose">Back</button></div>
+    </div>
+
     <div class="card" id="badgeCard" hidden>
       <div class="card-head"><div class="label" id="badgeCount">Badges</div><div class="title">Your locker</div></div>
       <div class="badge-grid" id="badgeGrid"></div>
@@ -903,8 +918,10 @@ let holeNum = Math.round((Date.parse(todayKey + 'T00:00:00Z') - EPOCH)/86400000)
 let preview = false;
 const hm = /^#h(\d{1,4})(?:s([0-2]))?$/.exec(location.hash || '');
 if (hm){ holeNum = Math.max(1, +hm[1]); preview = true; }
-const tm = /^#t(-?\d{1,4})(?:s([0-2]))?(?:~([A-Za-z0-9.,-]+))?$/.exec(location.hash || ''), thumb = !!tm;
-if (thumb){ holeNum = +tm[1]; preview = true; document.documentElement.classList.add('thumb'); }
+const tm = /^#t(-?\d{1,4})(?:s([0-2]))?(?:~([A-Za-z0-9.,-]+))?$/.exec(location.hash || '');
+// #v<hole>[s<sub>]~<data>: a hidden page that renders one shot as a short portrait video for sharing (see runClip)
+const cm = /^#v(\d{1,5})(?:s([0-2]))?~([A-Za-z0-9_-]+)$/.exec(location.hash || ''), thumb = !!tm || !!cm;
+if (thumb){ holeNum = +(tm || cm)[1]; preview = true; document.documentElement.classList.add('thumb'); }
 // the five days before today, oldest first: each day yesterday's hole joins and the oldest drops off
 function recentKeys(key){ const t = Date.parse(key + 'T12:00:00Z'); return [5,4,3,2,1].map(i => new Date(t - i*86400000).toISOString().slice(0, 10)); }
 const holeNumFor = key => Math.round((Date.parse(key + 'T00:00:00Z') - EPOCH)/86400000) + 1;
@@ -923,6 +940,7 @@ const wordOf = w => { const m = /^\s*[E+\-−0-9]+\s*\((\d+)\)\s*$/.exec(w || ''
 let SUB = 0;
 if (hm && hm[2]) SUB = +hm[2];
 else if (tm && tm[2]) SUB = +tm[2];
+else if (cm && cm[2]) SUB = +cm[2];
 else if (dm && dm[2] && pastKey) SUB = +dm[2];
 else if (qm && loopDay(holeNum)) SUB = +qm[1];
 else if (loopDay(holeNum) && !preview && !thumb){ for (SUB = 0; SUB < 2; SUB++){ const r = LS.get('dailyhole:r:' + todayKey + (SUB ? ':' + SUB : ''), null); if (!(r && r.done)) break; } }
@@ -3106,7 +3124,9 @@ function showSummary(){
     const to = s.gimme ? 'conceded' : s.holed ? 'in the cup' : s.wet ? 'water, +1 penalty' : `${fmtShort(s.endD, s.endLie)}, ${LIE_NAME[s.endLie].toLowerCase()}`;
     sub.textContent = `${fmtShort(s.fromD, s.fromLie)} → ${to}`; what.appendChild(sub);
     const g = document.createElement('div'); g.className = 'sc-g'; const gr = shotGrade(s); g.textContent = gr === null ? '—' : gr; g.style.color = gradeColor(s);
-    row.append(dot, what, g); card.appendChild(row);
+    row.append(dot, what, g);
+    if (clipOK(s)){ row.classList.add('has-clip'); const sh = document.createElement('button'); sh.className = 'sc-shr'; sh.type = 'button'; sh.setAttribute('aria-label', 'Share this shot as a video'); sh.innerHTML = ICONS.share; sh.onclick = () => openShotClip(s, R0); row.appendChild(sh); }
+    card.appendChild(row);
   }
   $('stTee').textContent = c.teeFt === null ? 'Wet' : c.teeFt === 0 ? 'Ace' : c.teeFt >= 90 ? `${Math.round(c.teeFt/3)}y` : `${Math.round(c.teeFt)}′`;
   $('stPutts').textContent = c.puttCount;
@@ -3212,6 +3232,7 @@ function pumpThumbs(){
 function moreItem(title, sub, cls){ const b = document.createElement('button'); b.className = 'more-item' + (cls ? ' ' + cls : ''); const t = document.createElement('b'); t.textContent = title; const u = document.createElement('span'); u.textContent = sub; b.append(t, u); return b; }
 function goHash(h){ try { if (h) location.hash = h; else history.replaceState(null, '', location.pathname + location.search); location.reload(); } catch(e){ setHint("Couldn't switch holes here."); } }
 const ICONS = {
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M8 8l4-4 4 4"/><path d="M5 12v7h14v-7"/></svg>',
   flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V3.5"/><path d="M6 4h10.5l-2.2 3.6L16.5 11H6"/><ellipse cx="9" cy="21" rx="5" ry="1.2"/></svg>',
   replay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/><circle cx="12" cy="12" r="1.6"/></svg>',
   fly:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c4-7 8-10 18-11"/><path d="M17.5 3.5 21 6l-2.6 3.3"/><path d="M3 21h18"/><path d="M14 21v-5h2v5"/></svg>',
@@ -4425,6 +4446,67 @@ $('shareImgBtn').addEventListener('click', () => {
   openShareCard();
 });
 $('shareClose').addEventListener('click', () => { $('shareCard').hidden = true; if (shareFromYday){ shareFromYday = false; $('ydayCard').hidden = false; } else $('summary').hidden = false; });
+
+// ---------- shot clip: one shot as a short portrait video ----------
+// A hidden copy of the page (#v...) replays the round up to this shot with the game's own physics, flies a camera along the
+// recorded ball path, draws the result on the closing frame and records it. The video comes back here to share or save.
+const b64u = o => { let s = ''; new TextEncoder().encode(JSON.stringify(o)).forEach(c => s += String.fromCharCode(c)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = t => { const s = atob(t.replace(/-/g, '+').replace(/_/g, '/')); return JSON.parse(new TextDecoder().decode(Uint8Array.from(s, ch => ch.charCodeAt(0)))); };
+const clipOK = s => !s.gimme && !!s.sw && typeof s.sw.p === 'number' && typeof s.sw.cu === 'number';
+let clipJob = null;
+function clipMeta(s, k, L3){
+  const gr = shotGrade(s);
+  return {k:s.mode, tee:s.n === 1 ? 1 : 0, ttl:s.mode === 'full' ? `${shotName(s)} · ${clubName(s)}` : shotName(s),
+    from:fmtShort(s.fromD, s.fromLie), fromLie:LIE_NAME[s.fromLie].toLowerCase(),
+    to:s.holed ? 'Holed' : s.wet ? 'Water' : fmtShort(s.endD, s.endLie), toLie:s.holed || s.wet ? '' : LIE_NAME[s.endLie].toLowerCase(),
+    g:gr, hot:(gr ?? 0) >= 90 ? 1 : 0, ace:s.holed && s.mode === 'full' && s.n === 1 ? 1 : 0, holed:s.holed ? 1 : 0, wet:s.wet ? 1 : 0,
+    hole:L3 ? `No. ${holeNum} · Hole ${k + 1}` : `No. ${holeNum}`, date:pastKey ? dayLabel(pastKey) : dayLabel(todayKey), name:L3 ? holeNameFor(holeNum, k) : holeName,
+    url:(location.host + location.pathname).replace(/\/(index\.html)?$/, '')};
+}
+function closeClip(){
+  const j = clipJob; clipJob = null;
+  if (j){ clearTimeout(j.timer); window.removeEventListener('message', j.on); if (j.fr) j.fr.remove(); if (j.url) URL.revokeObjectURL(j.url); }
+  $('clipStage').innerHTML = ''; $('clipCard').hidden = true;
+}
+function openShotClip(s, R0){
+  if (clipJob) closeClip();
+  const k = s.hole || 0, list = R0.shots.filter(x => (x.hole || 0) === k), idx = list.indexOf(s); if (idx < 0) return;
+  const data = {r:shotRows(list.slice(0, idx + 1)), m:clipMeta(s, k, !!curLoop())};
+  const hash = `#v${holeNum}${k ? 's' + k : ''}~${b64u(data)}`;
+  $('summary').hidden = true; $('clipCard').hidden = false; $('clipCard').scrollTop = 0;
+  $('clipLabel').textContent = `${data.m.ttl} · ${data.m.hole}`; $('clipTitle').textContent = 'Making your clip'; $('clipNote').textContent = 'This takes about ten seconds.';
+  ['clipShare', 'clipDl'].forEach(id => $(id).hidden = true);
+  const stage = $('clipStage'); stage.innerHTML = '';
+  const fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1; fr.style.transform = `scale(${(stage.clientWidth || 240)/540})`;
+  stage.appendChild(fr);
+  const j = clipJob = {fr, url:null, file:null, kind:null};
+  j.on = e => {
+    const d = e.data; if (!d || d.dhClip !== hash || clipJob !== j) return;
+    clearTimeout(j.timer);
+    const blob = d.ok === true ? d.blob : d.ok === 'still' ? d.blob : null;
+    if (!blob){ $('clipTitle').textContent = 'Couldn’t make the clip'; $('clipNote').textContent = 'Try again in a moment.'; fr.remove(); j.fr = null; return; }
+    j.kind = d.ok === true ? 'video' : 'image'; j.url = URL.createObjectURL(blob);
+    const ext = j.kind === 'video' ? (blob.type.includes('webm') ? 'webm' : 'mp4') : 'png';
+    try { j.file = new File([blob], `daily-ace-${data.m.hole.replace(/\W+/g, '-').toLowerCase()}-shot-${idx + 1}.${ext}`, {type:blob.type}); } catch(e){ j.file = null; }
+    fr.remove(); j.fr = null; stage.innerHTML = '';
+    const el = document.createElement(j.kind === 'video' ? 'video' : 'img');
+    if (j.kind === 'video'){ el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.setAttribute('muted', ''); el.controls = false; el.src = j.url; el.play().catch(() => {}); }
+    else { el.alt = 'Your shot'; el.src = j.url; }
+    stage.appendChild(el);
+    $('clipTitle').textContent = 'Ready to share'; $('clipNote').textContent = j.kind === 'video' ? '' : 'Your phone can’t record video here, so this is a picture.';
+    $('clipDl').href = j.url; $('clipDl').download = j.file ? j.file.name : 'daily-ace-shot'; $('clipDl').hidden = false;
+    { let can = false; try { can = !!(j.file && navigator.share && navigator.canShare && navigator.canShare({files:[j.file]})); } catch(e){} $('clipShare').hidden = !can; }
+  };
+  window.addEventListener('message', j.on);
+  j.timer = setTimeout(() => { if (clipJob !== j) return; $('clipTitle').textContent = 'Couldn’t make the clip'; $('clipNote').textContent = 'This phone took too long. Try again.'; fr.remove(); j.fr = null; }, 40000);
+  fr.src = location.href.split('#')[0] + hash;
+}
+$('clipShare').addEventListener('click', () => {
+  const j = clipJob; if (!j || !j.file) return; const data = {files:[j.file]};
+  let ok = false; try { ok = navigator.canShare(data); } catch(e){}
+  if (ok) navigator.share(data).catch(() => {}); else $('clipDl').click();
+});
+$('clipClose').addEventListener('click', () => { closeClip(); $('summary').hidden = false; });
 function gauss(r){ let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
 function pureShot(x, z, yaw, speed, launch, spin, side){
   const b = {x, y:Hh(x, z)+0.05, z, vx:speed*Math.cos(launch)*Math.sin(yaw), vy:speed*Math.sin(launch), vz:speed*Math.cos(launch)*Math.cos(yaw), spin, side, state:'air', landed:false, bounced:false};
@@ -5251,6 +5333,160 @@ function drawTeeShot(t){
   }
   ctx.restore();
 }
+// ---------- shot clip renderer (runs only inside the hidden #v page) ----------
+function runClip(){
+  const post = msg => { try { parent.postMessage({dhClip:location.hash, ...msg}, '*'); } catch(e){} };
+  let D = null; try { D = unb64u(cm[3]); } catch(e){}
+  if (!D || !Array.isArray(D.r) || !D.r.length || D.r.length > 14) return post({ok:false});
+  const M = D.m || {};
+  // 1. replay the round up to this shot with the game's physics, keeping the ball's path for each shot
+  const sb = stepBall, runs = [];
+  stepBall = (dt, b, sim) => { if (!b.__p){ b.__p = [[b.x, b.y, b.z]]; b.__n = 0; runs.push(b); } sb(dt, b, sim); if (++b.__n % 4 === 0 || (b.state !== 'air' && b.state !== 'roll')) b.__p.push([b.x, b.y, b.z]); };
+  const f0 = finish, s0 = splash; finish = () => { stopped = true; }; splash = b => { b.wet = true; b.state = 'stopped'; stopped = true; };
+  ffMute = true; replay.track = [];
+  try { replay(D.r); } catch(e){}
+  const tr = replay.track || []; replay.track = null; finish = f0; splash = s0; stepBall = sb; ffMute = false;
+  setupLie();
+  const run = runs.at(-1), tk = tr.at(-1);
+  if (!run || !tk || runs.length !== D.r.filter(r => !(r[1] === 'gimme' || r[12] === 1)).length || run.__p.length < 4) return post({ok:false});
+  const P = run.__p, n = P.length, DT = 1/60, simT = (n - 1)*DT, S = P[0], E = P[n - 1];
+  const kind = M.k === 'putt' ? 'putt' : M.k === 'short' ? 'short' : 'full';
+  const final = run.wet ? 'wet' : run.state === 'holed' ? 'holed' : 'rest';
+  const L = kind === 'putt' ? [E[0], E[2]] : [tk.lx, tk.lz];
+  const dist = Math.hypot(L[0] - S[0], L[1] - S[2]);
+  const yaw = dist < 0.8 ? yawTo(S[0], S[2]) : Math.atan2(L[0] - S[0], L[1] - S[2]), sY = Math.sin(yaw), cY = Math.cos(yaw);
+  let windTxt = ''; { const w = run.wv; if (w && kind === 'full'){ const mph = Math.round(w.mph !== undefined ? w.mph : Math.hypot(w.x, w.z)); if (mph >= 3){ const al = (w.x*sY + w.z*cY)/(Math.hypot(w.x, w.z) || 1); windTxt = `${mph} mph ${al > 0.5 ? 'tailwind' : al < -0.5 ? 'headwind' : 'crosswind'}`; } else windTxt = 'Calm'; } }
+  // 2. a square, portrait canvas at 1x so it records smoothly on any phone
+  DPR = 1; cv.width = W; cv.height = H; ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // 3. the camera: chase from behind and above, then (for flights) drop in beside the landing and ride the run-out
+  const pinD = Math.hypot(PIN.x - S[0], PIN.z - S[2]);   // putts are framed by how far the hole is, so ball and flag both stay in view
+  const back = kind === 'full' ? 20 : kind === 'short' ? clamp(dist*0.55, 6, 15) : clamp(pinD*0.5 + 4.8, 5, 12);
+  const above = kind === 'full' ? 4 : kind === 'short' ? 3 : 1.9 + clamp(pinD*0.05, 0, 2);
+  const ahead = back + (kind === 'full' ? 28 : kind === 'short' ? clamp(dist*0.8, 8, 22) : clamp(pinD*0.6, 3.5, 14));
+  const chase = (bx, by, bz) => {
+    const gy = Hh(bx, bz), along = (bx - S[0])*sY + (bz - S[2])*cY, lat = clamp((bx - S[0])*cY - (bz - S[2])*sY, -28, 28), a = along - back;
+    const px = S[0] + sY*a + cY*lat*0.85, pz = S[2] + cY*a - sY*lat*0.85, cy = Math.max(Hh(px, pz) + above, by + above*1.2), lookY = by*0.7 + gy*0.3 + (kind === 'putt' ? 1.0 : 0);
+    return {x:px, y:cy, z:pz, pitch:Math.atan2(cy - lookY, ahead), yaw};
+  };
+  const latL = (L[0] - S[0])*cY - (L[1] - S[2])*sY, side = latL > 2 ? -1 : 1;
+  const lBack = kind === 'short' ? clamp(dist*0.25, 5, 12) : 13, lUp = kind === 'short' ? 2.8 : 4.2, lSide = kind === 'short' ? 3.2 : 4.5;
+  let li = n - 1; for (let i = 0; i < n; i++){ if (Math.hypot(P[i][0] - L[0], P[i][2] - L[1]) < 1.2 && P[i][1] - Hh(P[i][0], P[i][2]) < 0.4){ li = i; break; } }
+  const great = !!M.hot || final === 'holed', INTRO = 0.7, HOLD = 3.4, baseRate = Math.max(1, simT/(kind === 'putt' ? 5 : 5.2));
+  let simClock = 0, tEl = 0, endAt = null, stage = 'chase', apex = 0, lastPose = chase(S[0], S[1], S[2]), cur = null, aimP = null, landAt = null, splashed = false, trI = 0;
+  const trail = [];
+  const tick = dt => {
+    tEl += dt;
+    if (tEl > INTRO && endAt === null){
+      let rate = baseRate; if (great && kind !== 'putt'){ const ti = simClock/DT; if (ti > li - 36 && ti < li + 72) rate *= 0.5; }
+      simClock += dt*rate; if (simClock >= simT){ simClock = simT; endAt = tEl; }
+    }
+    const f = Math.min(n - 1, simClock/DT), i = Math.floor(f), a = f - i, q = P[i], r = P[Math.min(n - 1, i + 1)];
+    const bx = q[0] + (r[0] - q[0])*a, by = q[1] + (r[1] - q[1])*a, bz = q[2] + (r[2] - q[2])*a, done = endAt !== null;
+    ball.x = bx; ball.y = by; ball.z = bz; ball.vx = ball.vy = ball.vz = 0;
+    ball.state = done && final === 'holed' ? 'holed' : done && final === 'wet' ? 'wet' : (M.tee && simClock === 0) ? 'tee' : 'air';
+    if (done && final === 'wet' && !splashed){ splashed = true; splashes.push({x:bx, z:bz, t:0, drops:Array.from({length:22}, () => ({vx:(fxR() - .5)*3, vy:3 + fxR()*5, vz:(fxR() - .5)*3}))}); }
+    const gap = kind === 'putt' ? 0.25 : 1.2;
+    while (trI <= i){ const p = P[trI], lp = trail.at(-1); if (!lp || Math.hypot(p[0] - lp[0], p[1] - lp[1], p[2] - lp[2]) > gap) trail.push([p[0], p[1] + (kind === 'putt' ? 0.02 : 0), p[2]]); trI++; }
+    ball.trail = trail.slice(-240);
+    const up = by - Hh(bx, bz); if (up > apex) apex = up;
+    if (stage === 'chase' && kind === 'full' && apex > 0.8 && i > 2 && P[i][1] < P[i - 1][1] && up < apex*0.85){ stage = 'land'; cur = {x:lastPose.x, y:lastPose.y, z:lastPose.z}; aimP = {x:bx, y:by, z:bz}; }
+    if (done && kind !== 'putt' && stage !== 'result'){ stage = 'result'; if (!cur){ cur = {x:lastPose.x, y:lastPose.y, z:lastPose.z}; aimP = {x:bx, y:by, z:bz}; } }
+    if (stage === 'chase') lastPose = chase(bx, by, bz);
+    else {
+      let tx, tz, ty, gx, gz, gy, rp = 3.2, ra = 12, rq = 5;
+      if (stage === 'land'){
+        const landed = i >= li; if (landed && landAt === null) landAt = simClock;
+        const ax = landed ? bx : L[0], az = landed ? bz : L[1]; tx = ax - sY*lBack + cY*side*lSide; tz = az - cY*lBack - sY*side*lSide;
+        ty = Math.max(Math.max(Hh(tx, tz), Hh(ax, az)) + lUp, landed ? 0 : by + 2.5);
+        const w = landed ? clamp((simClock - landAt)/0.6, 0, 1)*0.3 : 0; gx = bx + (PIN.x - bx)*w; gz = bz + (PIN.z - bz)*w; gy = by + (Hh(PIN.x, PIN.z) - by)*w;
+      } else {
+        // the closing frame: ball and flag together, seen from behind the ball (or from the front if it ran past the pin)
+        const pdx = PIN.x - bx, pdz = PIN.z - bz, sep = Math.hypot(pdx, pdz), ux = sep > 4 ? pdx/sep : sY, uz = sep > 4 ? pdz/sep : cY, bk = clamp(sep*0.5 + 7, 8, 18);
+        tx = bx - ux*bk; tz = bz - uz*bk; ty = Math.max(Hh(tx, tz), Hh(bx, bz)) + clamp(sep*0.25 + 3, 3.5, 8);
+        gx = sep > 2 ? bx + pdx*0.5 : bx; gz = sep > 2 ? bz + pdz*0.5 : bz; gy = Hh(gx, gz) - clamp(bk*0.18, 1.2, 3.2) + 0.6; rp = 2.2; ra = 4; rq = 3;
+      }
+      const kp = 1 - Math.exp(-dt*rp), ka = 1 - Math.exp(-dt*ra), kq = 1 - Math.exp(-dt*rq);
+      cur.x += (tx - cur.x)*kp; cur.y += (ty - cur.y)*kp; cur.z += (tz - cur.z)*kp; aimP.x += (gx - aimP.x)*ka; aimP.y += (gy - aimP.y)*ka; aimP.z += (gz - aimP.z)*ka;
+      const dx = aimP.x - cur.x, dz = aimP.z - cur.z, wantYaw = Math.atan2(dx, dz), wantPit = Math.atan2(cur.y - aimP.y, Math.max(3, Math.hypot(dx, dz)));
+      let dy = wantYaw - lastPose.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      lastPose = {x:cur.x, y:cur.y, z:cur.z, yaw:lastPose.yaw + dy*kq, pitch:lastPose.pitch + (wantPit - lastPose.pitch)*kq};
+    }
+    thumbPose = lastPose;
+  };
+  // 4. the words and numbers drawn over the picture (designed on a 1080 wide page, like the scorecard image)
+  const FONT = '"Instrument Sans", system-ui, sans-serif', INK = '#f4eee2', SOFT = '#b9bba9', BG = '#0e1611', GOLD = '#e7c068';
+  const gcol = v => v === null ? SOFT : v >= 60 ? '#a9d68e' : v >= 35 ? '#e7c068' : '#e3825f';
+  const ease = u => { u = clamp(u, 0, 1); return u*u*(3 - 2*u); };
+  const hud = () => {
+    const g = ctx, K = W/1080, SH = H/K, font = (w, px) => { g.font = `${w} ${px}px ${FONT}`; };
+    const rrect = (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); };
+    const spaced = px => { if (g.letterSpacing !== undefined) g.letterSpacing = px + 'px'; };
+    g.save(); g.scale(K, K); g.textBaseline = 'alphabetic';
+    const top = g.createLinearGradient(0, 0, 0, 230); top.addColorStop(0, 'rgba(14,22,17,.6)'); top.addColorStop(1, 'rgba(14,22,17,0)'); g.fillStyle = top; g.fillRect(0, 0, 1080, 230);
+    { const lx = 88, ly = 92, k = 2.3; g.save(); g.translate(lx - 10*k, ly - 10*k); g.scale(k, k);
+      g.strokeStyle = INK; g.lineWidth = 1.4; g.beginPath(); g.arc(10, 10, 8.6, 0, 7); g.stroke();
+      g.lineCap = 'round'; g.beginPath(); g.moveTo(8.3, 14.6); g.lineTo(8.3, 5.2); g.stroke();
+      g.fillStyle = '#e4573f'; g.beginPath(); g.moveTo(8.9, 5.4); g.lineTo(13.9, 7.5); g.lineTo(8.9, 9.6); g.closePath(); g.fill(); g.restore(); }
+    g.fillStyle = INK; font(700, 46); g.textAlign = 'left'; g.fillText('daily ace', 126, 108);
+    font(600, 32); g.textAlign = 'right'; g.fillText(`${M.hole || ''} · ${M.date || ''}`, 1080 - 64, 104);
+    // what the shot is, top left under the brand
+    const a0 = ease(tEl/0.5); g.globalAlpha = a0; g.textAlign = 'left'; g.fillStyle = INK; font(600, 34); spaced(4); g.fillText(String(M.ttl || '').toUpperCase(), 64, 190); spaced(0); g.globalAlpha = 1;
+    // the closing card
+    const u = endAt === null ? 0 : ease((tEl - endAt - 0.3)/0.6);
+    if (u > 0){
+      const y0 = SH - 700, slide = (1 - u)*70;
+      g.globalAlpha = u; const fade = g.createLinearGradient(0, y0, 0, SH); fade.addColorStop(0, 'rgba(14,22,17,0)'); fade.addColorStop(0.32, 'rgba(14,22,17,.88)'); fade.addColorStop(1, 'rgba(14,22,17,.97)'); g.fillStyle = fade; g.fillRect(0, y0, 1080, SH - y0);
+      g.save(); g.translate(0, slide);
+      const hasG = M.g !== null && M.g !== undefined, ring = SH - 420, rr = 92, RX = 1080 - 64 - rr - 8;
+      if (M.ace || M.hot){ const word = M.ace ? 'ACE' : 'GREAT SHOT'; font(700, 30); spaced(5); const tw = g.measureText(word).width + 56; spaced(0); const px = 64, py = SH - 664;
+        g.fillStyle = GOLD; rrect(px, py, tw, 56, 28); g.fill(); g.fillStyle = '#1b1b14'; g.textAlign = 'left'; font(700, 30); spaced(5); g.fillText(word, px + 28, py + 39); spaced(0); }
+      g.textAlign = 'left'; g.fillStyle = SOFT; font(600, 30); spaced(5);
+      g.fillText(M.holed ? 'IN THE CUP' : M.wet ? 'WATER · +1 STROKE' : `TO THE PIN${M.toLie ? ' · ' + String(M.toLie).toUpperCase() : ''}`, 64, SH - 540); spaced(0);
+      const big = String(M.to || ''); let px = 150; font(700, px); while (g.measureText(big).width > (hasG ? 600 : 900) && px > 60){ px -= 4; font(700, px); }
+      g.fillStyle = INK; g.fillText(big, 64, SH - 540 + px*0.95);
+      font(500, 36); g.fillStyle = SOFT; const subY = SH - 540 + px*0.95 + 68;
+      g.fillText(`From ${M.from || ''}${M.fromLie ? ', ' + M.fromLie : ''}`, 64, subY);
+      if (windTxt){ g.fillText(`Wind · ${windTxt}`, 64, subY + 52); }
+      if (hasG){
+        g.lineWidth = 16; g.strokeStyle = 'rgba(244,238,226,.12)'; g.beginPath(); g.arc(RX, ring, rr, 0, 7); g.stroke();
+        g.save(); if (M.hot){ g.shadowColor = 'rgba(169,214,142,.9)'; g.shadowBlur = 24; }
+        g.strokeStyle = gcol(M.g); g.lineCap = 'round'; g.beginPath(); g.arc(RX, ring, rr, -Math.PI/2, -Math.PI/2 + Math.PI*2*clamp(M.g/100, 0.01, 1)*u); g.stroke(); g.restore();
+        g.textAlign = 'center'; g.fillStyle = INK; font(700, 92); g.fillText(String(Math.round(M.g*u)), RX, ring + 33);
+        font(600, 30); g.fillStyle = SOFT; spaced(5); g.fillText('GRADE', RX, ring + rr + 62); spaced(0);
+      }
+      g.restore();
+      g.textAlign = 'center'; g.fillStyle = GOLD; let fp = 34; const ft = `Play today’s hole · ${M.url || ''}`; font(600, fp); while (g.measureText(ft).width > 1080 - 128 && fp > 20){ fp -= 2; font(600, fp); } g.fillText(ft, 540, SH - 40);
+      g.globalAlpha = 1;
+    }
+    g.restore();
+  };
+  // 5. record the canvas while it plays; fall back to a still of the closing frame if the phone can't record video
+  let rec = null, mime = '';
+  const chunks = [];
+  try { if (window.MediaRecorder && cv.captureStream){
+    mime = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => { try { return MediaRecorder.isTypeSupported(t); } catch(e){ return false; } }) || '';
+    rec = new MediaRecorder(cv.captureStream(30), mime ? {mimeType:mime, videoBitsPerSecond:2500000} : {videoBitsPerSecond:2500000});
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  } } catch(e){ rec = null; }
+  const finishClip = () => cv.toBlob(png => {
+    if (!rec || rec.state === 'inactive') return post({ok:'still', blob:png});
+    rec.onstop = () => post({ok:true, blob:new Blob(chunks, {type:(rec.mimeType || mime || 'video/mp4').split(';')[0]})});
+    try { rec.stop(); } catch(e){ post({ok:'still', blob:png}); }
+  }, 'image/png');
+  (async () => {
+    try { await Promise.all([document.fonts.load('700 46px "Instrument Sans"'), document.fonts.load('600 32px "Instrument Sans"'), document.fonts.load('500 36px "Instrument Sans"')]); } catch(e){}
+    T = 2; let last = performance.now(); tick(0); frame(last); hud();
+    if (rec){ try { rec.start(); } catch(e){ rec = null; } }
+    const loop = now => {
+      const dt = Math.min(0.1, Math.max(0, now - last)/1000); last = now;
+      tick(dt); frame(now); hud();
+      if (endAt !== null && tEl - endAt > HOLD) return finishClip();
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  })();
+  window.__clip = {tick, simT, kind, final, n, li, dist, windTxt};
+}
 // ---------- challenge a friend ----------
 // A challenge link carries the sender's day, strokes, grade and tag: challenge.html#c=2026-11-06.2.88.Bryan
 // It only ever shows strokes and grade, and only for today's hole.
@@ -5296,7 +5532,9 @@ $('chalBtn').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(`${text}\n${url}`); $('chalBtn').textContent = 'Link copied'; setTimeout(() => $('chalBtn').textContent = 'Challenge a friend', 2000); } catch(e){}
 });
 
-if (thumb){
+if (cm){
+  runClip();
+} else if (tm){
   // a still of the hole for the More golf cards and the share image: high behind the tee, lake and green in frame, hills behind
   setupLie(); const bx = GR.x*0.2, bz = -58, by = 34, dist = Math.hypot(GR.x - bx, GR.z - bz);
   thumbPose = {x:bx, y:by, z:bz, yaw:lookAt(bx, bz), pitch:Math.atan2(by - Hh(GR.x, GR.z), dist)*0.62};
