@@ -1415,10 +1415,17 @@ function course3(P){
   for (const b of BUNKERS) hazards.push([b.x, b.z]);
   const tierU = (x, z) => { const t = TIERS[0]; return t ? ((x - GR.x)*Math.cos(t.ang) + (z - GR.z)*Math.sin(t.ang) - t.off)/t.w : 0; };
   const tuckSide = (() => { let best = null; for (const b of BUNKERS){ const d = Math.hypot(b.x - GR.x, b.z - GR.z); if (!best || d < best.d) best = {d, s:Math.sign(b.x - GR.x) || SIDE}; } return best ? best.s : SIDE; })();
+  // From hole 32: front/back pins stay off the very edge (looser as the week gets harder), and every pin but "sucker"
+  // keeps clear of bunkers and water, so an easy day never ships a pin you cannot attack. Earlier holes are unchanged.
+  const PINFIX = holeNum >= 32, edgePin = P.pin === 'front' || P.pin === 'back';
+  const gdMax = PINFIX && edgePin ? dl(0.5, 0.84) : 0.84, clear = !PINFIX || P.pin === 'sucker' ? 0 : P.pin === 'tucked' ? 3.5 : dl(8, 5);
+  const hazClear = (x, z) => { if (!clear) return true; for (const b of BUNKERS) if (Math.hypot(b.x - x, b.z - z) - Math.max(b.rx, b.rz) < clear) return false; for (const [hx, hz] of hazards) if (Math.hypot(hx - x, hz - z) < clear) return false; return true; };
+  const pinPass = (relax) => {
   let PIN = null, bestS = -Infinity;
   for (let i=0;i<260;i++){
     const a = R()*6.28, d = Math.sqrt(R())*0.86, x = GR.x + Math.cos(a)*GR.rx*d*lobe(a), z = GR.z + Math.sin(a)*GR.rz*d*lobe(a), gd = gDist(x, z);
-    if (gd > 0.84 || gd < 0.05) continue; const g = grad(x, z); if (Math.hypot(g[0], g[1]) > 0.032) continue;
+    if (gd > gdMax || gd < 0.05) continue; const g = grad(x, z); if (Math.hypot(g[0], g[1]) > 0.032) continue;
+    if (!relax && !hazClear(x, z)) continue;
     const lx = (x - GR.x)/GR.rx, lz = (z - GR.z)/GR.rz; let s;
     switch (P.pin){
       case 'middle': s = -gd; break;
@@ -1432,6 +1439,8 @@ function course3(P){
     }
     if (s > bestS){ bestS = s; PIN = {x, z}; }
   }
+  return PIN; };
+  let PIN = PINFIX ? (pinPass(false) || pinPass(true)) : pinPass(true);   // old holes: one pass, exactly as before
   if (!PIN) PIN = {x:GR.x, z:GR.z};
   const YARDS = Math.round(Math.hypot(PIN.x, PIN.z));
 
