@@ -5543,8 +5543,43 @@ function runClip(){
     rec.onstop = () => post({ok:true, blob:new Blob(chunks, {type:(rec.mimeType || mime || 'video/mp4').split(';')[0]})});
     try { rec.stop(); } catch(e){ post({ok:'still', blob:png}); }
   }, 'image/png');
+  // 5b. preferred path: step the clip at a fixed 30 fps and encode it with the phone's H.264 encoder into a flat, constant-rate MP4
+  //     (MediaRecorder output is fragmented with irregular frame times, which TikTok and others reject). Returns null, with nothing touched, if unsupported.
+  const encodeCFR = async () => {
+    try { if (localStorage.getItem('dailyace:noenc')) return null; } catch(e){}
+    if (!window.VideoEncoder || !window.VideoFrame || !window.isSecureContext && location.protocol !== 'file:') return null;
+    const FPS = 30, cfg = {codec:'avc1.42001f', width:cv.width, height:cv.height, bitrate:4000000, framerate:FPS, latencyMode:'quality'};
+    let sup = null; try { sup = await VideoEncoder.isConfigSupported(cfg); } catch(e){}
+    if (!sup || !sup.supported) return null;
+    const samples = []; let desc = null, err = null;
+    const enc = new VideoEncoder({
+      output:(ch, meta) => { const d = new Uint8Array(ch.byteLength); ch.copyTo(d); samples.push({data:d, key:ch.type === 'key'});
+        const dd = meta && meta.decoderConfig && meta.decoderConfig.description;
+        if (dd && !desc) desc = dd instanceof ArrayBuffer ? new Uint8Array(dd.slice(0)) : new Uint8Array(dd.buffer.slice(dd.byteOffset, dd.byteOffset + dd.byteLength)); },
+      error:e => { err = e; }});
+    enc.configure(sup.config || cfg);
+    T = 2; let now = performance.now(); tick(0); frame(now); hud();
+    for (let i = 0; ; i++){
+      if (err) throw err;
+      while (enc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 4));
+      const vf = new VideoFrame(cv, {timestamp:Math.round(i*1e6/FPS), duration:Math.round(1e6/FPS)});
+      enc.encode(vf, {keyFrame:i % FPS === 0}); vf.close();
+      if ((endAt !== null && tEl - endAt > HOLD) || i > FPS*25) break;
+      tick(1/FPS); now += 1000/FPS; frame(now); hud();
+    }
+    await enc.flush(); if (err) throw err; enc.close();
+    if (samples.length < 10) throw new Error('too few frames');
+    let avccBox, out = samples;
+    if (desc) avccBox = mp4Mux.avccFrom(desc);
+    else { // Annex B output: convert to length-prefixed samples and build the avcC from the in-stream SPS/PPS
+      let sps = null, pps = null; out = samples.map(sm => { const r = mp4Mux.fromAnnexB(sm.data); if (r.sps) sps = r.sps; if (r.pps) pps = r.pps; return {data:r.data, key:sm.key}; });
+      if (!sps || !pps) throw new Error('no parameter sets'); avccBox = mp4Mux.avcC(sps, pps); }
+    return new Blob(mp4Mux.build(out, avccBox, cv.width, cv.height, FPS), {type:'video/mp4'});
+  };
   (async () => {
     try { await Promise.all([document.fonts.load('700 46px "Instrument Sans"'), document.fonts.load('600 32px "Instrument Sans"'), document.fonts.load('500 36px "Instrument Sans"')]); } catch(e){}
+    try { const mp4 = await encodeCFR(); if (mp4) return post({ok:true, blob:mp4}); }
+    catch(e){ try { localStorage.setItem('dailyace:noenc', '1'); } catch(_){} return location.reload(); }   // encoder failed mid-way: retry once with the recorder
     T = 2; let last = performance.now(); tick(0); frame(last); hud();
     if (rec){ try { rec.start(); } catch(e){ rec = null; } }
     const loop = now => {
@@ -5557,6 +5592,54 @@ function runClip(){
   })();
   window.__clip = {tick, simT, kind, final, n, li, dist, windTxt};
 }
+// ---- flat MP4 muxer (H.264, constant frame rate, moov before mdat) ----
+const mp4Mux = (() => {
+  const u32 = n => [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255], u16 = n => [(n >> 8) & 255, n & 255];
+  const str = s => Array.from(s, c => c.charCodeAt(0));
+  const cat = parts => { let n = 0; for (const p of parts) n += p.length; const o = new Uint8Array(n); let k = 0; for (const p of parts){ o.set(p, k); k += p.length; } return o; };
+  const box = (type, ...parts) => { const body = cat(parts.map(p => p instanceof Uint8Array ? p : Uint8Array.from(p))); return cat([Uint8Array.from([...u32(body.length + 8), ...str(type)]), body]); };
+  const full = (type, ver, flags, ...parts) => box(type, [ver, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255], ...parts);
+  const MATRIX = [...u32(0x10000), 0, 0, 0, 0, ...u32(0x10000), 0, 0, 0, 0, ...u32(0x40000000)];
+  // split an Annex B stream into NAL units
+  const nals = buf => { const out = []; let i = 0, st = -1; const n = buf.length;
+    while (i + 2 < n){ if (buf[i] === 0 && buf[i + 1] === 0 && (buf[i + 2] === 1 || (buf[i + 2] === 0 && i + 3 < n && buf[i + 3] === 1))){ const sc = buf[i + 2] === 1 ? 3 : 4; if (st >= 0) out.push(buf.subarray(st, i)); st = i + sc; i += sc; } else i++; }
+    if (st >= 0) out.push(buf.subarray(st)); return out; };
+  // Annex B access unit -> length-prefixed sample; also report SPS/PPS and whether it is a keyframe
+  const fromAnnexB = buf => { const parts = []; let sps = null, pps = null, key = false;
+    for (const nu of nals(buf)){ const t = nu[0] & 31; if (t === 7){ sps = nu; continue; } if (t === 8){ pps = nu; continue; } if (t === 9) continue; if (t === 5) key = true; parts.push(Uint8Array.from(u32(nu.length)), nu); }
+    return {data: cat(parts), sps, pps, key}; };
+  const avcC = (sps, pps) => box('avcC', [1, sps[1], sps[2], sps[3], 255, 225, ...u16(sps.length)], sps, [1, ...u16(pps.length)], pps);
+  // samples: [{data: Uint8Array (length-prefixed), key: bool}]
+  const build = (samples, avccBox, w, h, fps) => {
+    const n = samples.length, ts = fps*1000, delta = 1000, dur = n*delta;
+    const ftyp = box('ftyp', str('isom'), u32(512), str('isom'), str('iso2'), str('avc1'), str('mp41'));
+    const keys = []; samples.forEach((s, i) => { if (s.key) keys.push(...u32(i + 1)); });
+    const sizes = []; for (const s of samples) sizes.push(...u32(s.data.length));
+    const moov = off => box('moov',
+      full('mvhd', 0, 0, u32(0), u32(0), u32(1000), u32(Math.round(dur/ts*1000)), u32(0x10000), u16(0x100), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], MATRIX, new Array(24).fill(0), u32(2)),
+      box('trak',
+        full('tkhd', 0, 3, u32(0), u32(0), u32(1), u32(0), u32(Math.round(dur/ts*1000)), new Array(8).fill(0), u16(0), u16(0), u16(0), u16(0), MATRIX, u32(w << 16), u32(h << 16)),
+        box('mdia',
+          full('mdhd', 0, 0, u32(0), u32(0), u32(ts), u32(dur), u16(0x55c4), u16(0)),
+          full('hdlr', 0, 0, u32(0), str('vide'), new Array(12).fill(0), str('VideoHandler'), [0]),
+          box('minf',
+            full('vmhd', 0, 1, u16(0), u16(0), u16(0), u16(0)),
+            box('dinf', full('dref', 0, 0, u32(1), full('url ', 0, 1))),
+            box('stbl',
+              full('stsd', 0, 0, u32(1), box('avc1', new Array(6).fill(0), u16(1), u16(0), u16(0), new Array(12).fill(0), u16(w), u16(h), u32(0x480000), u32(0x480000), u32(0), u16(1), new Array(32).fill(0), u16(0x18), u16(0xffff), avccBox)),
+              full('stts', 0, 0, u32(1), u32(n), u32(delta)),
+              full('stss', 0, 0, u32(keys.length/4), keys),
+              full('stsc', 0, 0, u32(1), u32(1), u32(n), u32(1)),
+              full('stsz', 0, 0, u32(0), u32(n), sizes),
+              full('stco', 0, 0, u32(1), u32(off)))))));
+    const m0 = moov(0), off = ftyp.length + m0.length + 8;
+    let total = 0; for (const s of samples) total += s.data.length;
+    const mdatHead = Uint8Array.from([...u32(total + 8), ...str('mdat')]);
+    return [ftyp, moov(off), mdatHead, ...samples.map(s => s.data)];
+  };
+  return {fromAnnexB, avcC, avccFrom: d => box('avcC', d), build, cat};
+})();
+
 // ---------- challenge a friend ----------
 // A challenge link carries the sender's day, strokes, grade and tag: challenge.html#c=2026-11-06.2.88.Bryan
 // It only ever shows strokes and grade, and only for today's hole.
