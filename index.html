@@ -4484,6 +4484,7 @@ function clipMeta(s, k, L3){
     to:s.holed ? 'Holed' : s.wet ? 'Water' : fmtShort(s.endD, s.endLie), toLie:s.holed || s.wet ? '' : LIE_NAME[s.endLie].toLowerCase(),
     g:gr, hot:(gr ?? 0) >= 90 ? 1 : 0, ace:s.holed && s.mode === 'full' && s.n === 1 ? 1 : 0, holed:s.holed ? 1 : 0, wet:s.wet ? 1 : 0,
     hole:L3 ? `No. ${holeNum} · Hole ${k + 1}` : `No. ${holeNum}`, date:pastKey ? dayLabel(pastKey) : dayLabel(todayKey), name:L3 ? holeNameFor(holeNum, k) : holeName,
+    desc:(() => { try { const pk = picksFor(holeNum, k); return pk ? [LABELS[pk.type], LABELS[pk.cond], LABELS[pk.wind]].filter(Boolean).join(' · ') : ''; } catch(e){ return ''; } })(),
     url:(location.host + location.pathname).replace(/\/(index\.html)?$/, '')};
 }
 const clipCache = new Map();
@@ -5393,13 +5394,25 @@ function runClip(){
   DPR = 1; cv.width = W; cv.height = H; ctx.setTransform(1, 0, 0, 1, 0, 0);
   // 3. the camera: chase from behind and above, then (for flights) drop in beside the landing and ride the run-out
   const pinD = Math.hypot(PIN.x - S[0], PIN.z - S[2]);   // putts are framed by how far the hole is, so ball and flag both stay in view
-  const back = kind === 'full' ? 20 : kind === 'short' ? clamp(dist*0.55, 6, 15) : clamp(pinD*0.5 + 4.8, 5, 12);
+  const back = kind === 'full' ? 20 : kind === 'short' ? clamp(dist*0.6 + 3, 8, 17) : clamp(pinD*0.5 + 4.8, 5, 12);
   const above = kind === 'full' ? 4 : kind === 'short' ? 3 : 1.9 + clamp(pinD*0.05, 0, 2);
   const ahead = back + (kind === 'full' ? 28 : kind === 'short' ? clamp(dist*0.8, 8, 22) : clamp(pinD*0.6, 3.5, 14));
   // e (0..1) eases the camera lower and off to one side as a full shot comes down. It never changes how fast the camera travels
   // and barely changes where it points: it keeps tracking the ball at the same pace, just dropping and sliding over.
   const side = (L[0] - S[0])*cY - (L[1] - S[2])*sY > 2 ? -1 : 1;
+  // short game (chip, pitch, flop, sand): sit low and off to one side of the line so the flight reads as an arc, not a stripe, and aim
+  // between the ball and the flag early, settling on the flag as the ball closes in, so the pin stays the centre of the picture.
+  const offS = side*clamp(back*0.3, 2, 4.5), aboveS = clamp(0.9 + dist*0.04, 1.3, 2.4);
+  const chaseShort = (bx, by, bz) => {
+    const along = (bx - S[0])*sY + (bz - S[2])*cY, lat = clamp((bx - S[0])*cY - (bz - S[2])*sY, -28, 28), a = along - back;
+    const px = S[0] + sY*a + cY*(lat*0.85 + offS), pz = S[2] + cY*a - sY*(lat*0.85 + offS);
+    const sepP = Math.hypot(PIN.x - bx, PIN.z - bz), kk = 0.5 + 0.5*clamp(1 - sepP/Math.max(pinD, 1), 0, 1);
+    const ax = bx + (PIN.x - bx)*kk, az = bz + (PIN.z - bz)*kk, gyA = Hh(ax, az);
+    const cy = Math.max(Hh(px, pz) + aboveS, gyA + 0.8) + by*0.35, ay = by*(1 - 0.5*kk) + (gyA + 1.7)*0.5*kk, hd = Math.max(4, Math.hypot(ax - px, az - pz));
+    return {x:px, y:cy, z:pz, pitch:Math.atan2(cy - ay, hd), yaw:Math.atan2(ax - px, az - pz)};
+  };
   const chase = (bx, by, bz, e = 0) => {
+    if (kind === 'short') return chaseShort(bx, by, bz);
     const gy = Hh(bx, bz), along = (bx - S[0])*sY + (bz - S[2])*cY, lat = clamp((bx - S[0])*cY - (bz - S[2])*sY, -28, 28), a = along - back;
     const off = side*3.2*e, ab = above + (2.3 - above)*e, px = S[0] + sY*a + cY*(lat*0.85 + off), pz = S[2] + cY*a - sY*(lat*0.85 + off);
     const cy = Math.max(Hh(px, pz) + ab, by + ab*1.2), lookY = by*0.7 + gy*0.3 + (kind === 'putt' ? 1.0 : 0);
@@ -5426,7 +5439,7 @@ function runClip(){
     ball.trail = trail.slice(-240);
     const up = by - Hh(bx, bz); if (up > apex) apex = up;
     if (dropT === null && kind === 'full' && apex > 0.8 && i > 2 && P[i][1] < P[i - 1][1] && up < apex*0.85) dropT = tEl;
-    if (done && kind === 'short' && stage !== 'result'){ stage = 'result'; if (!cur){ const cp = Math.cos(lastPose.pitch), D = Math.max(ahead, 6); cur = {x:lastPose.x, y:lastPose.y, z:lastPose.z}; aimP = {x:lastPose.x + Math.sin(lastPose.yaw)*cp*D, y:lastPose.y - Math.sin(lastPose.pitch)*D, z:lastPose.z + Math.cos(lastPose.yaw)*cp*D}; } }
+    if (done && (kind === 'short' || (kind === 'putt' && final !== 'holed')) && stage !== 'result'){ stage = 'result'; if (!cur){ const cp = Math.cos(lastPose.pitch), D = Math.max(ahead, 6); cur = {x:lastPose.x, y:lastPose.y, z:lastPose.z}; aimP = {x:lastPose.x + Math.sin(lastPose.yaw)*cp*D, y:lastPose.y - Math.sin(lastPose.pitch)*D, z:lastPose.z + Math.cos(lastPose.yaw)*cp*D}; } }
     if (stage === 'chase'){
       lastPose = chase(bx, by, bz, dropT === null ? 0 : ease((tEl - dropT)/1.8));
       // once a full shot has landed near the pin, swing the view round to put the flag in the middle of the frame.
@@ -5446,9 +5459,17 @@ function runClip(){
       let tx, tz, ty, gx, gz, gy, rp = 3.2, ra = 12, rq = 5;
       {
         // the closing frame: ball and flag together, seen from behind the ball (or from the front if it ran past the pin)
-        const pdx = PIN.x - bx, pdz = PIN.z - bz, sep = Math.hypot(pdx, pdz), ux = sep > 4 ? pdx/sep : sY, uz = sep > 4 ? pdz/sep : cY, bk = clamp(sep*0.5 + 7, 8, 18);
+        const pdx = PIN.x - bx, pdz = PIN.z - bz, sep = Math.hypot(pdx, pdz);
+        if (kind === 'putt'){
+          // a missed putt: swing round behind the ball so the ball and the flag line up, flag in the middle of the frame, close to the turf
+          const ux = sep > 1.2 ? pdx/sep : sY, uz = sep > 1.2 ? pdz/sep : cY, bk = clamp(sep*0.5 + 6, 7, 15);
+          tx = bx - ux*bk; tz = bz - uz*bk; ty = Math.max(Hh(tx, tz), Hh(bx, bz)) + clamp(sep*0.12 + 1.7, 1.9, 3.6);
+          gx = PIN.x; gz = PIN.z; gy = Hh(PIN.x, PIN.z) + 0.2; rp = 1.6; ra = 4; rq = 2.2;
+        } else {
+        const ux = sep > 4 ? pdx/sep : sY, uz = sep > 4 ? pdz/sep : cY, bk = clamp(sep*0.5 + 7, 8, 18);
         tx = bx - ux*bk; tz = bz - uz*bk; ty = Math.max(Hh(tx, tz), Hh(bx, bz)) + clamp(sep*0.25 + 3, 3.5, 8);
         gx = sep > 2 ? bx + pdx*0.5 : bx; gz = sep > 2 ? bz + pdz*0.5 : bz; gy = Hh(gx, gz) - clamp(bk*0.18, 1.2, 3.2) + 0.6; rp = 2.2; ra = 4; rq = 3;
+        }
       }
       const kp = 1 - Math.exp(-dt*rp), ka = 1 - Math.exp(-dt*ra), kq = 1 - Math.exp(-dt*rq);
       cur.x += (tx - cur.x)*kp; cur.y += (ty - cur.y)*kp; cur.z += (tz - cur.z)*kp; aimP.x += (gx - aimP.x)*ka; aimP.y += (gy - aimP.y)*ka; aimP.z += (gz - aimP.z)*ka;
@@ -5500,6 +5521,7 @@ function runClip(){
         font(600, 30); g.fillStyle = SOFT; spaced(5); g.fillText('GRADE', RX, ring + rr + 62); spaced(0);
       }
       g.restore();
+      if (M.name){ g.textAlign = 'center'; g.fillStyle = INK; let np = 34; const nt = M.name + (M.desc ? ' · ' + M.desc : ''); font(600, np); while (g.measureText(nt).width > 1080 - 128 && np > 20){ np -= 2; font(600, np); } g.fillText(nt, 540, SH - 96); }
       g.textAlign = 'center'; g.fillStyle = GOLD; let fp = 34; const ft = `Play today’s hole · ${M.url || ''}`; font(600, fp); while (g.measureText(ft).width > 1080 - 128 && fp > 20){ fp -= 2; font(600, fp); } g.fillText(ft, 540, SH - 40);
       g.globalAlpha = 1;
     }
