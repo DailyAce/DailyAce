@@ -4690,7 +4690,7 @@ function fillAwards(el, bd){
   award('Closest', 'to the pin', c && c.tag, c ? (Number(c.ft) === 0 ? 'Ace' : fmtDist(c.ft/3)) : '');
   award('Longest', 'putt made', lp && lp.tag, lp ? fmtDist(lp.ft/3) : '');
   award('Best', 'up & down', ud && ud.tag, ud ? fmtDist(ud.ft/3) : '');
-  const kind = !sh ? '' : Number(sh.n) === 1 ? `Tee shot · ${clubName({mode:'full', club:sh.club})}` : sh.mode === 'putt' ? 'Putt' : sh.mode === 'short' ? ((SHORT[sh.type] || {}).name || 'Short game') : clubName({mode:'full', club:sh.club});
+  const kind = !sh ? '' : Number(sh.n) === 1 ? (sh.club ? `Tee shot · ${clubName({mode:'full', club:sh.club})}` : 'Tee shot') : sh.mode === 'putt' ? 'Putt' : sh.mode === 'short' ? ((SHORT[sh.type] || {}).name || 'Short game') : clubName({mode:'full', club:sh.club});
   award('Shot', 'of the day', sh && sh.tag, sh ? String(Math.round(sh.grade)) : '', kind);
 }
 // the five daily wins pay out once per day, whenever that day's final results are first seen on this phone
