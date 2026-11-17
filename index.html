@@ -4502,7 +4502,8 @@ function showClip(j){
   $('clipTitle').textContent = ''; $('clipNote').textContent = j.kind === 'video' ? 'Tap the video to pause.' : 'Your phone can’t record video here, so this is a picture.';
   $('clipDl').href = j.url; $('clipDl').download = j.file ? j.file.name : 'daily-ace-shot'; $('clipDl').hidden = false;
   let can = false; try { can = !!(j.file && navigator.share && navigator.canShare && navigator.canShare({files:[j.file]})); } catch(e){}
-  $('clipShare').hidden = !can;
+  // where the share sheet can take the file it already has "Save Video" (camera roll), so offer that one button; the Files download is only the fallback
+  $('clipShare').hidden = !can; $('clipShare').textContent = 'Share or save'; $('clipDl').hidden = can;
 }
 function openShotClip(s, R0){
   if (clipJob) closeClip();
