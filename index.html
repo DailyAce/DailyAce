@@ -3759,7 +3759,8 @@ function calibrate(){
 let soundMode = LS.get('dailyhole:sound', 'all');  // all | fx | off
 const sfx = (() => {
   let ac = null, master = null, amb = null;
-  const fxOn = () => soundMode !== 'off', ambOn = () => soundMode === 'all';
+  let ext = false;   // clip recording: sounds run on the app's own AudioContext and go only into the video, whatever the sound setting
+  const fxOn = () => ext || soundMode !== 'off', ambOn = () => ext || soundMode === 'all';
   // iPhone: Safari only starts audio from a real tap (touchend/click, not touchstart), and the
   // ring/silent switch mutes web audio unless the page plays as media. A silent looping <audio>
   // and audioSession 'playback' move us into the media channel so sound plays with the switch on silent.
@@ -3784,8 +3785,8 @@ const sfx = (() => {
   // ---- nature bed: wind, water, birdsong, and the day's weather ----
   function loopNoise(sec, color){ const n = ac.createBuffer(1, Math.floor(ac.sampleRate*sec), ac.sampleRate), d = n.getChannelData(0); let last = 0; for (let i=0;i<d.length;i++){ const w = Math.random()*2-1; last = color ? (last + 0.02*w)/1.02 : w; d[i] = color ? last*3.5 : w; } const s = ac.createBufferSource(); s.buffer = n; s.loop = true; return s; }
   function lfo(rate, depth, target){ const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = rate; g.gain.value = depth; o.connect(g); g.connect(target); o.start(); return o; }
-  function ambientStart(){
-    if (!ac) return; const out = ac.createGain(); out.gain.value = 0; out.connect(master); out.gain.linearRampToValueAtTime(1, ac.currentTime + 3);
+  function ambientStart(level = 1){
+    if (!ac) return; const out = ac.createGain(); out.gain.value = 0; out.connect(master); out.gain.linearRampToValueAtTime(level, ac.currentTime + (ext ? 1 : 3));
     const nodes = [];
     // wind
     const w = loopNoise(4, true), wf = ac.createBiquadFilter(), wg = ac.createGain(); wf.type = 'lowpass'; wf.frequency.value = 380 + WIND.mph*25; wg.gain.value = 0.05 + WIND.mph*0.006;
@@ -3839,6 +3840,8 @@ const sfx = (() => {
   function ambientStop(){ if (!amb) return; amb.timers.forEach(clearTimeout); amb.nodes.forEach(n => { try { n.stop(); } catch(e){} }); try { amb.out.disconnect(); } catch(e){} amb = null; }
   document.addEventListener('visibilitychange', () => { if (!ac) return; if (document.hidden){ ac.suspend(); if (keep) keep.pause(); } });  // resumes on the next tap
   return { unlock, started: () => !!(ac && ac.state === 'running'),
+    useExternal: (c, dest) => { ac = c; master = c.createGain(); master.gain.value = 0.9; master.connect(dest); ext = true; ambientStart(0.4); },
+    releaseExternal: () => { ambientStop(); try { master.disconnect(); } catch(e){} ext = false; ac = null; master = null; },
     setMode: m => { soundMode = m; LS.set('dailyhole:sound', m); if (m === 'off' && keep) keep.pause(); if (m === 'all'){ unlock(); if (!amb) ambientStart(); } else { ambientStop(); if (m === 'fx') unlock(); } },
     // club swoosh through the air, the strike, then the club taking turf (or sand)
     hit: (p, lie, kind) => {
@@ -3859,7 +3862,7 @@ const sfx = (() => {
       }, lead*1000);
     },
     putt: p => { noise(0.04, 1800, 2, 0.35); tone(520, 0.05, 0.12); },
-    thud: s => noise(0.07, s === 'sand' ? 500 : 300, 0.8, s === 'sand' ? 0.3 : 0.5),
+    thud: (s, k = 1) => { noise(0.07, s === 'sand' ? 500 : 300, 0.8, (s === 'sand' ? 0.3 : 0.5)*k); if (k > 1) noise(0.05, s === 'sand' ? 1100 : 750, 1, 0.25*k); },
     splash: () => { noise(0.6, 900, 0.5, 0.6); noise(0.4, 2400, 0.7, 0.25); },
     // ball dropping in: a hollow plastic clunk off the cup liner, then a couple of settling rattles
     cup: () => {
@@ -4496,10 +4499,10 @@ function closeClip(){
 function showClip(j){
   const stage = $('clipStage'); stage.innerHTML = '';
   const el = document.createElement(j.kind === 'video' ? 'video' : 'img');
-  if (j.kind === 'video'){ el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.setAttribute('muted', ''); el.src = j.url; el.onclick = () => { if (el.paused) el.play().catch(() => {}); else el.pause(); }; el.play().catch(() => {}); }
+  if (j.kind === 'video'){ el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.setAttribute('muted', ''); el.src = j.url; el.onclick = () => { if (j.audio && el.muted){ el.muted = false; el.removeAttribute('muted'); $('clipNote').textContent = 'Tap the video to pause.'; el.play().catch(() => {}); return; } if (el.paused) el.play().catch(() => {}); else el.pause(); }; el.play().catch(() => {}); }
   else { el.alt = 'Your shot'; el.src = j.url; }
   stage.appendChild(el);
-  $('clipTitle').textContent = ''; $('clipNote').textContent = j.kind === 'video' ? 'Tap the video to pause.' : 'Your phone can’t record video here, so this is a picture.';
+  $('clipTitle').textContent = ''; $('clipNote').textContent = j.kind === 'video' ? (j.audio ? 'Tap the video for sound.' : 'Tap the video to pause.') : 'Your phone can’t record video here, so this is a picture.';
   $('clipDl').href = j.url; $('clipDl').download = j.file ? j.file.name : 'daily-ace-shot'; $('clipDl').hidden = false;
   let can = false; try { can = !!(j.file && navigator.share && navigator.canShare && navigator.canShare({files:[j.file]})); } catch(e){}
   // where the share sheet can take the file it already has "Save Video" (camera roll), so offer that one button; the Files download is only the fallback
@@ -4507,6 +4510,8 @@ function showClip(j){
 }
 function openShotClip(s, R0){
   if (clipJob) closeClip();
+  // sound in the clip: the frame that records it cannot start audio on its own, so wake a context here, inside the tap, and hand it over
+  try { if (!window.__dhClipAC) window.__dhClipAC = new (window.AudioContext || window.webkitAudioContext)(); if (window.__dhClipAC.state !== 'running') window.__dhClipAC.resume(); } catch(e){ window.__dhClipAC = null; }
   const k = s.hole || 0, list = R0.shots.filter(x => (x.hole || 0) === k), idx = list.indexOf(s); if (idx < 0) return;
   const data = {r:shotRows(list.slice(0, idx + 1)), m:clipMeta(s, k, !!curLoop())};
   const hash = `#v${holeNum}${k ? 's' + k : ''}~${b64u(data)}`;
@@ -4524,7 +4529,7 @@ function openShotClip(s, R0){
     clearTimeout(j.timer);
     const blob = d.ok === true || d.ok === 'still' ? d.blob : null;
     if (!blob) return fail('Try again in a moment.');
-    j.kind = d.ok === true ? 'video' : 'image'; j.url = URL.createObjectURL(blob);
+    j.kind = d.ok === true ? 'video' : 'image'; j.audio = !!d.audio; j.url = URL.createObjectURL(blob);
     const ext = j.kind === 'video' ? (blob.type.includes('webm') ? 'webm' : 'mp4') : 'png';
     try { j.file = new File([blob], `daily-ace-${data.m.hole.replace(/\W+/g, '-').toLowerCase()}-shot-${idx + 1}.${ext}`, {type:blob.type}); } catch(e){ j.file = null; }
     if (j.fr){ j.fr.remove(); j.fr = null; }
@@ -5422,6 +5427,7 @@ function runClip(){
   let li = n - 1; for (let i = 0; i < n; i++){ if (Math.hypot(P[i][0] - L[0], P[i][2] - L[1]) < 1.2 && P[i][1] - Hh(P[i][0], P[i][2]) < 0.4){ li = i; break; } }
   if (!M.hot && P.some(q => q[1] - Hh(q[0], q[2]) < 0.6 && Math.hypot(q[0] - PIN.x, q[2] - PIN.z) <= 1/3)) M.hot = 1;   // over or within a foot of the hole counts as great even under a 90 grade
   const great = !!M.hot || final === 'holed', INTRO = 0.7, HOLD = 3.4, baseRate = Math.max(1, simT/(kind === 'putt' ? 5 : 5.2));
+  let struck = false, sndI = 0, airborne = false, thuds = 0, endSnd = false;
   let simClock = 0, tEl = 0, endAt = null, stage = 'chase', apex = 0, lastPose = chase(S[0], S[1], S[2]), cur = null, aimP = null, dropT = null, landT = null, splashed = false, trI = 0;
   const trail = [];
   const tick = dt => {
@@ -5439,6 +5445,13 @@ function runClip(){
     while (trI <= i){ const p = P[trI], lp = trail.at(-1); if (!lp || Math.hypot(p[0] - lp[0], p[1] - lp[1], p[2] - lp[2]) > gap) trail.push([p[0], p[1] + (kind === 'putt' ? 0.02 : 0), p[2]]); trI++; }
     ball.trail = trail.slice(-240);
     const up = by - Hh(bx, bz); if (up > apex) apex = up;
+    if (aud){   // sound, in step with the picture: swing + strike, each landing, the cup or the water
+      if (!struck && tEl >= INTRO - 0.13){ struck = true; const rw = D.r.at(-1) || []; try { if (kind === 'putt') sfx.putt(+rw[8] || 0.6); else sfx.hit(+rw[8] || 0.7, rw[3], rw[1]); } catch(e){} }
+      for (; sndI <= i; sndI++){ const q0 = P[sndI], u0 = q0[1] - Hh(q0[0], q0[2]);
+        if (u0 > 0.15) airborne = true;
+        else if (u0 < 0.08 && airborne && kind !== 'putt' && thuds < 6){ airborne = false; thuds++; try { sfx.thud(surfaceAt(q0[0], q0[2]), thuds === 1 ? 3 : 1.8); } catch(e){} } }
+      if (done && !endSnd){ endSnd = true; try { if (final === 'holed') sfx.cup(); else if (final === 'wet') sfx.splash(); } catch(e){} }
+    }
     if (dropT === null && kind === 'full' && apex > 0.8 && i > 2 && P[i][1] < P[i - 1][1] && up < apex*0.85) dropT = tEl;
     if (done && (kind === 'short' || (kind === 'putt' && final !== 'holed')) && stage !== 'result'){ stage = 'result'; if (!cur){ const cp = Math.cos(lastPose.pitch), D = Math.max(ahead, 6); cur = {x:lastPose.x, y:lastPose.y, z:lastPose.z}; aimP = {x:lastPose.x + Math.sin(lastPose.yaw)*cp*D, y:lastPose.y - Math.sin(lastPose.pitch)*D, z:lastPose.z + Math.cos(lastPose.yaw)*cp*D}; } }
     if (stage === 'chase'){
@@ -5534,14 +5547,17 @@ function runClip(){
   // 5. record the canvas while it plays; fall back to a still of the closing frame if the phone can't record video
   let rec = null, mime = '';
   const chunks = [];
+  // sound: the game's own effects (swing, strike, landing, cup, ambience) run on the app's AudioContext and are routed into the recording only
+  let aud = null; const recStream = cv.captureStream ? cv.captureStream(30) : null;
+  try { const pac = window.parent && window.parent.__dhClipAC; if (recStream && pac && pac.state === 'running'){ const dest = pac.createMediaStreamDestination(); dest.stream.getAudioTracks().forEach(t => recStream.addTrack(t)); sfx.useExternal(pac, dest); aud = {pac}; } } catch(e){ aud = null; }
   try { if (window.MediaRecorder && cv.captureStream){
-    mime = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => { try { return MediaRecorder.isTypeSupported(t); } catch(e){ return false; } }) || '';
-    rec = new MediaRecorder(cv.captureStream(30), mime ? {mimeType:mime, videoBitsPerSecond:2500000} : {videoBitsPerSecond:2500000});
+    mime = [...(aud ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2'] : []), 'video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => { try { return MediaRecorder.isTypeSupported(t); } catch(e){ return false; } }) || '';
+    rec = new MediaRecorder(recStream, mime ? {mimeType:mime, videoBitsPerSecond:2500000} : {videoBitsPerSecond:2500000});
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   } } catch(e){ rec = null; }
   const finishClip = () => cv.toBlob(png => {
     if (!rec || rec.state === 'inactive') return post({ok:'still', blob:png});
-    rec.onstop = () => post({ok:true, blob:new Blob(chunks, {type:(rec.mimeType || mime || 'video/mp4').split(';')[0]})});
+    rec.onstop = () => { if (aud) try { sfx.releaseExternal(); } catch(e){} post({ok:true, audio:!!aud, blob:new Blob(chunks, {type:(rec.mimeType || mime || 'video/mp4').split(';')[0]})}); };
     try { rec.stop(); } catch(e){ post({ok:'still', blob:png}); }
   }, 'image/png');
   // 5b. preferred path: step the clip at a fixed 30 fps and encode it with the phone's H.264 encoder into a flat, constant-rate MP4
@@ -5593,7 +5609,7 @@ function runClip(){
   };
   (async () => {
     try { await Promise.all([document.fonts.load('700 46px "Instrument Sans"'), document.fonts.load('600 32px "Instrument Sans"'), document.fonts.load('500 36px "Instrument Sans"')]); } catch(e){}
-    try { const mp4 = await Promise.race([encodeCFR(), new Promise((_, no) => setTimeout(() => no(new Error('encode timed out')), 25000))]); if (mp4) return post({ok:true, blob:mp4}); }
+    if (!aud) try { const mp4 = await Promise.race([encodeCFR(), new Promise((_, no) => setTimeout(() => no(new Error('encode timed out')), 25000))]); if (mp4) return post({ok:true, blob:mp4}); }
     catch(e){ try { localStorage.setItem('dailyace:noenc', String((e && e.message) || e).slice(0, 120)); } catch(_){} return location.reload(); }   // encoder failed mid-way: retry once with the recorder
     T = 2; let last = performance.now(); tick(0); frame(last); hud();
     if (rec){ try { rec.start(); } catch(e){ rec = null; } }
