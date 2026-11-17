@@ -4531,7 +4531,7 @@ function openShotClip(s, R0){
     clipCache.set(hash, j); showClip(j);
   };
   window.addEventListener('message', j.on);
-  j.timer = setTimeout(() => { if (clipJob === j) fail('This phone took too long. Try again.'); }, 40000);
+  j.timer = setTimeout(() => { if (clipJob === j) fail('This phone took too long. Try again.'); }, 75000);
   fr.src = location.href.split('#')[0] + hash;
 }
 $('clipShare').addEventListener('click', () => {
@@ -5545,6 +5545,18 @@ function runClip(){
   }, 'image/png');
   // 5b. preferred path: step the clip at a fixed 30 fps and encode it with the phone's H.264 encoder into a flat, constant-rate MP4
   //     (MediaRecorder output is fragmented with irregular frame times, which TikTok and others reject). Returns null, with nothing touched, if unsupported.
+  // does this phone's own video player accept the file? checked in place so a bad encode falls back to the recorder instead of reaching the user
+  const playable = blob => new Promise(res => {
+    const u = URL.createObjectURL(blob), v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none';
+    let t = null, meta = false;
+    const done = ok => { clearTimeout(t); try { v.pause(); } catch(e){} v.remove(); URL.revokeObjectURL(u); res(ok); };
+    t = setTimeout(() => done(meta), 4000);   // slow to start but no error: accept only if the file's header was read
+    v.onerror = () => done(false);
+    v.onloadedmetadata = () => { meta = v.videoWidth > 0 && isFinite(v.duration) && v.duration > 1; if (!meta) return done(false);
+      try { const pr = v.play(); if (pr && pr.then) pr.then(() => { v.ontimeupdate = () => { if (v.currentTime > 0.1) done(true); }; }, e => { if (e && e.name !== 'NotAllowedError') done(false); else done(true); }); } catch(e){ done(true); } };
+    document.body.appendChild(v); v.src = u;
+  });
   const encodeCFR = async () => {
     try { if (localStorage.getItem('dailyace:noenc')) return null; } catch(e){}
     if (!window.VideoEncoder || !window.VideoFrame || !window.isSecureContext && location.protocol !== 'file:') return null;
@@ -5574,12 +5586,14 @@ function runClip(){
     else { // Annex B output: convert to length-prefixed samples and build the avcC from the in-stream SPS/PPS
       let sps = null, pps = null; out = samples.map(sm => { const r = mp4Mux.fromAnnexB(sm.data); if (r.sps) sps = r.sps; if (r.pps) pps = r.pps; return {data:r.data, key:sm.key}; });
       if (!sps || !pps) throw new Error('no parameter sets'); avccBox = mp4Mux.avcC(sps, pps); }
-    return new Blob(mp4Mux.build(out, avccBox, cv.width, cv.height, FPS), {type:'video/mp4'});
+    const mp4 = new Blob(mp4Mux.build(out, avccBox, cv.width, cv.height, FPS), {type:'video/mp4'});
+    if (!(await playable(mp4))) throw new Error('this phone cannot play the encoded file');
+    return mp4;
   };
   (async () => {
     try { await Promise.all([document.fonts.load('700 46px "Instrument Sans"'), document.fonts.load('600 32px "Instrument Sans"'), document.fonts.load('500 36px "Instrument Sans"')]); } catch(e){}
-    try { const mp4 = await encodeCFR(); if (mp4) return post({ok:true, blob:mp4}); }
-    catch(e){ try { localStorage.setItem('dailyace:noenc', '1'); } catch(_){} return location.reload(); }   // encoder failed mid-way: retry once with the recorder
+    try { const mp4 = await Promise.race([encodeCFR(), new Promise((_, no) => setTimeout(() => no(new Error('encode timed out')), 25000))]); if (mp4) return post({ok:true, blob:mp4}); }
+    catch(e){ try { localStorage.setItem('dailyace:noenc', String((e && e.message) || e).slice(0, 120)); } catch(_){} return location.reload(); }   // encoder failed mid-way: retry once with the recorder
     T = 2; let last = performance.now(); tick(0); frame(last); hud();
     if (rec){ try { rec.start(); } catch(e){ rec = null; } }
     const loop = now => {
