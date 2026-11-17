@@ -842,6 +842,7 @@ html.rcp body{margin:0;touch-action:auto}
       <div class="set-row"><div class="label">Sound</div><div class="seg" id="segSound"><button data-v="all" aria-pressed="true">Nature + shots</button><button data-v="fx" aria-pressed="false">Shots only</button><button data-v="off" aria-pressed="false">Off</button></div><div class="body">Birds, wind and water play quietly in the background.</div></div>
       <div class="set-row"><div class="label">Guides</div><div class="seg" id="segGuide"><button data-v="1" aria-pressed="true">On</button><button data-v="0" aria-pressed="false">Off</button></div><div class="body">The power line on the meter and the tips above the controls.</div></div>
       <div class="set-row"><div class="label">Phone curve direction</div><div class="seg" id="segFlip"><button data-v="0" aria-pressed="true">Normal</button><button data-v="1" aria-pressed="false">Flipped</button></div><div class="body">If your hooks go right, flip it.</div></div>
+      <div class="set-row"><div class="label">Today's round</div><div class="seg" id="segReset"><button data-v="reset" aria-pressed="false">Reset today's round</button></div><div class="body">Clears today's saved round on this phone so you can play it again. Your tag and past rounds stay.</div></div>
       <div class="body" id="diag"></div>
       <div class="btns"><button class="btn" id="setClose">Done</button></div>
     </div>
@@ -3880,6 +3881,11 @@ const sfx = (() => {
 })();
 ['pointerdown','pointerup','touchend','click','keydown'].forEach(ev => document.addEventListener(ev, () => { sfx.unlock(); $('soundTip').hidden = true; }, {passive:true, capture:true}));
 if (soundMode !== 'off' && !thumb) setTimeout(() => { if (!sfx.started()) $('soundTip').hidden = false; }, 1200);
+$('segReset').addEventListener('click', () => { if (!confirm("Clear today's round on this phone and start it over?")) return;
+  try { for (const k of [0, 1, 2]) localStorage.removeItem('dailyhole:r:' + todayKey + (k ? ':' + k : '')); localStorage.removeItem('dailyhole:sent:' + todayKey);
+    localStorage.removeItem('dailyhole:pp:' + todayKey); for (const k of [1, 2]) localStorage.removeItem('dailyhole:pp:' + todayKey + ':' + k);
+    const dd = LS.get('dailyhole:days', []); LS.set('dailyhole:days', dd.filter(x => x !== todayKey)); } catch(e){}
+  location.reload(); });
 $('segSound').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; sfx.setMode(b.dataset.v); renderSettings(); });
 
 // ---------- camera ----------
