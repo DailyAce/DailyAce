@@ -5557,7 +5557,9 @@ function runClip(){
   } } catch(e){ rec = null; }
   const finishClip = () => cv.toBlob(png => {
     if (!rec || rec.state === 'inactive') return post({ok:'still', blob:png});
-    rec.onstop = () => { if (aud) try { sfx.releaseExternal(); } catch(e){} post({ok:true, audio:!!aud, blob:new Blob(chunks, {type:(rec.mimeType || mime || 'video/mp4').split(';')[0]})}); };
+    rec.onstop = () => { if (aud) try { sfx.releaseExternal(); } catch(e){} (async () => { const type = (rec.mimeType || mime || 'video/mp4').split(';')[0]; let blob = new Blob(chunks, {type});
+      if (/mp4/.test(type)) try { const parts = mp4Mux.remux(new Uint8Array(await blob.arrayBuffer())); if (parts) blob = new Blob(parts, {type:'video/mp4'}); } catch(e){}
+      post({ok:true, audio:!!aud, blob}); })(); };
     try { rec.stop(); } catch(e){ post({ok:'still', blob:png}); }
   }, 'image/png');
   // 5b. preferred path: step the clip at a fixed 30 fps and encode it with the phone's H.264 encoder into a flat, constant-rate MP4
@@ -5630,7 +5632,7 @@ const mp4Mux = (() => {
   const cat = parts => { let n = 0; for (const p of parts) n += p.length; const o = new Uint8Array(n); let k = 0; for (const p of parts){ o.set(p, k); k += p.length; } return o; };
   const box = (type, ...parts) => { const body = cat(parts.map(p => p instanceof Uint8Array ? p : Uint8Array.from(p))); return cat([Uint8Array.from([...u32(body.length + 8), ...str(type)]), body]); };
   const full = (type, ver, flags, ...parts) => box(type, [ver, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255], ...parts);
-  const MATRIX = [...u32(0x10000), 0, 0, 0, 0, ...u32(0x10000), 0, 0, 0, 0, ...u32(0x40000000)];
+  const MATRIX = [...u32(0x10000), ...u32(0), ...u32(0), ...u32(0), ...u32(0x10000), ...u32(0), ...u32(0), ...u32(0), ...u32(0x40000000)];
   // split an Annex B stream into NAL units
   const nals = buf => { const out = []; let i = 0, st = -1; const n = buf.length;
     while (i + 2 < n){ if (buf[i] === 0 && buf[i + 1] === 0 && (buf[i + 2] === 1 || (buf[i + 2] === 0 && i + 3 < n && buf[i + 3] === 1))){ const sc = buf[i + 2] === 1 ? 3 : 4; if (st >= 0) out.push(buf.subarray(st, i)); st = i + sc; i += sc; } else i++; }
@@ -5668,7 +5670,82 @@ const mp4Mux = (() => {
     const mdatHead = Uint8Array.from([...u32(total + 8), ...str('mdat')]);
     return [ftyp, moov(off), mdatHead, ...samples.map(s => s.data)];
   };
-  return {fromAnnexB, avcC, avccFrom: d => box('avcC', d), build, cat};
+
+  // fragmented MP4 (what MediaRecorder writes) -> flat MP4 with a full sample table, interleaved, moov first. No re-encoding: the
+  // compressed frames and audio packets are copied as they are. Returns parts for a Blob, or null if the file is not what we expect.
+  const remux = u8 => {
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), tag = o => String.fromCharCode(u8[o], u8[o+1], u8[o+2], u8[o+3]);
+    const kids = (a, b) => { const out = []; let o = a; while (o + 8 <= b){ let sz = dv.getUint32(o), hd = 8; if (sz === 1){ sz = Number(dv.getBigUint64(o + 8)); hd = 16; } else if (sz === 0) sz = b - o; if (sz < hd || o + sz > b) break; out.push({type:tag(o + 4), start:o, body:o + hd, end:o + sz}); o += sz; } return out; };
+    const sub = (bx, t) => kids(bx.body, bx.end).filter(k => k.type === t);
+    const top = kids(0, u8.length), moov = top.find(k => k.type === 'moov'); if (!moov) return null;
+    const tracks = new Map(), trex = new Map();
+    for (const tk of sub(moov, 'trak')){
+      const tkhd = sub(tk, 'tkhd')[0], mdia = sub(tk, 'mdia')[0]; if (!tkhd || !mdia) return null;
+      const v = u8[tkhd.body], id = dv.getUint32(tkhd.body + (v ? 20 : 12)), w = dv.getUint32(tkhd.end - 8) >>> 16, h = dv.getUint32(tkhd.end - 4) >>> 16;
+      const mdhd = sub(mdia, 'mdhd')[0], hdlr = sub(mdia, 'hdlr')[0], minf = sub(mdia, 'minf')[0], stbl = minf && sub(minf, 'stbl')[0], stsd = stbl && sub(stbl, 'stsd')[0];
+      if (!mdhd || !hdlr || !stsd) return null;
+      tracks.set(id, {id, w, h, ts:dv.getUint32(mdhd.body + (u8[mdhd.body] ? 20 : 12)), type:tag(hdlr.body + 8), stsd:u8.subarray(stsd.start, stsd.end), s:[], t0:null, next:0});
+    }
+    const mvex = sub(moov, 'mvex')[0]; if (mvex) for (const t of sub(mvex, 'trex')) trex.set(dv.getUint32(t.body + 4), {dur:dv.getUint32(t.body + 12), size:dv.getUint32(t.body + 16), fl:dv.getUint32(t.body + 20)});
+    for (const mf of top.filter(k => k.type === 'moof')){
+      let cursor = mf.start;
+      for (const tf of sub(mf, 'traf')){
+        const tfhd = sub(tf, 'tfhd')[0]; if (!tfhd) return null;
+        const fl = dv.getUint32(tfhd.body) & 0xffffff, id = dv.getUint32(tfhd.body + 4), T = tracks.get(id), X = trex.get(id) || {dur:0, size:0, fl:0}; if (!T) continue;
+        let p = tfhd.body + 8, base = mf.start, dDur = X.dur, dSize = X.size, dFl = X.fl;
+        if (fl & 1){ base = Number(dv.getBigUint64(p)); p += 8; } if (fl & 2) p += 4; if (fl & 8){ dDur = dv.getUint32(p); p += 4; } if (fl & 16){ dSize = dv.getUint32(p); p += 4; } if (fl & 32){ dFl = dv.getUint32(p); p += 4; }
+        const tfdt = sub(tf, 'tfdt')[0]; if (tfdt){ T.next = u8[tfdt.body] ? Number(dv.getBigUint64(tfdt.body + 4)) : dv.getUint32(tfdt.body + 4); }
+        let pos = fl & 1 ? base : mf.start;
+        for (const tr of sub(tf, 'trun')){
+          const f = dv.getUint32(tr.body) & 0xffffff, ver = u8[tr.body], n = dv.getUint32(tr.body + 4); let q = tr.body + 8, ffl = null;
+          if (f & 1){ pos = base + dv.getInt32(q); q += 4; } if (f & 4){ ffl = dv.getUint32(q); q += 4; }
+          for (let i = 0; i < n; i++){
+            let dur = dDur, size = dSize, sfl = dFl, cts = 0;
+            if (f & 0x100){ dur = dv.getUint32(q); q += 4; } if (f & 0x200){ size = dv.getUint32(q); q += 4; } if (f & 0x400){ sfl = dv.getUint32(q); q += 4; } else if (i === 0 && ffl !== null) sfl = ffl;
+            if (f & 0x800){ cts = ver ? dv.getInt32(q) : dv.getUint32(q); q += 4; }
+            if (pos + size > u8.length) return null;
+            if (T.t0 === null) T.t0 = T.next;
+            T.s.push({pos, size, dur, cts, key:!(sfl & 0x10000), dts:T.next - T.t0}); T.next += dur; pos += size;
+          }
+        }
+      }
+    }
+    const list = [...tracks.values()].filter(t => t.s.length && (t.type === 'vide' || t.type === 'soun')); if (!list.length || !list.some(t => t.type === 'vide')) return null;
+    // interleave in one-second chunks so players can stream it
+    const chunks = [], bytes = []; let total = 0;
+    const maxT = Math.max(...list.map(t => (t.s.at(-1).dts + t.s.at(-1).dur)/t.ts));
+    const cur = new Map(list.map(t => [t, 0]));
+    for (let w = 0; w <= Math.ceil(maxT); w++) for (const t of list){
+      let i = cur.get(t), n = 0, first = i; while (i < t.s.length && t.s[i].dts/t.ts < w + 1) { i++; n++; }
+      if (!n) continue; cur.set(t, i); t.ch = t.ch || []; t.ch.push({n, byteOffset:total}); chunks.push([t, first, i]);
+      for (let k = first; k < i; k++){ bytes.push(u8.subarray(t.s[k].pos, t.s[k].pos + t.s[k].size)); total += t.s[k].size; }
+    }
+    const rle = (arr, fn) => { const out = []; for (const v of arr){ const x = fn(v), l = out.at(-1); if (l && l[0] === x) l[1]++; else out.push([x, 1]); } return out; };
+    const ftyp = box('ftyp', str('isom'), u32(512), str('isom'), str('iso2'), str('avc1'), str('mp41'));
+    const trak = (t, off) => {
+      const durMs = Math.round(t.s.reduce((a, x) => a + x.dur, 0)/t.ts*1000), vid = t.type === 'vide';
+      const stts = rle(t.s, x => x.dur), hasCts = t.s.some(x => x.cts), keys = []; t.s.forEach((x, i) => { if (x.key) keys.push(i + 1); });
+      const stsc = []; t.ch.forEach((c, i) => { const l = stsc.at(-1); if (!l || l[1] !== c.n) stsc.push([i + 1, c.n]); });
+      return box('trak',
+        full('tkhd', 0, 3, u32(0), u32(0), u32(t.id), u32(0), u32(durMs), new Array(8).fill(0), u16(0), u16(0), u16(vid ? 0 : 0x100), u16(0), MATRIX, u32(vid ? t.w << 16 : 0), u32(vid ? t.h << 16 : 0)),
+        box('mdia', full('mdhd', 0, 0, u32(0), u32(0), u32(t.ts), u32(t.s.reduce((a, x) => a + x.dur, 0)), u16(0x55c4), u16(0)),
+          full('hdlr', 0, 0, u32(0), str(t.type), new Array(12).fill(0), str(vid ? 'VideoHandler' : 'SoundHandler'), [0]),
+          box('minf', vid ? full('vmhd', 0, 1, u16(0), u16(0), u16(0), u16(0)) : full('smhd', 0, 0, u16(0), u16(0)),
+            box('dinf', full('dref', 0, 0, u32(1), full('url ', 0, 1))),
+            box('stbl', t.stsd,
+              full('stts', 0, 0, u32(stts.length), ...stts.map(([d, c]) => [...u32(c), ...u32(d)])),
+              ...(hasCts ? [full('ctts', 1, 0, ...(() => { const r = rle(t.s, x => x.cts); return [u32(r.length), ...r.map(([d, c]) => [...u32(c), ...u32(d >>> 0)])]; })())] : []),
+              ...(vid && keys.length !== t.s.length ? [full('stss', 0, 0, u32(keys.length), ...keys.map(k => u32(k)))] : []),
+              full('stsc', 0, 0, u32(stsc.length), ...stsc.map(([f, n]) => [...u32(f), ...u32(n), ...u32(1)])),
+              full('stsz', 0, 0, u32(0), u32(t.s.length), ...t.s.map(x => u32(x.size))),
+              full('stco', 0, 0, u32(t.ch.length), ...t.ch.map(c => u32(off + c.byteOffset)))))));
+    };
+    const movDur = Math.max(...list.map(t => Math.round(t.s.reduce((a, x) => a + x.dur, 0)/t.ts*1000)));
+    const moovB = off => box('moov', full('mvhd', 0, 0, u32(0), u32(0), u32(1000), u32(movDur), u32(0x10000), u16(0x100), new Array(10).fill(0), MATRIX, new Array(24).fill(0), u32(Math.max(...list.map(t => t.id)) + 1)), ...list.map(t => trak(t, off)));
+    const off = ftyp.length + moovB(0).length + 8;
+    return [ftyp, moovB(off), Uint8Array.from([...u32(total + 8), ...str('mdat')]), ...bytes];
+  };
+  return {fromAnnexB, avcC, build, cat, remux};
 })();
 
 // ---------- challenge a friend ----------
