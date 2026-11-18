@@ -4296,12 +4296,58 @@ function drawAim(){
     if (tdrag && !tdrag.pending && tdrag.fx !== undefined){ const c = proj(g.x, gy(g.x, g.z), g.z); if (c && Math.hypot(c[0] - tdrag.fx, c[1] - tdrag.fy) > 24){ ctx.strokeStyle = 'rgba(231,192,104,.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(tdrag.fx, tdrag.fy - 18); ctx.lineTo(c[0], c[1] + 6); ctx.stroke(); } }
   }
 }
+// Ball trail: the recorded path plus the live ball position, smoothed with a spline and drawn as one tapered ribbon
+// (soft glow + body + bright core). One fill per layer means no round caps and no stacked-alpha dots at the joints,
+// and because the ball itself is the last control point the ribbon always runs right up to it.
+function trailRibbon(pts, cap){
+  const n = pts.length, nx = new Array(n), ny = new Array(n); let px = 0, py = 1;
+  for (let i=0;i<n;i++){
+    const a = pts[Math.max(0, i-2)], b = pts[Math.min(n-1, i+2)], dx = b[0]-a[0], dy = b[1]-a[1], m = Math.hypot(dx, dy);
+    if (m > 1e-4){ px = -dy/m; py = dx/m; } nx[i] = px; ny[i] = py;
+  }
+  for (const [mul, al] of [[2.2, 0.10], [1.4, 0.26], [0.8, 0.92]]){
+    ctx.fillStyle = `rgba(255,236,204,${al})`; ctx.beginPath();
+    for (let i=0;i<n;i++){ const p = pts[i], w = p[2]*mul; if (i) ctx.lineTo(p[0] + nx[i]*w, p[1] + ny[i]*w); else ctx.moveTo(p[0] + nx[i]*w, p[1] + ny[i]*w); }
+    let e = n - 1;
+    if (cap){ const p = pts[e]; ctx.arc(p[0], p[1], p[2]*mul, Math.atan2(ny[e], nx[e]), Math.atan2(ny[e], nx[e]) - Math.PI, true); e--; }   // round the end under the ball
+    for (let i=e;i>=0;i--){ const p = pts[i], w = p[2]*mul; ctx.lineTo(p[0] - nx[i]*w, p[1] - ny[i]*w); }
+    ctx.closePath(); ctx.fill();
+  }
+}
+function drawTrail(){
+  const raw = ball.trail; if (!raw.length) return;
+  const hx = ball.x, hy = ball.y + 0.023, hz = ball.z, C = [];
+  for (const q of raw){ const y = q[1] + 0.003, l = C.at(-1); if (!l || Math.hypot(q[0]-l[0], y-l[1], q[2]-l[2]) > 0.05) C.push([q[0], y, q[2]]); }
+  const l0 = C.at(-1); if (l0 && Math.hypot(hx-l0[0], hy-l0[1], hz-l0[2]) < 0.05) C[C.length-1] = [hx, hy, hz]; else C.push([hx, hy, hz]);
+  if (C.length < 2) return;
+  const unit = (x, y, z) => { const m = Math.hypot(x, y, z) || 1; return [x/m, y/m, z/m]; };
+  const S = [C[0]];   // smooth the corners: cubic Hermite through the points, tangent set by each point's neighbours
+  for (let i=0;i<C.length-1;i++){
+    const A = C[i], B = C[i+1], A0 = C[i-1] || A, B1 = C[i+2] || B, L = Math.hypot(B[0]-A[0], B[1]-A[1], B[2]-A[2]);
+    const ta = unit(B[0]-A0[0], B[1]-A0[1], B[2]-A0[2]), tb = unit(B1[0]-A[0], B1[1]-A[1], B1[2]-A[2]), k = L > 0.6 ? 4 : L > 0.15 ? 2 : 1;
+    for (let j=1;j<=k;j++){
+      const u = j/k, u2 = u*u, u3 = u2*u, h00 = 2*u3 - 3*u2 + 1, h10 = u3 - 2*u2 + u, h01 = -2*u3 + 3*u2, h11 = u3 - u2;
+      S.push([h00*A[0] + h10*L*ta[0] + h01*B[0] + h11*L*tb[0], h00*A[1] + h10*L*ta[1] + h01*B[1] + h11*L*tb[1], h00*A[2] + h10*L*ta[2] + h01*B[2] + h11*L*tb[2]]);
+    }
+  }
+  const N = S.length, cum = new Float32Array(N);
+  for (let i=1;i<N;i++) cum[i] = cum[i-1] + Math.hypot(S[i][0]-S[i-1][0], S[i][1]-S[i-1][1], S[i][2]-S[i-1][2]);
+  const tot = cum[N-1] || 1, run = [];
+  const flush = cap => { if (run.length > 1) trailRibbon(run, cap); run.length = 0; };
+  ctx.lineJoin = 'round';
+  for (let i=0;i<N;i++){
+    const p = proj(S[i][0], S[i][1], S[i][2]); if (!p){ flush(false); continue; }
+    const t = cum[i]/tot, s = Math.min(1, t/0.1), taper = s*s*(3 - 2*s)*(0.35 + 0.65*Math.pow(t, 0.7));   // thin, fading tail growing to full width at the ball
+    let w = Math.min(9, Math.max(0.6, 0.0175*F/p[2]*sizeK(p[2])))*taper; if (i === N-1) w = Math.max(w, 1);
+    run.push([p[0], p[1], w]);
+  }
+  flush(true);
+}
 function drawBall(){
   if (ball.state === 'wet') return;
   const gh = Hh(ball.x, ball.z); const sh = proj(ball.x, gh+0.005, ball.z);
   if (sh){ const r = Math.max(1.2, 0.026*F/sh[2]*sizeK(sh[2])); ctx.fillStyle = `rgba(10,15,10,${Math.max(0.12, 0.45-(ball.y-gh)*0.01)})`; ctx.beginPath(); ctx.ellipse(sh[0], sh[1], r*1.4, r*0.45, 0, 0, 7); ctx.fill(); }
-  if (ball.trail.length > 1){ ctx.lineCap = 'round';
-    for (let i=1;i<ball.trail.length;i++){ const a = proj(...ball.trail[i-1]), b = proj(...ball.trail[i]); if (!a || !b) continue; ctx.strokeStyle = `rgba(255,236,204,${0.12 + i/ball.trail.length*0.55})`; ctx.lineWidth = Math.max(1, 0.05*F/b[2]); ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); } }
+  drawTrail();
   if (ball.state === 'holed') return;
   const p = proj(ball.x, ball.y+0.023, ball.z); if (!p) return; const r = clamp(0.023*F/p[2]*sizeK(p[2]), 2.2, 14);
   const g = ctx.createRadialGradient(p[0]+r*0.35, p[1]-r*0.35, r*0.1, p[0], p[1], r); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#d9cfc4');
