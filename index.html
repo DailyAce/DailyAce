@@ -1044,6 +1044,10 @@ const holeDate = n => new Date(Date.UTC(2026, 9, 17) + (n - 1)*86400000);
 function weighted(q, list){ let tot = 0; for (const o of list) tot += o[2] || 1; let u = q()*tot; for (const o of list){ u -= o[2] || 1; if (u <= 0) return o[0]; } return list[list.length - 1][0]; }
 const allowedOn = (list, wd) => list.filter(o => DAYS[o[1]].includes(playDay(wd)));
 const PICKS = [];
+// Holes from 35 on are checked against the game's own physics so an ace is always possible (tools/ace_audit.py).
+// Where the random draw made one impossible (too long for a 5 iron, a green too firm to roll in on, a pin nothing can reach)
+// the entry below swaps in the nearest condition / wind / pin that works. Key: hole number, or "hole.sub" for weekend holes 2 and 3.
+const ACE_FIX = {35:{'pin': 'front'}, '36.1':{'cond': 'normal'}, 41:{'cond': 'soft'}, '43.1':{'pin': 'middle'}, 49:{'pin': 'middle'}, '50.2':{'wind': 'calm'}, 54:{'cond': 'soft'}, 55:{'pin': 'middle'}, '58.2':{'pin': 'middle'}, 63:{'cond': 'normal', 'pin': 'middle'}, 64:{'wind': 'calm'}, '64.2':{'pin': 'middle'}, 67:{'wind': 'steady'}, 69:{'wind': 'calm'}, 70:{'cond': 'normal', 'pin': 'middle'}, 71:{'pin': 'middle'}, 75:{'wind': 'calm'}, 76:{'wind': 'calm'}, 77:{'pin': 'middle'}, '78.2':{'wind': 'calm'}, 82:{'cond': 'normal'}, 83:{'pin': 'back'}, 84:{'cond': 'soft', 'pin': 'middle'}, 85:{'wind': 'calm'}, '85.2':{'pin': 'middle'}, 91:{'cond': 'soft', 'pin': 'middle'}, 92:{'pin': 'middle'}, 95:{'pin': 'middle'}, 98:{'wind': 'calm'}, '99.1':{'wind': 'steady'}};
 function makePick(i, q, prevTypes, last, sub){
   const wd = (((i - 1 + 5) % 7) + 7) % 7, d = holeDate(i), month = d.getUTCMonth(), theme = themeFor(i);
   let types = allowedOn(HOLE_TYPES, wd).filter(o => !prevTypes.includes(o[0]));
@@ -1093,12 +1097,14 @@ function picksFor(n, sub = 0){
   if (n < GEN3_FROM) return null;
   for (let i = Math.max(GEN3_FROM, PICKS.length ? PICKS[PICKS.length - 1].n + 1 : GEN3_FROM); i <= n; i++){
     const last = PICKS.length ? PICKS[PICKS.length - 1] : null;
-    PICKS.push(makePick(i, rng(hash(i*9173 + 7)), PICKS.slice(-5).map(p => p.type), last, 0));
+    const pk = makePick(i, rng(hash(i*9173 + 7)), PICKS.slice(-5).map(p => p.type), last, 0);
+    if (ACE_FIX[i]) Object.assign(pk, ACE_FIX[i]);
+    PICKS.push(pk);
   }
   const main = PICKS.find(p => p.n === n);
   if (!sub) return main;
   // weekend loop holes 2 and 3: their own draw, never the same type as the day's other holes
-  const day = [main]; for (let k=1;k<=sub;k++) day.push(makePick(n, rng(hash(n*9173 + 7 + k*31337)), day.map(p => p.type), main, k));
+  const day = [main]; for (let k=1;k<=sub;k++){ const pk = makePick(n, rng(hash(n*9173 + 7 + k*31337)), day.map(p => p.type), main, k); if (ACE_FIX[n + '.' + k]) Object.assign(pk, ACE_FIX[n + '.' + k]); day.push(pk); }
   return day[sub];
 }
 // a short line for cards and the scorecard: "Island green · Firm and fast"
